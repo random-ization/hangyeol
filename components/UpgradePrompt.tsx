@@ -94,7 +94,7 @@ const UpgradePrompt: React.FC<UpgradePromptProps> = ({ isOpen, onClose, language
               className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
             >
               <Sparkles size={16} className="mr-2" />
-              {labels.upgradNow || 'Upgrade Now'}
+              {labels.upgradeNow || 'Upgrade Now'}
             </Button>
           </div>
         </div>

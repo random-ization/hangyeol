@@ -6,6 +6,43 @@ import { AuthRequest } from '../middleware/auth.middleware';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-prod';
 
+// Helper to calculate day streak
+const calculateDayStreak = (activities: any[]): number => {
+    if (!activities || activities.length === 0) return 0;
+    
+    // Get unique dates, sorted descending
+    const uniqueDates = [...new Set(
+        activities.map(a => new Date(a.date).toDateString())
+    )].sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    
+    if (uniqueDates.length === 0) return 0;
+    
+    // Check if today or yesterday has activity
+    const today = new Date().toDateString();
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    
+    if (uniqueDates[0] !== today && uniqueDates[0] !== yesterday) {
+        return 0; // Streak broken
+    }
+    
+    let streak = 0;
+    let currentDate = new Date();
+    
+    for (const dateStr of uniqueDates) {
+        const activityDate = new Date(dateStr);
+        const daysDiff = Math.floor((currentDate.getTime() - activityDate.getTime()) / 86400000);
+        
+        if (daysDiff === streak) {
+            streak++;
+            currentDate = activityDate;
+        } else {
+            break;
+        }
+    }
+    
+    return streak;
+};
+
 // Helper to format user for frontend
 const formatUser = (user: any) => {
     const formattedHistory = user.examHistory.map((h: any) => ({
@@ -13,6 +50,32 @@ const formatUser = (user: any) => {
         timestamp: h.timestamp.getTime(),
         userAnswers: JSON.parse(h.userAnswers)
     }));
+
+    // Calculate real statistics from learning activities
+    const activities = user.learningActivities || [];
+    
+    // Calculate listening hours
+    const listeningActivities = activities.filter((a: any) => a.activityType === 'LISTENING');
+    const totalListeningMinutes = listeningActivities.reduce((sum: number, a: any) => sum + (a.duration || 0), 0);
+    const listeningHours = parseFloat((totalListeningMinutes / 60).toFixed(1));
+    
+    // Calculate readings completed
+    const readingActivities = activities.filter((a: any) => a.activityType === 'READING');
+    const readingsCompleted = readingActivities.length;
+    
+    // Calculate day streak
+    const dayStreak = calculateDayStreak(activities);
+    
+    // Create activity log for last 365 days
+    const activityLog: boolean[] = [];
+    const now = Date.now();
+    for (let i = 364; i >= 0; i--) {
+        const date = new Date(now - i * 86400000).toDateString();
+        const hasActivity = activities.some((a: any) => 
+            new Date(a.date).toDateString() === date
+        );
+        activityLog.push(hasActivity);
+    }
 
     return {
         id: user.id,
@@ -32,10 +95,10 @@ const formatUser = (user: any) => {
         examHistory: formattedHistory,
         statistics: {
             wordsLearned: user.savedWords.length,
-            readingsCompleted: 0,
-            listeningHours: 0,
-            dayStreak: 1,
-            activityLog: []
+            readingsCompleted,
+            listeningHours,
+            dayStreak,
+            activityLog
         }
     };
 };
@@ -86,7 +149,11 @@ export const login = async (req: any, res: any) => {
             savedWords: true,
             mistakes: true,
             annotations: true,
-            examHistory: true
+            examHistory: true,
+            learningActivities: {
+                orderBy: { date: 'desc' },
+                take: 365 // Last year of activity
+            }
         } 
     });
 
@@ -115,7 +182,11 @@ export const getMe = async (req: any, res: any) => {
                 savedWords: true,
                 mistakes: true,
                 annotations: true,
-                examHistory: true
+                examHistory: true,
+                learningActivities: {
+                    orderBy: { date: 'desc' },
+                    take: 365 // Last year of activity
+                }
             }
         });
 

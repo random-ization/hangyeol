@@ -19,10 +19,11 @@ model User {
   avatar       String?
   createdAt    DateTime      @default(now())
 
-  savedWords   SavedWord[]
-  mistakes     Mistake[]
-  annotations  Annotation[]
-  examHistory  ExamAttempt[]
+  savedWords         SavedWord[]
+  mistakes           Mistake[]
+  annotations        Annotation[]
+  examHistory        ExamAttempt[]
+  learningActivities LearningActivity[]
 }
 
 model Institute {
@@ -103,4 +104,18 @@ model ExamAttempt {
   maxScore    Int
   userAnswers String
   timestamp   DateTime @default(now())
+}
+
+model LearningActivity {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  activityType  String   // 'VOCAB', 'READING', 'LISTENING', 'GRAMMAR', 'EXAM'
+  duration      Int?     // Duration in minutes
+  itemsStudied  Int?     // Number of words/questions/passages studied
+  metadata      String?  // JSON string for additional data
+  createdAt     DateTime @default(now())
+  date          DateTime @default(now()) // Date part for daily tracking
+
+  @@index([userId, date])
 }

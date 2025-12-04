@@ -60,6 +60,7 @@ interface AppContextType {
   clearMistakes: () => void;
   saveAnnotation: (annotation: Annotation) => Promise<void>;
   saveExamAttempt: (attempt: ExamAttempt) => Promise<void>;
+  logActivity: (activityType: 'VOCAB' | 'READING' | 'LISTENING' | 'GRAMMAR' | 'EXAM', duration?: number, itemsStudied?: number, metadata?: any) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -245,8 +246,24 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       setUser({ ...user, examHistory: updatedHistory });
       try {
         await api.saveExamAttempt(attempt);
+        // Log exam activity
+        await api.logActivity('EXAM', undefined, 1, { examId: attempt.examId, score: attempt.score });
       } catch (e) {
         console.error(e);
+      }
+    },
+    [user]
+  );
+
+  const logActivity = useCallback(
+    async (activityType: 'VOCAB' | 'READING' | 'LISTENING' | 'GRAMMAR' | 'EXAM', duration?: number, itemsStudied?: number, metadata?: any) => {
+      if (!user) return;
+      try {
+        await api.logActivity(activityType, duration, itemsStudied, metadata);
+        // Optionally refetch user data to update statistics
+        // For now, we'll let it update on next login/refresh
+      } catch (e) {
+        console.error('Failed to log activity', e);
       }
     },
     [user]
@@ -348,6 +365,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     clearMistakes,
     saveAnnotation,
     saveExamAttempt,
+    logActivity,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

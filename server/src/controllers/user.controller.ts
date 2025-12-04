@@ -128,3 +128,35 @@ export const saveExamAttempt = async (req: any, res: any) => {
         res.status(500).json({ error: "Failed to save exam result" });
     }
 };
+
+// Log Learning Activity
+export const logActivity = async (req: any, res: any) => {
+    try {
+        const userId = req.user!.userId;
+        const { activityType, duration, itemsStudied, metadata } = req.body;
+
+        if (!activityType) {
+            return res.status(400).json({ error: "Activity type is required" });
+        }
+
+        // Get today's date at midnight for consistent day tracking
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const activity = await prisma.learningActivity.create({
+            data: {
+                userId,
+                activityType,
+                duration: duration || null,
+                itemsStudied: itemsStudied || null,
+                metadata: metadata ? JSON.stringify(metadata) : null,
+                date: today
+            }
+        });
+
+        res.json(activity);
+    } catch (e) {
+        console.error("Log Activity Error:", e);
+        res.status(500).json({ error: "Failed to log activity" });
+    }
+};

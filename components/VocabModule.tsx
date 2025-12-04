@@ -4,6 +4,7 @@ import { getMockVocabulary } from '../services/geminiService';
 import { CourseSelection, VocabularyItem, Language, TextbookContent } from '../types';
 import { RefreshCw, Volume2, RotateCcw, Brain, Layers, List as ListIcon, Check, X, Beaker, Filter, Eye, EyeOff, XCircle, CheckCircle, Play, Settings as SettingsIcon, Pencil, Keyboard, Shuffle, AlignLeft, MoveRight, MoveLeft, Hand, Trophy, ChevronRight, ArrowRight } from 'lucide-react';
 import { getLabels } from '../utils/i18n';
+import { useApp } from '../contexts/AppContext';
 
 interface VocabModuleProps {
   course: CourseSelection;
@@ -51,11 +52,14 @@ type QuestionType = 'CHOICE_K_TO_N' | 'CHOICE_N_TO_K' | 'WRITING_N_TO_K' | 'WRIT
 const VocabModule: React.FC<VocabModuleProps> = ({ 
     course, instituteName, language, levelContexts, customWordList, customListType, onRecordMistake, onSaveWord 
 }) => {
+  const { logActivity } = useApp();
+  
   // --- Data State ---
   const [allWords, setAllWords] = useState<ExtendedVocabularyItem[]>([]);
   const [filteredWords, setFilteredWords] = useState<ExtendedVocabularyItem[]>([]);
   const [selectedUnitFilter, setSelectedUnitFilter] = useState<number | 'ALL'>('ALL');
   const [loading, setLoading] = useState(true);
+  const [sessionStartTime, setSessionStartTime] = useState<number>(Date.now());
   
   // --- View State ---
   const [viewMode, setViewMode] = useState<LearningMode>('CARDS');
@@ -217,6 +221,7 @@ const VocabModule: React.FC<VocabModuleProps> = ({
       setIsFlipped(false);
       setSessionStats({ correct: [], incorrect: [] });
       setIsSessionComplete(false);
+      setSessionStartTime(Date.now()); // Reset session timer
       resetDrag();
   };
 
@@ -231,6 +236,7 @@ const VocabModule: React.FC<VocabModuleProps> = ({
       setLearnQueue(queue);
       setSessionStats({ correct: [], incorrect: [] });
       setIsSessionComplete(false);
+      setSessionStartTime(Date.now()); // Reset session timer
       setQuizState('QUESTION');
       setSelectedOptionIdx(null);
       setWritingInput('');
@@ -351,6 +357,10 @@ const VocabModule: React.FC<VocabModuleProps> = ({
           const remaining = prev.slice(1);
           if (remaining.length === 0) {
               setIsSessionComplete(true);
+              // Log vocabulary learning activity
+              const durationMinutes = Math.round((Date.now() - sessionStartTime) / 60000);
+              const totalItems = sessionStats.correct.length + sessionStats.incorrect.length;
+              logActivity('VOCAB', durationMinutes, totalItems);
               return [];
           }
           prepareNextQuestion(remaining[0], filteredWords.length >= 4 ? filteredWords : allWords);
@@ -397,8 +407,11 @@ const VocabModule: React.FC<VocabModuleProps> = ({
           setTimeout(() => setCardIndex(prev => prev + 1), 150);
       } else {
           setIsSessionComplete(true);
+          // Log vocabulary flashcard activity
+          const durationMinutes = Math.round((Date.now() - sessionStartTime) / 60000);
+          logActivity('VOCAB', durationMinutes, cardQueue.length);
       }
-  }, [cardIndex, cardQueue, onSaveWord]);
+  }, [cardIndex, cardQueue, onSaveWord, sessionStartTime, logActivity]);
 
   // --- Flashcard Gestures & Keyboard ---
 

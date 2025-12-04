@@ -172,5 +172,21 @@ export const api = {
         });
         if (!res.ok) throw new Error('Failed to upload avatar');
         return res.json();
+    },
+
+    // Learning Activity Tracking
+    logActivity: async (activityType: 'VOCAB' | 'READING' | 'LISTENING' | 'GRAMMAR' | 'EXAM', duration?: number, itemsStudied?: number, metadata?: any) => {
+        const res = await fetch(`${API_URL}/user/activity`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({
+                activityType,
+                duration,
+                itemsStudied,
+                metadata
+            })
+        });
+        if (!res.ok) throw new Error('Failed to log activity');
+        return res.json();
     }
 };

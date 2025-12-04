@@ -1,0 +1,106 @@
+// server/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  password     String
+  name         String
+  role         String        @default("STUDENT")
+  tier         String        @default("FREE")
+  avatar       String?
+  createdAt    DateTime      @default(now())
+
+  savedWords   SavedWord[]
+  mistakes     Mistake[]
+  annotations  Annotation[]
+  examHistory  ExamAttempt[]
+}
+
+model Institute {
+  id     String @id
+  name   String
+  levels String
+}
+
+model TextbookContent {
+  key                  String @id
+  generalContext       String?
+  vocabularyList       String?
+  readingText          String?
+  readingTranslation   String?
+  readingTitle         String?
+  listeningScript      String?
+  listeningTranslation String?
+  listeningTitle       String?
+  listeningAudioUrl    String?
+  grammarList          String?
+}
+
+model TopikExam {
+  id        String   @id
+  title     String
+  round     Int
+  type      String
+  paperType String?
+  timeLimit Int
+  audioUrl  String?
+  questions String
+  createdAt DateTime @default(now())
+}
+
+model SavedWord {
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id])
+  korean             String
+  english            String
+  pos                String?
+  exampleSentence    String?
+  exampleTranslation String?
+  unit               Int?
+  createdAt          DateTime @default(now())
+}
+
+model Mistake {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  korean    String
+  english   String
+  createdAt DateTime @default(now())
+}
+
+model Annotation {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  contextKey    String
+  startOffset   Int?
+  endOffset     Int?
+  sentenceIndex Int?
+  text          String
+  color         String?
+  note          String?
+  createdAt     DateTime @default(now())
+}
+
+model ExamAttempt {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  examId      String
+  examTitle   String
+  score       Int
+  maxScore    Int
+  userAnswers String
+  timestamp   DateTime @default(now())
+}

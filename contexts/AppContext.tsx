@@ -122,7 +122,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     checkSession();
   }, []);
 
-  // Fetch Data Helper
+  // Fetch Data Helper - Note: setters from useState are stable and don't need to be in deps
   const fetchInitialData = useCallback(async () => {
     try {
       const [insts, content, exams] = await Promise.all([
@@ -136,6 +136,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     } catch (e) {
       console.error('Failed to load app data', e);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auth Actions

@@ -61,7 +61,9 @@ export const handleError = async (
   // Attempt retry if provided
   if (retry && retryCount > 0) {
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retryCount))); // Exponential backoff
+      // Exponential backoff: 1s, 2s, 4s for retries
+      const delay = Math.pow(2, 3 - retryCount) * 1000;
+      await new Promise(resolve => setTimeout(resolve, delay));
       await retry();
       return;
     } catch (retryError) {

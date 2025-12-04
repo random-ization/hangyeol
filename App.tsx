@@ -9,7 +9,7 @@ import GrammarModule from './components/GrammarModule';
 import AdminPanel from './components/AdminPanel';
 import Dashboard from './components/Dashboard';
 import TopikModule from './components/TopikModule';
-import { LearningModuleType } from './types';
+import { LearningModuleType, TextbookContent } from './types';
 import { getLabels } from './utils/i18n';
 import { useApp } from './contexts/AppContext';
 import { Library } from 'lucide-react';
@@ -55,7 +55,7 @@ function App() {
   const currentLevelContexts = useMemo(() => {
     if (!selectedInstitute || !selectedLevel) return {};
     const prefix = `${selectedInstitute}-${selectedLevel}-`;
-    const contexts: Record<number, any> = {};
+    const contexts: Record<number, TextbookContent> = {};
 
     Object.keys(textbookContexts).forEach(key => {
       if (key.startsWith(prefix)) {

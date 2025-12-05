@@ -131,3 +131,11 @@ model LearningActivity {
 
   @@index([userId, date])
 }
+
+model LegalDocument {
+  id        String   @id // 'terms', 'privacy', 'refund'
+  title     String
+  content   String   @db.Text
+  updatedAt DateTime @default(now())
+  updatedBy String?  // Admin user ID who updated it
+}

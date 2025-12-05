@@ -296,5 +296,22 @@
   "freeMember": "免费会员",
   "daysRemaining": "剩余天数",
   "expiresOn": "到期时间",
-  "membershipStatus": "会员状态"
+  "membershipStatus": "会员状态",
+  "termsOfService": "服务条款",
+  "privacyPolicy": "隐私政策",
+  "refundPolicy": "退款政策",
+  "legal": "法律信息",
+  "quickLinks": "快速链接",
+  "footerDescription": "您全面的韩语学习平台",
+  "allRightsReserved": "版权所有。",
+  "legalDocuments": "法律文档编辑器",
+  "legalDocumentsDesc": "编辑服务条款、隐私政策和退款政策",
+  "documentNotFound": "文档未找到",
+  "documentNotFoundDesc": "请求的文档无法找到。",
+  "lastUpdated": "最后更新",
+  "preview": "预览",
+  "markdownTip": "格式提示：使用 # 表示标题（# H1，## H2，### H3），- 或 * 表示列表，1. 表示编号列表，空行表示段落",
+  "enterTitle": "输入文档标题",
+  "enterContent": "输入文档内容...",
+  "saved": "保存成功！"
 }

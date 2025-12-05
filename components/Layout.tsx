@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { BookOpen, GraduationCap, Library, LogOut, Menu, X, Crown, Settings, Globe, ChevronDown, User as UserIcon, Home } from 'lucide-react';
 import { User as UserType, UserTier, Language } from '../types';
 import { getLabels } from '../utils/i18n';
+import Footer from './Footer';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -192,6 +193,9 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, currentPage, 
       <main className="flex-1 w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
+
+      {/* Footer */}
+      <Footer language={language} onNavigate={onNavigate} />
     </div>
   );
 };

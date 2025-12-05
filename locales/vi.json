@@ -294,5 +294,22 @@
   "freeMember": "Thành viên miễn phí",
   "daysRemaining": "Số ngày còn lại",
   "expiresOn": "Hết hạn vào",
-  "membershipStatus": "Trạng thái thành viên"
+  "membershipStatus": "Trạng thái thành viên",
+  "termsOfService": "Điều khoản dịch vụ",
+  "privacyPolicy": "Chính sách bảo mật",
+  "refundPolicy": "Chính sách hoàn tiền",
+  "legal": "Pháp lý",
+  "quickLinks": "Liên kết nhanh",
+  "footerDescription": "Nền tảng học tiếng Hàn toàn diện của bạn",
+  "allRightsReserved": "Đã đăng ký bản quyền.",
+  "legalDocuments": "Trình chỉnh sửa tài liệu pháp lý",
+  "legalDocumentsDesc": "Chỉnh sửa điều khoản dịch vụ, chính sách bảo mật và chính sách hoàn tiền",
+  "documentNotFound": "Không tìm thấy tài liệu",
+  "documentNotFoundDesc": "Không thể tìm thấy tài liệu được yêu cầu.",
+  "lastUpdated": "Cập nhật lần cuối",
+  "preview": "Xem trước",
+  "markdownTip": "Mẹo định dạng: Sử dụng # cho tiêu đề (# H1, ## H2, ### H3), - hoặc * cho danh sách, 1. cho danh sách đánh số, dòng trống cho đoạn văn",
+  "enterTitle": "Nhập tiêu đề tài liệu",
+  "enterContent": "Nhập nội dung tài liệu...",
+  "saved": "Đã lưu thành công!"
 }

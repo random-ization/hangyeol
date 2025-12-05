@@ -199,5 +199,22 @@ export const api = {
         });
         if (!res.ok) throw new Error('Failed to update learning progress');
         return res.json();
+    },
+
+    // Legal Documents
+    getLegalDocument: async (type: 'terms' | 'privacy' | 'refund') => {
+        const res = await fetch(`${API_URL}/content/legal/${type}`);
+        if (!res.ok) throw new Error('Failed to fetch legal document');
+        return res.json();
+    },
+
+    saveLegalDocument: async (type: 'terms' | 'privacy' | 'refund', title: string, content: string) => {
+        const res = await fetch(`${API_URL}/content/legal/${type}`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ title, content })
+        });
+        if (!res.ok) throw new Error('Failed to save legal document');
+        return res.json();
     }
 };

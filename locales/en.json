@@ -296,5 +296,22 @@
   "freeMember": "Free Member",
   "daysRemaining": "Days Remaining",
   "expiresOn": "Expires on",
-  "membershipStatus": "Membership Status"
+  "membershipStatus": "Membership Status",
+  "termsOfService": "Terms of Service",
+  "privacyPolicy": "Privacy Policy",
+  "refundPolicy": "Refund Policy",
+  "legal": "Legal",
+  "quickLinks": "Quick Links",
+  "footerDescription": "Your comprehensive Korean language learning platform",
+  "allRightsReserved": "All rights reserved.",
+  "legalDocuments": "Legal Documents Editor",
+  "legalDocumentsDesc": "Edit terms of service, privacy policy, and refund policy",
+  "documentNotFound": "Document Not Found",
+  "documentNotFoundDesc": "The requested document could not be found.",
+  "lastUpdated": "Last updated",
+  "preview": "Preview",
+  "markdownTip": "Formatting tips: Use # for headings (# H1, ## H2, ### H3), - or * for bullet lists, 1. for numbered lists, blank lines for paragraphs",
+  "enterTitle": "Enter document title",
+  "enterContent": "Enter document content...",
+  "saved": "Saved successfully!"
 }

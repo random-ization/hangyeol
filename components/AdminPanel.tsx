@@ -3,7 +3,8 @@ import {
   BarChart3, 
   Users, 
   Book, 
-  GraduationCap 
+  GraduationCap,
+  FileText
 } from 'lucide-react';
 import { AdminPanelProps } from './admin/types';
 import { getLabels } from '../utils/i18n';
@@ -13,6 +14,7 @@ import DashboardView from './admin/DashboardView';
 import UserManagement from './admin/UserManagement';
 import ContentEditor from './admin/ContentEditor';
 import ExamEditor from './admin/ExamEditor';
+import LegalDocumentEditor from './admin/LegalDocumentEditor';
 
 const AdminPanel: React.FC<AdminPanelProps> = (props) => {
   const { 
@@ -33,7 +35,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     onDeleteTopikExam
   } = props;
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'curriculum' | 'topik'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'curriculum' | 'topik' | 'legal'>('dashboard');
   const labels = getLabels(language);
 
   // 侧边栏导航项配置
@@ -42,6 +44,7 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
     { id: 'users', label: labels.usersTab, icon: Users },
     { id: 'curriculum', label: labels.curriculumTab, icon: Book },
     { id: 'topik', label: labels.topik, icon: GraduationCap },
+    { id: 'legal', label: labels.legal, icon: FileText },
   ] as const;
 
   return (
@@ -102,6 +105,10 @@ const AdminPanel: React.FC<AdminPanelProps> = (props) => {
                 onDeleteExam={onDeleteTopikExam}
                 language={language}
               />
+            )}
+            
+            {activeTab === 'legal' && (
+              <LegalDocumentEditor language={language} />
             )}
         </div>
     </div>

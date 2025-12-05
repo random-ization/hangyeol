@@ -17,11 +17,9 @@ const UpgradePrompt: React.FC<UpgradePromptProps> = ({ isOpen, onClose, language
   if (!isOpen) return null;
 
   const features = [
-    labels.unlimitedAccess || 'Unlimited Access to All Content',
-    labels.allTextbooks || 'Access All Textbook Units',
-    labels.allExams || 'Access All TOPIK Exams',
-    labels.prioritySupport || 'Priority Support',
-    labels.offlineMode || 'Offline Learning Mode',
+    labels.upgradeFeaturesList?.allTextbooksUnits || labels.allTextbooks || 'All textbook lessons',
+    labels.upgradeFeaturesList?.allExamsAccess || labels.allExams || 'All TOPIK practice exams',
+    labels.upgradeFeaturesList?.unlimitedLearning || labels.unlimitedAccess || 'Unlimited learning',
   ];
 
   const handleUpgrade = () => {
@@ -47,12 +45,10 @@ const UpgradePrompt: React.FC<UpgradePromptProps> = ({ isOpen, onClose, language
               <Sparkles size={32} />
             </div>
             <h2 className="text-2xl font-bold mb-2">
-              {labels.upgradeToPremium || 'Upgrade to Premium'}
+              {labels.upgradeTitle || labels.upgradeToPremium || 'Upgrade to Premium'}
             </h2>
             <p className="text-white/90 text-sm">
-              {contentType === 'textbook'
-                ? labels.premiumTextbookAccess || 'This textbook unit requires a premium subscription'
-                : labels.premiumExamAccess || 'This TOPIK exam requires a premium subscription'}
+              {labels.upgradeDescription || 'Unlock all textbook content and TOPIK exams'}
             </p>
           </div>
         </div>
@@ -86,7 +82,7 @@ const UpgradePrompt: React.FC<UpgradePromptProps> = ({ isOpen, onClose, language
               onClick={onClose}
               className="flex-1"
             >
-              {labels.cancel}
+              {labels.maybeLater || labels.cancel}
             </Button>
             <Button
               variant="primary"

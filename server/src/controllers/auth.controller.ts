@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { RegisterSchema, RegisterInput, LoginSchema, LoginInput } from '../schemas/validation';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-prod';
 
@@ -113,13 +114,11 @@ const formatUser = (user: any) => {
     };
 };
 
-export const register = async (req: any, res: any) => {
+export const register = async (req: Request, res: Response) => {
   try {
-    const { email, password, name } = req.body;
-
-    if (!email || !password || !name) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
+    // Validate input
+    const validatedData: RegisterInput = RegisterSchema.parse(req.body);
+    const { email, password, name } = validatedData;
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -143,15 +142,20 @@ export const register = async (req: any, res: any) => {
     // For register, we return a basic user structure since relations are empty
     res.json({ token, user: { ...user, password: undefined, savedWords: [], mistakes: [], annotations: [], examHistory: [] } });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Register Error:", error);
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ error: "Invalid input", details: error.errors });
+    }
     res.status(500).json({ error: "Registration failed" });
   }
 };
 
-export const login = async (req: any, res: any) => {
+export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    // Validate input
+    const validatedData: LoginInput = LoginSchema.parse(req.body);
+    const { email, password } = validatedData;
 
     const user = await prisma.user.findUnique({ 
         where: { email },
@@ -175,13 +179,16 @@ export const login = async (req: any, res: any) => {
 
     res.json({ token, user: formatUser(user) });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Login Error:", error);
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ error: "Invalid input", details: error.errors });
+    }
     res.status(500).json({ error: "Login failed" });
   }
 };
 
-export const getMe = async (req: any, res: any) => {
+export const getMe = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user?.userId;
         if (!userId) return res.status(401).json({ error: "Unauthorized" });

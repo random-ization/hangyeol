@@ -86,7 +86,7 @@ export const useLocalStorage = <T>(
 
     // Listen for changes in other tabs/windows
     window.addEventListener('storage', handleStorageChange);
-    
+
     // Listen for changes in same tab
     window.addEventListener('local-storage', handleStorageChange);
 

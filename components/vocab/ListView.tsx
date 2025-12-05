@@ -15,20 +15,23 @@ const ListView: React.FC<ListViewProps> = React.memo(({ words, settings, languag
   const labels = useMemo(() => getLabels(language), [language]);
   const [revealedItems, setRevealedItems] = useState<Set<string>>(new Set());
 
-  const toggleReveal = useCallback((id: string, textToSpeak: string) => {
-    setRevealedItems(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-        if (settings.flashcard.autoTTS) {
-          speak(textToSpeak);
+  const toggleReveal = useCallback(
+    (id: string, textToSpeak: string) => {
+      setRevealedItems(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(id)) {
+          newSet.delete(id);
+        } else {
+          newSet.add(id);
+          if (settings.flashcard.autoTTS) {
+            speak(textToSpeak);
+          }
         }
-      }
-      return newSet;
-    });
-  }, [settings.flashcard.autoTTS]);
+        return newSet;
+      });
+    },
+    [settings.flashcard.autoTTS]
+  );
 
   if (words.length === 0) {
     return (

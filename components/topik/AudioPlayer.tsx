@@ -11,7 +11,7 @@ interface AudioPlayerProps {
 export const AudioPlayer: React.FC<AudioPlayerProps> = React.memo(({ audioUrl, language }) => {
   const labels = useMemo(() => getLabels(language), [language]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -74,13 +74,16 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = React.memo(({ audioUrl, l
     }
   }, []);
 
-  const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseFloat(e.target.value);
-    setVolume(newVolume);
-    if (newVolume > 0 && isMuted) {
-      setIsMuted(false);
-    }
-  }, [isMuted]);
+  const handleVolumeChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newVolume = parseFloat(e.target.value);
+      setVolume(newVolume);
+      if (newVolume > 0 && isMuted) {
+        setIsMuted(false);
+      }
+    },
+    [isMuted]
+  );
 
   const toggleMute = useCallback(() => {
     setIsMuted(!isMuted);
@@ -139,7 +142,9 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = React.memo(({ audioUrl, l
 
           {/* Progress Bar */}
           <div className="flex-1 flex items-center space-x-3">
-            <span className="text-white text-sm font-medium min-w-[40px]">{formatTime(currentTime)}</span>
+            <span className="text-white text-sm font-medium min-w-[40px]">
+              {formatTime(currentTime)}
+            </span>
             <input
               type="range"
               min="0"
@@ -148,10 +153,12 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = React.memo(({ audioUrl, l
               onChange={handleSeek}
               className="flex-1 h-2 bg-white/30 rounded-lg appearance-none cursor-pointer slider"
               style={{
-                background: `linear-gradient(to right, white ${(currentTime / duration) * 100}%, rgba(255,255,255,0.3) ${(currentTime / duration) * 100}%)`
+                background: `linear-gradient(to right, white ${(currentTime / duration) * 100}%, rgba(255,255,255,0.3) ${(currentTime / duration) * 100}%)`,
               }}
             />
-            <span className="text-white text-sm font-medium min-w-[40px]">{formatTime(duration)}</span>
+            <span className="text-white text-sm font-medium min-w-[40px]">
+              {formatTime(duration)}
+            </span>
           </div>
 
           {/* Volume Control */}
@@ -160,7 +167,11 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = React.memo(({ audioUrl, l
               onClick={toggleMute}
               className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors flex items-center justify-center"
             >
-              {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              {isMuted || volume === 0 ? (
+                <VolumeX className="w-4 h-4" />
+              ) : (
+                <Volume2 className="w-4 h-4" />
+              )}
             </button>
             <input
               type="range"
@@ -182,7 +193,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = React.memo(({ audioUrl, l
             >
               <span className="text-xs font-bold">{playbackRate}x</span>
             </button>
-            
+
             {showSpeedMenu && (
               <div className="absolute bottom-full right-0 mb-2 bg-white rounded-lg shadow-xl py-2 min-w-[100px]">
                 {[0.5, 0.75, 1, 1.25, 1.5, 2].map(speed => (
@@ -190,7 +201,9 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = React.memo(({ audioUrl, l
                     key={speed}
                     onClick={() => changeSpeed(speed)}
                     className={`w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors ${
-                      playbackRate === speed ? 'bg-purple-50 text-purple-600 font-semibold' : 'text-gray-700'
+                      playbackRate === speed
+                        ? 'bg-purple-50 text-purple-600 font-semibold'
+                        : 'text-gray-700'
                     }`}
                   >
                     {speed}x

@@ -9,39 +9,15 @@ interface AppProviderProps {
 }
 
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
-  const [page, setPage] = useState('auth');
-
-  const handleLoginSuccess = useCallback(() => {
-    setPage('home');
-  }, []);
-
   return (
-    <AuthProvider onLoginSuccess={handleLoginSuccess}>
+    <AuthProvider>
       <DataProvider>
         <LearningProvider>
-          <PageContext.Provider value={{ page, setPage }}>
-            {children}
-          </PageContext.Provider>
+          {children}
         </LearningProvider>
       </DataProvider>
     </AuthProvider>
   );
-};
-
-// Page navigation context (temporary until React Router is fully integrated)
-interface PageContextType {
-  page: string;
-  setPage: (page: string) => void;
-}
-
-const PageContext = React.createContext<PageContextType | undefined>(undefined);
-
-export const usePage = () => {
-  const context = React.useContext(PageContext);
-  if (!context) {
-    throw new Error('usePage must be used within AppProvider');
-  }
-  return context;
 };
 
 // Backward compatibility hook that combines all three contexts
@@ -49,7 +25,6 @@ export const useApp = () => {
   const auth = useAuth();
   const learning = useLearning();
   const data = useData();
-  const { page, setPage } = usePage();
 
   return {
     // Auth context
@@ -93,9 +68,5 @@ export const useApp = () => {
     saveTextbookContext: data.saveTextbookContext,
     saveTopikExam: data.saveTopikExam,
     deleteTopikExam: data.deleteTopikExam,
-    
-    // Page navigation
-    page,
-    setPage,
   };
 };

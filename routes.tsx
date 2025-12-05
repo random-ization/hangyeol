@@ -17,7 +17,7 @@ interface AppRoutesProps {
 
 export const AppRoutes: React.FC<AppRoutesProps> = ({ canAccessContent, onShowUpgradePrompt }) => {
   const { language } = useAuth();
-  
+
   return (
     <Routes>
       <Route path="/" element={<AuthPage />} />
@@ -43,9 +43,18 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({ canAccessContent, onShowUp
         }
       />
       <Route path="/admin" element={<AdminPage />} />
-      <Route path="/terms" element={<LegalDocumentPage language={language} documentType="terms" />} />
-      <Route path="/privacy" element={<LegalDocumentPage language={language} documentType="privacy" />} />
-      <Route path="/refund" element={<LegalDocumentPage language={language} documentType="refund" />} />
+      <Route
+        path="/terms"
+        element={<LegalDocumentPage language={language} documentType="terms" />}
+      />
+      <Route
+        path="/privacy"
+        element={<LegalDocumentPage language={language} documentType="privacy" />}
+      />
+      <Route
+        path="/refund"
+        element={<LegalDocumentPage language={language} documentType="refund" />}
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

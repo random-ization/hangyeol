@@ -93,7 +93,9 @@ const Footer: React.FC<FooterProps> = ({ language, onNavigate }) => {
 
         {/* Bottom Bar */}
         <div className="border-t border-slate-700 mt-8 pt-6 text-center text-sm text-slate-400">
-          <p>© {currentYear} HanGyeol. {labels.allRightsReserved || 'All rights reserved.'}</p>
+          <p>
+            © {currentYear} HanGyeol. {labels.allRightsReserved || 'All rights reserved.'}
+          </p>
         </div>
       </div>
     </footer>

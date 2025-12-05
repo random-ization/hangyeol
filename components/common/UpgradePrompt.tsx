@@ -67,9 +67,7 @@ const UpgradePrompt: React.FC<UpgradePromptProps> = ({ isOpen, onClose, language
               <h3 className="font-semibold text-gray-800">
                 {labels.upgradeFeaturesList?.allExamsAccess || 'All TOPIK practice exams'}
               </h3>
-              <p className="text-sm text-gray-600">
-                {labels.allExams || 'Access All TOPIK Exams'}
-              </p>
+              <p className="text-sm text-gray-600">{labels.allExams || 'Access All TOPIK Exams'}</p>
             </div>
           </div>
 

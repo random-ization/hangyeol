@@ -1,5 +1,13 @@
 import React from 'react';
-import { Calendar, CheckCircle, FileText, History as HistoryIcon, ArrowLeft, Eye, Lock } from 'lucide-react';
+import {
+  Calendar,
+  CheckCircle,
+  FileText,
+  History as HistoryIcon,
+  ArrowLeft,
+  Eye,
+  Lock,
+} from 'lucide-react';
 import { TopikExam, ExamAttempt, Language } from '../../types';
 import { getLabels } from '../../utils/i18n';
 
@@ -54,7 +62,9 @@ export const ExamList: React.FC<ExamListProps> = ({
                 <span>{labels.back || 'Back'}</span>
               </button>
             )}
-            <h2 className="text-2xl font-bold text-slate-800">{labels.examHistory || 'Exam History'}</h2>
+            <h2 className="text-2xl font-bold text-slate-800">
+              {labels.examHistory || 'Exam History'}
+            </h2>
           </div>
         </div>
 
@@ -71,24 +81,32 @@ export const ExamList: React.FC<ExamListProps> = ({
             const passed = percentage >= 60;
 
             return (
-              <div key={idx} className="bg-white rounded-lg p-4 border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all">
+              <div
+                key={idx}
+                className="bg-white rounded-lg p-4 border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <h3 className="font-semibold text-slate-800">{attempt.examTitle}</h3>
                     <div className="flex items-center gap-4 text-sm text-slate-600 mt-1">
                       <span>{new Date(attempt.date).toLocaleDateString()}</span>
                       <span>
-                        {attempt.correctCount} / {attempt.totalQuestions} {labels.correct || 'correct'}
+                        {attempt.correctCount} / {attempt.totalQuestions}{' '}
+                        {labels.correct || 'correct'}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-4">
-                    <div className={`text-right px-4 py-2 rounded-lg ${
-                      passed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                    }`}>
+                    <div
+                      className={`text-right px-4 py-2 rounded-lg ${
+                        passed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}
+                    >
                       <div className="text-2xl font-bold">{percentage.toFixed(1)}%</div>
-                      <div className="text-xs">{passed ? labels.passed || 'Passed' : labels.failed || 'Failed'}</div>
+                      <div className="text-xs">
+                        {passed ? labels.passed || 'Passed' : labels.failed || 'Failed'}
+                      </div>
                     </div>
 
                     <button
@@ -127,7 +145,7 @@ export const ExamList: React.FC<ExamListProps> = ({
 
       {/* Exam List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {exams.map((exam) => {
+        {exams.map(exam => {
           const attemptCount = getAttemptCount(exam.id);
           const bestScore = getBestScore(exam.id);
           const isLocked = canAccessContent != null && !canAccessContent(exam);
@@ -158,11 +176,15 @@ export const ExamList: React.FC<ExamListProps> = ({
               <div className="flex items-center gap-4 text-sm text-slate-600">
                 <div className="flex items-center gap-1">
                   <FileText className="w-4 h-4" />
-                  <span>{exam.questions.length} {labels.questions || 'questions'}</span>
+                  <span>
+                    {exam.questions.length} {labels.questions || 'questions'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Calendar className="w-4 h-4" />
-                  <span>{exam.timeLimit} {labels.minutes || 'min'}</span>
+                  <span>
+                    {exam.timeLimit} {labels.minutes || 'min'}
+                  </span>
                 </div>
               </div>
 
@@ -170,7 +192,9 @@ export const ExamList: React.FC<ExamListProps> = ({
                 <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm text-slate-600">
                     <CheckCircle className="w-4 h-4 text-green-500" />
-                    <span>{attemptCount} {attemptCount === 1 ? labels.attempt : labels.attempts}</span>
+                    <span>
+                      {attemptCount} {attemptCount === 1 ? labels.attempt : labels.attempts}
+                    </span>
                   </div>
                   {bestScore !== null && (
                     <div className="text-sm font-bold text-indigo-600">

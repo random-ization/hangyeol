@@ -11,7 +11,12 @@ interface UpgradePromptProps {
   contentType?: 'textbook' | 'exam';
 }
 
-const UpgradePrompt: React.FC<UpgradePromptProps> = ({ isOpen, onClose, language, contentType = 'textbook' }) => {
+const UpgradePrompt: React.FC<UpgradePromptProps> = ({
+  isOpen,
+  onClose,
+  language,
+  contentType = 'textbook',
+}) => {
   const labels = getLabels(language);
 
   if (!isOpen) return null;
@@ -77,11 +82,7 @@ const UpgradePrompt: React.FC<UpgradePromptProps> = ({ isOpen, onClose, language
           </div>
 
           <div className="flex gap-3">
-            <Button
-              variant="ghost"
-              onClick={onClose}
-              className="flex-1"
-            >
+            <Button variant="ghost" onClick={onClose} className="flex-1">
               {labels.maybeLater || labels.cancel}
             </Button>
             <Button

@@ -1,7 +1,17 @@
 import React, { useState } from 'react';
 import { TopikExam, TopikQuestion, TopikType, Language } from '../../types';
 import { TOPIK_READING_STRUCTURE, TOPIK_LISTENING_STRUCTURE } from './types';
-import { Plus, Save, Trash2, FileText, Headphones, Loader2, ChevronRight, Lock, Unlock } from 'lucide-react';
+import {
+  Plus,
+  Save,
+  Trash2,
+  FileText,
+  Headphones,
+  Loader2,
+  ChevronRight,
+  Lock,
+  Unlock,
+} from 'lucide-react';
 
 interface ExamEditorProps {
   topikExams: TopikExam[];
@@ -157,7 +167,7 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
   const updateQuestion = (field: keyof TopikQuestion, value: any) => {
     if (selectedExam) {
       const updated = { ...selectedExam };
-      const qIndex = updated.questions.findIndex((q) => q.number === editingQuestion);
+      const qIndex = updated.questions.findIndex(q => q.number === editingQuestion);
       if (qIndex !== -1) {
         updated.questions[qIndex] = { ...updated.questions[qIndex], [field]: value };
         setSelectedExam(updated);
@@ -168,7 +178,7 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
   const updateOption = (optionIndex: number, value: string) => {
     if (selectedExam) {
       const updated = { ...selectedExam };
-      const qIndex = updated.questions.findIndex((q) => q.number === editingQuestion);
+      const qIndex = updated.questions.findIndex(q => q.number === editingQuestion);
       if (qIndex !== -1) {
         const newOptions = [...updated.questions[qIndex].options];
         newOptions[optionIndex] = value;
@@ -181,7 +191,7 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
   const saveExam = async () => {
     if (selectedExam) {
       setSaving(true);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 500));
       onUpdateTopikExam(selectedExam);
       setSaving(false);
     }
@@ -194,7 +204,7 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
     }
   };
 
-  const currentQuestion = selectedExam?.questions.find((q) => q.number === editingQuestion);
+  const currentQuestion = selectedExam?.questions.find(q => q.number === editingQuestion);
 
   return (
     <div className="p-6">
@@ -224,7 +234,7 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
             {topikExams.length === 0 ? (
               <div className="p-4 text-center text-gray-500 text-sm">{t.noExams}</div>
             ) : (
-              topikExams.map((exam) => (
+              topikExams.map(exam => (
                 <button
                   key={exam.id}
                   onClick={() => {
@@ -245,11 +255,13 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
                       <div className="text-sm font-medium text-gray-900 truncate">{exam.title}</div>
                       <div className="text-xs text-gray-500 flex items-center gap-2">
                         <span>{exam.timeLimit} min</span>
-                        <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full font-medium ${
-                          exam.isPaid 
-                            ? 'bg-orange-100 text-orange-700' 
-                            : 'bg-green-100 text-green-700'
-                        }`}>
+                        <span
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded-full font-medium ${
+                            exam.isPaid
+                              ? 'bg-orange-100 text-orange-700'
+                              : 'bg-green-100 text-green-700'
+                          }`}
+                        >
                           {exam.isPaid ? (
                             <>
                               <Lock className="w-3 h-3" />
@@ -284,34 +296,42 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
                 <h3 className="text-lg font-semibold mb-4">Exam Metadata</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.title}</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t.title}
+                    </label>
                     <input
                       type="text"
                       value={selectedExam.title}
-                      onChange={(e) => updateExamMetadata('title', e.target.value)}
+                      onChange={e => updateExamMetadata('title', e.target.value)}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.description}</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t.description}
+                    </label>
                     <textarea
                       value={selectedExam.description}
-                      onChange={(e) => updateExamMetadata('description', e.target.value)}
+                      onChange={e => updateExamMetadata('description', e.target.value)}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2"
                       rows={2}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t.timeLimit}</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {t.timeLimit}
+                    </label>
                     <input
                       type="number"
                       value={selectedExam.timeLimit}
-                      onChange={(e) => updateExamMetadata('timeLimit', parseInt(e.target.value))}
+                      onChange={e => updateExamMetadata('timeLimit', parseInt(e.target.value))}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">{t.paidContent}</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {t.paidContent}
+                    </label>
                     <div className="flex gap-2">
                       <button
                         onClick={() => updateExamMetadata('isPaid', false)}
@@ -345,7 +365,7 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-sm font-medium text-gray-700">{t.questionNumber}:</span>
                   <div className="flex-1 flex flex-wrap gap-2">
-                    {selectedExam.questions.map((q) => (
+                    {selectedExam.questions.map(q => (
                       <button
                         key={q.number}
                         onClick={() => setEditingQuestion(q.number)}
@@ -370,20 +390,24 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
                   </h3>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.passage}</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {t.passage}
+                      </label>
                       <textarea
                         value={currentQuestion.passage}
-                        onChange={(e) => updateQuestion('passage', e.target.value)}
+                        onChange={e => updateQuestion('passage', e.target.value)}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2"
                         rows={3}
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.questionText}</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {t.questionText}
+                      </label>
                       <input
                         type="text"
                         value={currentQuestion.question}
-                        onChange={(e) => updateQuestion('question', e.target.value)}
+                        onChange={e => updateQuestion('question', e.target.value)}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2"
                       />
                     </div>
@@ -395,16 +419,18 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
                         <input
                           type="text"
                           value={opt}
-                          onChange={(e) => updateOption(idx, e.target.value)}
+                          onChange={e => updateOption(idx, e.target.value)}
                           className="w-full border border-gray-300 rounded-lg px-3 py-2"
                         />
                       </div>
                     ))}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.correctAnswer}</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {t.correctAnswer}
+                      </label>
                       <select
                         value={currentQuestion.correctAnswer}
-                        onChange={(e) => updateQuestion('correctAnswer', parseInt(e.target.value))}
+                        onChange={e => updateQuestion('correctAnswer', parseInt(e.target.value))}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2"
                       >
                         {currentQuestion.options.map((_, idx) => (
@@ -415,20 +441,24 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.image}</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {t.image}
+                      </label>
                       <input
                         type="text"
                         value={currentQuestion.image}
-                        onChange={(e) => updateQuestion('image', e.target.value)}
+                        onChange={e => updateQuestion('image', e.target.value)}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2"
                         placeholder="https://..."
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t.explanation}</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {t.explanation}
+                      </label>
                       <textarea
                         value={currentQuestion.explanation}
-                        onChange={(e) => updateQuestion('explanation', e.target.value)}
+                        onChange={e => updateQuestion('explanation', e.target.value)}
                         className="w-full border border-gray-300 rounded-lg px-3 py-2"
                         rows={2}
                       />

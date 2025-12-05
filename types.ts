@@ -5,7 +5,7 @@ export enum UserTier {
 
 export enum SubscriptionType {
   ANNUAL = 'ANNUAL',
-  LIFETIME = 'LIFETIME'
+  LIFETIME = 'LIFETIME',
 }
 
 export type UserRole = 'STUDENT' | 'ADMIN';

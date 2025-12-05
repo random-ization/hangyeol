@@ -148,7 +148,11 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
   };
 
   const getDaysRemaining = () => {
-    if (user.tier === 'PAID' && user.subscriptionType === SubscriptionType.ANNUAL && user.subscriptionExpiry) {
+    if (
+      user.tier === 'PAID' &&
+      user.subscriptionType === SubscriptionType.ANNUAL &&
+      user.subscriptionExpiry
+    ) {
       const days = Math.ceil((user.subscriptionExpiry - Date.now()) / (1000 * 60 * 60 * 24));
       return days > 0 ? days : 0;
     }
@@ -240,11 +244,11 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
                 <Calendar size={16} />
                 {labels.joinedDate}: {new Date(user.joinDate).toLocaleDateString()}
               </span>
-              <span className={`flex items-center gap-1 px-3 py-1 rounded-full font-medium ${
-                user.tier === 'PAID' 
-                  ? 'bg-amber-400 text-amber-900' 
-                  : 'bg-white/20 text-white'
-              }`}>
+              <span
+                className={`flex items-center gap-1 px-3 py-1 rounded-full font-medium ${
+                  user.tier === 'PAID' ? 'bg-amber-400 text-amber-900' : 'bg-white/20 text-white'
+                }`}
+              >
                 {user.tier === 'PAID' && <Crown size={14} />}
                 {getMembershipLabel()}
               </span>
@@ -339,17 +343,19 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
                   {labels.membershipStatus || 'Membership Status'}
                 </label>
                 <div className="space-y-3">
-                  <div className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium ${
-                    user.tier === 'PAID' 
-                      ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300' 
-                      : 'bg-slate-50 border-2 border-slate-200'
-                  }`}>
+                  <div
+                    className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium ${
+                      user.tier === 'PAID'
+                        ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300'
+                        : 'bg-slate-50 border-2 border-slate-200'
+                    }`}
+                  >
                     {user.tier === 'PAID' && <Crown className="text-amber-600" size={20} />}
                     <span className={user.tier === 'PAID' ? 'text-amber-900' : 'text-slate-700'}>
                       {getMembershipLabel()}
                     </span>
                   </div>
-                  
+
                   {user.tier === 'PAID' && user.subscriptionType === SubscriptionType.ANNUAL && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                       <div className="flex items-center justify-between">
@@ -374,7 +380,7 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
                       </div>
                     </div>
                   )}
-                  
+
                   {user.tier === 'PAID' && user.subscriptionType === SubscriptionType.LIFETIME && (
                     <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
                       <div className="flex items-center gap-2">
@@ -518,7 +524,9 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
                     </p>
                   </div>
                   <div>
-                    <span className="text-slate-500">{labels.membershipStatus || 'Membership'}:</span>
+                    <span className="text-slate-500">
+                      {labels.membershipStatus || 'Membership'}:
+                    </span>
                     <p className="font-medium text-slate-900 flex items-center gap-1">
                       {user.tier === 'PAID' && <Crown size={14} className="text-amber-600" />}
                       {getMembershipLabel()}
@@ -530,7 +538,9 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
                   </div>
                   {daysRemaining !== null && (
                     <div className="col-span-2">
-                      <span className="text-slate-500">{labels.daysRemaining || 'Days Remaining'}:</span>
+                      <span className="text-slate-500">
+                        {labels.daysRemaining || 'Days Remaining'}:
+                      </span>
                       <p className="font-bold text-blue-600 text-lg">
                         {daysRemaining} {labels.days}
                       </p>

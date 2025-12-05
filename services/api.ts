@@ -239,7 +239,11 @@ export const api = {
     return request(`${API_URL}/content/legal/${type}`);
   },
 
-  saveLegalDocument: async (type: 'terms' | 'privacy' | 'refund', title: string, content: string) => {
+  saveLegalDocument: async (
+    type: 'terms' | 'privacy' | 'refund',
+    title: string,
+    content: string
+  ) => {
     return request(`${API_URL}/content/legal/${type}`, {
       method: 'POST',
       headers: getHeaders(),

@@ -72,7 +72,7 @@ const LegalDocumentEditor: React.FC<LegalDocumentEditorProps> = ({ language }) =
     try {
       setSaving(true);
       await api.saveLegalDocument(selectedDoc, editingTitle, editingContent);
-      
+
       // Update local state
       setDocuments({
         ...documents,
@@ -95,38 +95,44 @@ const LegalDocumentEditor: React.FC<LegalDocumentEditorProps> = ({ language }) =
 
   const formatPreview = (content: string): string => {
     if (!content) return '';
-    
+
     const paragraphs = content.split('\n\n').filter(p => p.trim());
-    
-    return paragraphs.map(para => {
-      if (para.trim().startsWith('# ')) {
-        return `<h1 class="text-3xl font-bold mb-6 mt-8">${para.substring(2).trim()}</h1>`;
-      } else if (para.trim().startsWith('## ')) {
-        return `<h2 class="text-2xl font-bold mb-4 mt-6">${para.substring(3).trim()}</h2>`;
-      } else if (para.trim().startsWith('### ')) {
-        return `<h3 class="text-xl font-bold mb-3 mt-5">${para.substring(4).trim()}</h3>`;
-      }
-      
-      if (para.trim().match(/^[-*]\s/)) {
-        const items = para.split('\n').filter(line => line.trim());
-        const listItems = items.map(item => {
-          const cleanItem = item.replace(/^[-*]\s/, '').trim();
-          return `<li class="mb-2">${cleanItem}</li>`;
-        }).join('');
-        return `<ul class="my-4 ml-6 list-disc">${listItems}</ul>`;
-      }
-      
-      if (para.trim().match(/^\d+\.\s/)) {
-        const items = para.split('\n').filter(line => line.trim());
-        const listItems = items.map(item => {
-          const cleanItem = item.replace(/^\d+\.\s/, '').trim();
-          return `<li class="mb-2">${cleanItem}</li>`;
-        }).join('');
-        return `<ol class="my-4 ml-6 list-decimal">${listItems}</ol>`;
-      }
-      
-      return `<p class="mb-4 leading-relaxed">${para.trim()}</p>`;
-    }).join('');
+
+    return paragraphs
+      .map(para => {
+        if (para.trim().startsWith('# ')) {
+          return `<h1 class="text-3xl font-bold mb-6 mt-8">${para.substring(2).trim()}</h1>`;
+        } else if (para.trim().startsWith('## ')) {
+          return `<h2 class="text-2xl font-bold mb-4 mt-6">${para.substring(3).trim()}</h2>`;
+        } else if (para.trim().startsWith('### ')) {
+          return `<h3 class="text-xl font-bold mb-3 mt-5">${para.substring(4).trim()}</h3>`;
+        }
+
+        if (para.trim().match(/^[-*]\s/)) {
+          const items = para.split('\n').filter(line => line.trim());
+          const listItems = items
+            .map(item => {
+              const cleanItem = item.replace(/^[-*]\s/, '').trim();
+              return `<li class="mb-2">${cleanItem}</li>`;
+            })
+            .join('');
+          return `<ul class="my-4 ml-6 list-disc">${listItems}</ul>`;
+        }
+
+        if (para.trim().match(/^\d+\.\s/)) {
+          const items = para.split('\n').filter(line => line.trim());
+          const listItems = items
+            .map(item => {
+              const cleanItem = item.replace(/^\d+\.\s/, '').trim();
+              return `<li class="mb-2">${cleanItem}</li>`;
+            })
+            .join('');
+          return `<ol class="my-4 ml-6 list-decimal">${listItems}</ol>`;
+        }
+
+        return `<p class="mb-4 leading-relaxed">${para.trim()}</p>`;
+      })
+      .join('');
   };
 
   const docTypes = [
@@ -213,7 +219,7 @@ const LegalDocumentEditor: React.FC<LegalDocumentEditorProps> = ({ language }) =
                 <input
                   type="text"
                   value={editingTitle}
-                  onChange={(e) => setEditingTitle(e.target.value)}
+                  onChange={e => setEditingTitle(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder={labels.enterTitle || 'Enter document title'}
                 />
@@ -224,11 +230,12 @@ const LegalDocumentEditor: React.FC<LegalDocumentEditorProps> = ({ language }) =
                   {labels.content || 'Content'}
                 </label>
                 <div className="text-xs text-gray-500 mb-2 bg-blue-50 p-2 rounded">
-                  {labels.markdownTip || 'Formatting tips: Use # for headings (# H1, ## H2, ### H3), - or * for bullet lists, 1. for numbered lists, blank lines for paragraphs'}
+                  {labels.markdownTip ||
+                    'Formatting tips: Use # for headings (# H1, ## H2, ### H3), - or * for bullet lists, 1. for numbered lists, blank lines for paragraphs'}
                 </div>
                 <textarea
                   value={editingContent}
-                  onChange={(e) => setEditingContent(e.target.value)}
+                  onChange={e => setEditingContent(e.target.value)}
                   className="w-full h-96 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
                   placeholder={labels.enterContent || 'Enter document content...'}
                 />

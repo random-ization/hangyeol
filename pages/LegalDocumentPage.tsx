@@ -98,7 +98,7 @@ const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({ language, documen
 
       {/* Content */}
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
-        <div 
+        <div
           className="prose prose-slate max-w-none
             prose-headings:font-bold prose-headings:text-slate-800
             prose-h1:text-3xl prose-h1:mb-6 prose-h1:mt-8
@@ -120,43 +120,49 @@ const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({ language, documen
 // Helper function to format plain text content with basic HTML
 function formatContent(content: string): string {
   if (!content) return '';
-  
+
   // Convert line breaks to paragraphs
   const paragraphs = content.split('\n\n').filter(p => p.trim());
-  
-  return paragraphs.map(para => {
-    // Check if it's a heading (starts with #)
-    if (para.trim().startsWith('# ')) {
-      return `<h1>${para.substring(2).trim()}</h1>`;
-    } else if (para.trim().startsWith('## ')) {
-      return `<h2>${para.substring(3).trim()}</h2>`;
-    } else if (para.trim().startsWith('### ')) {
-      return `<h3>${para.substring(4).trim()}</h3>`;
-    }
-    
-    // Check if it's a list
-    if (para.trim().match(/^[-*]\s/)) {
-      const items = para.split('\n').filter(line => line.trim());
-      const listItems = items.map(item => {
-        const cleanItem = item.replace(/^[-*]\s/, '').trim();
-        return `<li>${cleanItem}</li>`;
-      }).join('');
-      return `<ul>${listItems}</ul>`;
-    }
-    
-    // Check if it's a numbered list
-    if (para.trim().match(/^\d+\.\s/)) {
-      const items = para.split('\n').filter(line => line.trim());
-      const listItems = items.map(item => {
-        const cleanItem = item.replace(/^\d+\.\s/, '').trim();
-        return `<li>${cleanItem}</li>`;
-      }).join('');
-      return `<ol>${listItems}</ol>`;
-    }
-    
-    // Regular paragraph
-    return `<p>${para.trim()}</p>`;
-  }).join('');
+
+  return paragraphs
+    .map(para => {
+      // Check if it's a heading (starts with #)
+      if (para.trim().startsWith('# ')) {
+        return `<h1>${para.substring(2).trim()}</h1>`;
+      } else if (para.trim().startsWith('## ')) {
+        return `<h2>${para.substring(3).trim()}</h2>`;
+      } else if (para.trim().startsWith('### ')) {
+        return `<h3>${para.substring(4).trim()}</h3>`;
+      }
+
+      // Check if it's a list
+      if (para.trim().match(/^[-*]\s/)) {
+        const items = para.split('\n').filter(line => line.trim());
+        const listItems = items
+          .map(item => {
+            const cleanItem = item.replace(/^[-*]\s/, '').trim();
+            return `<li>${cleanItem}</li>`;
+          })
+          .join('');
+        return `<ul>${listItems}</ul>`;
+      }
+
+      // Check if it's a numbered list
+      if (para.trim().match(/^\d+\.\s/)) {
+        const items = para.split('\n').filter(line => line.trim());
+        const listItems = items
+          .map(item => {
+            const cleanItem = item.replace(/^\d+\.\s/, '').trim();
+            return `<li>${cleanItem}</li>`;
+          })
+          .join('');
+        return `<ol>${listItems}</ol>`;
+      }
+
+      // Regular paragraph
+      return `<p>${para.trim()}</p>`;
+    })
+    .join('');
 }
 
 export default LegalDocumentPage;

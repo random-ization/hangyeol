@@ -1,423 +1,101 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import {
-  User,
-  Language,
-  Institute,
-  TextbookContextMap,
-  TopikExam,
-  VocabularyItem,
-  Annotation,
-  ExamAttempt,
-  LearningModuleType,
-  TextbookContent,
-} from '../types';
-import { api } from '../services/api';
+import React, { ReactNode, useState, useCallback } from 'react';
+import { AuthProvider, useAuth } from './AuthContext';
+import { LearningProvider, useLearning } from './LearningContext';
+import { DataProvider, useData } from './DataContext';
 
-interface AppContextType {
-  // User State
-  user: User | null;
-  loading: boolean;
-  login: (user: User) => void;
-  logout: () => void;
-  updateUser: (updates: Partial<User>) => void;
-
-  // Language & Navigation
-  language: Language;
-  setLanguage: (lang: Language) => void;
-  page: string;
-  setPage: (page: string) => void;
-
-  // Learning State
-  selectedInstitute: string;
-  setSelectedInstitute: (id: string) => void;
-  selectedLevel: number;
-  setSelectedLevel: (level: number) => void;
-  activeModule: LearningModuleType | null;
-  setActiveModule: (module: LearningModuleType | null) => void;
-
-  // Custom List State
-  activeCustomList: VocabularyItem[] | null;
-  setActiveCustomList: (list: VocabularyItem[] | null) => void;
-  activeListType: 'SAVED' | 'MISTAKES' | null;
-  setActiveListType: (type: 'SAVED' | 'MISTAKES' | null) => void;
-
-  // Data
-  institutes: Institute[];
-  textbookContexts: TextbookContextMap;
-  topikExams: TopikExam[];
-
-  // Data Actions
-  fetchInitialData: () => Promise<void>;
-  addInstitute: (name: string) => Promise<void>;
-  deleteInstitute: (id: string) => void;
-  saveTextbookContext: (key: string, content: TextbookContent) => Promise<void>;
-  saveTopikExam: (exam: TopikExam) => Promise<void>;
-  deleteTopikExam: (id: string) => Promise<void>;
-
-  // User Actions
-  saveWord: (vocabItem: VocabularyItem | string, meaning?: string) => Promise<void>;
-  recordMistake: (word: VocabularyItem) => Promise<void>;
-  clearMistakes: () => void;
-  saveAnnotation: (annotation: Annotation) => Promise<void>;
-  saveExamAttempt: (attempt: ExamAttempt) => Promise<void>;
-  logActivity: (activityType: 'VOCAB' | 'READING' | 'LISTENING' | 'GRAMMAR' | 'EXAM', duration?: number, itemsStudied?: number, metadata?: any) => Promise<void>;
-  updateLearningProgress: (institute: string, level: number, unit?: number, module?: string) => Promise<void>;
-  
-  // Permission Checking
-  canAccessContent: (content: TextbookContent | TopikExam) => boolean;
-  showUpgradePrompt: boolean;
-  setShowUpgradePrompt: (show: boolean) => void;
-}
-
-const AppContext = createContext<AppContextType | undefined>(undefined);
-
-export const useApp = () => {
-  const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useApp must be used within AppProvider');
-  }
-  return context;
-};
-
+// Combined Provider that wraps all three contexts
 interface AppProviderProps {
   children: ReactNode;
 }
 
 export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
-  // User State
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Language & Navigation
-  const [language, setLanguage] = useState<Language>('zh');
   const [page, setPage] = useState('auth');
 
-  // Learning State
-  const [selectedInstitute, setSelectedInstitute] = useState<string>('');
-  const [selectedLevel, setSelectedLevel] = useState<number>(0);
-  const [activeModule, setActiveModule] = useState<LearningModuleType | null>(null);
-
-  // Custom List State
-  const [activeCustomList, setActiveCustomList] = useState<VocabularyItem[] | null>(null);
-  const [activeListType, setActiveListType] = useState<'SAVED' | 'MISTAKES' | null>(null);
-
-  // Data from Backend
-  const [institutes, setInstitutes] = useState<Institute[]>([]);
-  const [textbookContexts, setTextbookContexts] = useState<TextbookContextMap>({});
-  const [topikExams, setTopikExams] = useState<TopikExam[]>([]);
-  
-  // Permission/Upgrade UI
-  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
-
-  // Initial Session Check
-  useEffect(() => {
-    const checkSession = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const data = await api.getMe();
-          setUser(data.user);
-          setPage('home');
-          await fetchInitialData();
-          
-          // Resume learning from last position
-          if (data.user.lastInstitute && data.user.lastLevel) {
-            setSelectedInstitute(data.user.lastInstitute);
-            setSelectedLevel(data.user.lastLevel);
-          }
-        } catch (e) {
-          console.error('Session expired or invalid');
-          localStorage.removeItem('token');
-          setPage('auth');
-        }
-      } else {
-        setPage('auth');
-      }
-      setLoading(false);
-    };
-    checkSession();
+  const handleLoginSuccess = useCallback(() => {
+    setPage('home');
   }, []);
 
-  // Fetch Data Helper - Note: setters from useState are stable and don't need to be in deps
-  const fetchInitialData = useCallback(async () => {
-    try {
-      const [insts, content, exams] = await Promise.all([
-        api.getInstitutes(),
-        api.getTextbookContent(),
-        api.getTopikExams(),
-      ]);
-      setInstitutes(insts);
-      setTextbookContexts(content);
-      setTopikExams(exams);
-    } catch (e) {
-      console.error('Failed to load app data', e);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Auth Actions
-  const login = useCallback(
-    (loggedInUser: User) => {
-      setUser(loggedInUser);
-      setPage('home');
-      fetchInitialData();
-    },
-    [fetchInitialData]
+  return (
+    <AuthProvider onLoginSuccess={handleLoginSuccess}>
+      <DataProvider>
+        <LearningProvider>
+          <PageContext.Provider value={{ page, setPage }}>
+            {children}
+          </PageContext.Provider>
+        </LearningProvider>
+      </DataProvider>
+    </AuthProvider>
   );
+};
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('token');
-    setUser(null);
-    setPage('auth');
-    setSelectedInstitute('');
-    setSelectedLevel(0);
-    setActiveModule(null);
-  }, []);
+// Page navigation context (temporary until React Router is fully integrated)
+interface PageContextType {
+  page: string;
+  setPage: (page: string) => void;
+}
 
-  const updateUser = useCallback((updates: Partial<User>) => {
-    setUser(prev => (prev ? { ...prev, ...updates } : null));
-  }, []);
+const PageContext = React.createContext<PageContextType | undefined>(undefined);
 
-  // User Actions
-  const saveWord = useCallback(
-    async (vocabItem: VocabularyItem | string, meaning?: string) => {
-      if (!user) return;
+export const usePage = () => {
+  const context = React.useContext(PageContext);
+  if (!context) {
+    throw new Error('usePage must be used within AppProvider');
+  }
+  return context;
+};
 
-      let newItem: VocabularyItem;
-      if (typeof vocabItem === 'string' && meaning) {
-        newItem = {
-          korean: vocabItem,
-          english: meaning,
-          exampleSentence: '',
-          exampleTranslation: '',
-        };
-      } else {
-        newItem = vocabItem as VocabularyItem;
-      }
+// Backward compatibility hook that combines all three contexts
+export const useApp = () => {
+  const auth = useAuth();
+  const learning = useLearning();
+  const data = useData();
+  const { page, setPage } = usePage();
 
-      const updatedSavedWords = [...user.savedWords, newItem];
-      setUser({ ...user, savedWords: updatedSavedWords });
-
-      try {
-        await api.saveWord(newItem);
-      } catch (e) {
-        console.error('Failed to save word', e);
-      }
-    },
-    [user]
-  );
-
-  const recordMistake = useCallback(
-    async (word: VocabularyItem) => {
-      if (!user) return;
-      const updatedMistakes = [...user.mistakes, word];
-      setUser({ ...user, mistakes: updatedMistakes });
-      try {
-        await api.saveMistake(word);
-      } catch (e) {
-        console.error(e);
-      }
-    },
-    [user]
-  );
-
-  const clearMistakes = useCallback(() => {
-    if (user && window.confirm('Are you sure?')) {
-      setUser({ ...user, mistakes: [] });
-    }
-  }, [user]);
-
-  const saveAnnotation = useCallback(
-    async (annotation: Annotation) => {
-      if (!user) return;
-
-      let updatedAnnotations = [...user.annotations];
-      const index = updatedAnnotations.findIndex(a => a.id === annotation.id);
-
-      if (index !== -1) {
-        if (!annotation.color && !annotation.note) {
-          updatedAnnotations.splice(index, 1);
-        } else {
-          updatedAnnotations[index] = annotation;
-        }
-      } else {
-        updatedAnnotations.push(annotation);
-      }
-
-      setUser({ ...user, annotations: updatedAnnotations });
-      try {
-        await api.saveAnnotation(annotation);
-      } catch (e) {
-        console.error(e);
-      }
-    },
-    [user]
-  );
-
-  const saveExamAttempt = useCallback(
-    async (attempt: ExamAttempt) => {
-      if (!user) return;
-      const updatedHistory = [...(user.examHistory || []), attempt];
-      setUser({ ...user, examHistory: updatedHistory });
-      try {
-        await api.saveExamAttempt(attempt);
-        // Log exam activity
-        await api.logActivity('EXAM', undefined, 1, { examId: attempt.examId, score: attempt.score });
-      } catch (e) {
-        console.error(e);
-      }
-    },
-    [user]
-  );
-
-  const logActivity = useCallback(
-    async (activityType: 'VOCAB' | 'READING' | 'LISTENING' | 'GRAMMAR' | 'EXAM', duration?: number, itemsStudied?: number, metadata?: any) => {
-      if (!user) return;
-      try {
-        await api.logActivity(activityType, duration, itemsStudied, metadata);
-        // Optionally refetch user data to update statistics
-        // For now, we'll let it update on next login/refresh
-      } catch (e) {
-        console.error('Failed to log activity', e);
-      }
-    },
-    [user]
-  );
-
-  const updateLearningProgress = useCallback(
-    async (institute: string, level: number, unit?: number, module?: string) => {
-      if (!user) return;
-      try {
-        await api.updateLearningProgress({
-          lastInstitute: institute,
-          lastLevel: level,
-          lastUnit: unit,
-          lastModule: module
-        });
-        // Update local user state
-        setUser({
-          ...user,
-          lastInstitute: institute,
-          lastLevel: level,
-          lastUnit: unit,
-          lastModule: module
-        });
-      } catch (e) {
-        console.error('Failed to update learning progress', e);
-      }
-    },
-    [user]
-  );
-
-  const canAccessContent = useCallback((content: TextbookContent | TopikExam): boolean => {
-    if (!user) return false;
-    if (user.tier === 'PAID') return true;
-    // Free users can only access free content
-    return !content.isPaid;
-  }, [user]);
-
-  // Admin/Data Actions
-  const addInstitute = useCallback(
-    async (name: string) => {
-      try {
-        const newInst = await api.createInstitute({
-          id: name.toLowerCase().replace(/\s+/g, '-'),
-          name,
-          levels: [1, 2, 3, 4, 5, 6],
-        });
-        setInstitutes([...institutes, newInst]);
-      } catch (e) {
-        alert('Failed to create institute');
-      }
-    },
-    [institutes]
-  );
-
-  const deleteInstitute = useCallback(
-    (id: string) => {
-      setInstitutes(institutes.filter(i => i.id !== id));
-    },
-    [institutes]
-  );
-
-  const saveTextbookContext = useCallback(async (key: string, content: TextbookContent) => {
-    try {
-      const saved = await api.saveTextbookContent(key, content);
-      setTextbookContexts(prev => ({ ...prev, [saved.key]: saved }));
-    } catch (e) {
-      alert('Failed to save content');
-    }
-  }, []);
-
-  const saveTopikExam = useCallback(
-    async (exam: TopikExam) => {
-      try {
-        const saved = await api.saveTopikExam(exam);
-        const exists = topikExams.find(e => e.id === saved.id);
-        if (exists) {
-          setTopikExams(topikExams.map(e => (e.id === saved.id ? saved : e)));
-        } else {
-          setTopikExams([saved, ...topikExams]);
-        }
-      } catch (e) {
-        alert('Failed to save exam');
-      }
-    },
-    [topikExams]
-  );
-
-  const deleteTopikExam = useCallback(
-    async (id: string) => {
-      try {
-        await api.deleteTopikExam(id);
-        setTopikExams(topikExams.filter(e => e.id !== id));
-      } catch (e) {
-        alert('Failed to delete exam');
-      }
-    },
-    [topikExams]
-  );
-
-  const value: AppContextType = {
-    user,
-    loading,
-    login,
-    logout,
-    updateUser,
-    language,
-    setLanguage,
+  return {
+    // Auth context
+    user: auth.user,
+    loading: auth.loading,
+    login: auth.login,
+    logout: auth.logout,
+    updateUser: auth.updateUser,
+    language: auth.language,
+    setLanguage: auth.setLanguage,
+    saveWord: auth.saveWord,
+    recordMistake: auth.recordMistake,
+    clearMistakes: auth.clearMistakes,
+    saveAnnotation: auth.saveAnnotation,
+    saveExamAttempt: auth.saveExamAttempt,
+    logActivity: auth.logActivity,
+    updateLearningProgress: auth.updateLearningProgress,
+    canAccessContent: auth.canAccessContent,
+    showUpgradePrompt: auth.showUpgradePrompt,
+    setShowUpgradePrompt: auth.setShowUpgradePrompt,
+    
+    // Learning context
+    selectedInstitute: learning.selectedInstitute,
+    setSelectedInstitute: learning.setSelectedInstitute,
+    selectedLevel: learning.selectedLevel,
+    setSelectedLevel: learning.setSelectedLevel,
+    activeModule: learning.activeModule,
+    setActiveModule: learning.setActiveModule,
+    activeCustomList: learning.activeCustomList,
+    setActiveCustomList: learning.setActiveCustomList,
+    activeListType: learning.activeListType,
+    setActiveListType: learning.setActiveListType,
+    
+    // Data context
+    institutes: data.institutes,
+    textbookContexts: data.textbookContexts,
+    topikExams: data.topikExams,
+    fetchInitialData: data.fetchInitialData,
+    addInstitute: data.addInstitute,
+    deleteInstitute: data.deleteInstitute,
+    saveTextbookContext: data.saveTextbookContext,
+    saveTopikExam: data.saveTopikExam,
+    deleteTopikExam: data.deleteTopikExam,
+    
+    // Page navigation
     page,
     setPage,
-    selectedInstitute,
-    setSelectedInstitute,
-    selectedLevel,
-    setSelectedLevel,
-    activeModule,
-    setActiveModule,
-    activeCustomList,
-    setActiveCustomList,
-    activeListType,
-    setActiveListType,
-    institutes,
-    textbookContexts,
-    topikExams,
-    fetchInitialData,
-    addInstitute,
-    deleteInstitute,
-    saveTextbookContext,
-    saveTopikExam,
-    deleteTopikExam,
-    saveWord,
-    recordMistake,
-    clearMistakes,
-    saveAnnotation,
-    saveExamAttempt,
-    logActivity,
-    updateLearningProgress,
-    canAccessContent,
-    showUpgradePrompt,
-    setShowUpgradePrompt,
   };
-
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };

@@ -17,6 +17,7 @@ const ModulePage: React.FC = () => {
     setActiveModule,
     activeCustomList,
     setActiveCustomList,
+    activeListType,
     setActiveListType,
     selectedInstitute,
     selectedLevel,

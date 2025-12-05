@@ -3,6 +3,11 @@ export enum UserTier {
   PAID = 'PAID',
 }
 
+export enum SubscriptionType {
+  ANNUAL = 'ANNUAL',
+  LIFETIME = 'LIFETIME',
+}
+
 export type UserRole = 'STUDENT' | 'ADMIN';
 
 export type Language = 'en' | 'zh' | 'vi' | 'mn';
@@ -14,9 +19,11 @@ export interface Annotation {
   endOffset?: number; // Global character offset end
   sentenceIndex?: number; // Index of sentence for Listening module
   text: string; // The selected text content
+  selectedText?: string; // Alias for text
   color: 'yellow' | 'green' | 'blue' | 'pink' | null;
   note: string;
   timestamp: number;
+  createdAt?: number; // Alias for timestamp
 }
 
 export interface UserStatistics {
@@ -33,6 +40,8 @@ export interface ExamAttempt {
   examTitle: string;
   score: number;
   maxScore: number;
+  totalScore?: number; // Alias for maxScore
+  correctCount?: number; // Number of correct answers
   timestamp: number;
   userAnswers: Record<number, number>; // questionId -> optionIndex
 }
@@ -56,6 +65,9 @@ export interface User {
   lastLevel?: number;
   lastUnit?: number;
   lastModule?: string;
+  // Subscription details
+  subscriptionType?: SubscriptionType; // ANNUAL or LIFETIME for PAID users
+  subscriptionExpiry?: number; // Timestamp for annual subscriptions
 }
 
 export interface SavedWord {
@@ -146,8 +158,10 @@ export type QuestionLayout =
 
 export interface TopikQuestion {
   id: number;
+  number?: number; // Question number for display
   layout?: QuestionLayout;
   imageUrl?: string; // New: URL/Base64 of the uploaded crop from PDF
+  image?: string; // Alias for imageUrl
   instruction?: string; // New: The "※ [1~2]..." text that appears ABOVE the question block
   groupCount?: number; // New: If > 1, this question shares its PASSAGE with the next (n-1) questions.
   passage?: string; // The text or context for the question
@@ -158,11 +172,13 @@ export interface TopikQuestion {
   optionImages?: string[]; // New: Array of 4 image URLs/Base64 for IMAGE_CHOICE questions (Listening Q1-3)
   correctAnswer: number; // 0-3 index
   score: number;
+  explanation?: string; // Explanation for the correct answer
 }
 
 export interface TopikExam {
   id: string;
   title: string; // e.g. "64th TOPIK II Reading"
+  description?: string; // Optional description
   round: number; // e.g. 64
   type: TopikType;
   paperType?: 'A' | 'B'; // A or B type paper
@@ -170,4 +186,12 @@ export interface TopikExam {
   audioUrl?: string; // New: For Listening exams
   questions: TopikQuestion[];
   isPaid?: boolean; // Whether this exam requires paid subscription
+}
+
+// Legal Documents
+export interface LegalDocument {
+  id: string;
+  title: string;
+  content: string;
+  updatedAt: number;
 }

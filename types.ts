@@ -23,6 +23,7 @@ export interface Annotation {
   color: 'yellow' | 'green' | 'blue' | 'pink' | null;
   note: string;
   timestamp: number;
+  createdAt?: number; // Alias for timestamp
 }
 
 export interface UserStatistics {
@@ -40,6 +41,7 @@ export interface ExamAttempt {
   score: number;
   maxScore: number;
   totalScore?: number; // Alias for maxScore
+  correctCount?: number; // Number of correct answers
   timestamp: number;
   userAnswers: Record<number, number>; // questionId -> optionIndex
 }

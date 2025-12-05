@@ -2,12 +2,29 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { prisma } from '../lib/prisma';
+import {
+    SaveWordSchema,
+    SaveWordInput,
+    SaveMistakeSchema,
+    SaveMistakeInput,
+    SaveAnnotationSchema,
+    SaveAnnotationInput,
+    SaveExamAttemptSchema,
+    SaveExamAttemptInput,
+    LogActivitySchema,
+    LogActivityInput,
+    UpdateLearningProgressSchema,
+    UpdateLearningProgressInput
+} from '../schemas/validation';
 
 // Save a Vocabulary Word
-export const saveWord = async (req: any, res: any) => {
+export const saveWord = async (req: AuthRequest, res: Response) => {
     try {
+        // Validate input
+        const validatedData: SaveWordInput = SaveWordSchema.parse(req.body);
+        
         const userId = req.user!.userId;
-        const { korean, english, pos, exampleSentence, exampleTranslation, unit } = req.body;
+        const { korean, english, pos, exampleSentence, exampleTranslation, unit } = validatedData;
 
         // Check if word already saved to avoid duplicates (optional, based on preference)
         // For now, we allow multiples or user handles clean up
@@ -23,17 +40,23 @@ export const saveWord = async (req: any, res: any) => {
             }
         });
         res.json(word);
-    } catch (e) {
+    } catch (e: any) {
         console.error("Save Word Error", e);
+        if (e.name === 'ZodError') {
+            return res.status(400).json({ error: "Invalid input", details: e.errors });
+        }
         res.status(500).json({ error: "Failed to save word" });
     }
 };
 
 // Save a Mistake
-export const saveMistake = async (req: any, res: any) => {
+export const saveMistake = async (req: AuthRequest, res: Response) => {
     try {
+        // Validate input
+        const validatedData: SaveMistakeInput = SaveMistakeSchema.parse(req.body);
+        
         const userId = req.user!.userId;
-        const { korean, english } = req.body;
+        const { korean, english } = validatedData;
 
         // Prevent exact duplicates for mistakes to keep list clean
         const existing = await prisma.mistake.findFirst({
@@ -48,16 +71,22 @@ export const saveMistake = async (req: any, res: any) => {
             data: { userId, korean, english }
         });
         res.json(mistake);
-    } catch (e) {
+    } catch (e: any) {
+        if (e.name === 'ZodError') {
+            return res.status(400).json({ error: "Invalid input", details: e.errors });
+        }
         res.status(500).json({ error: "Failed to save mistake" });
     }
 };
 
 // Save Annotation (Highlight or Note)
-export const saveAnnotation = async (req: any, res: any) => {
+export const saveAnnotation = async (req: AuthRequest, res: Response) => {
     try {
+        // Validate input
+        const validatedData: SaveAnnotationInput = SaveAnnotationSchema.parse(req.body);
+        
         const userId = req.user!.userId;
-        const { id, contextKey, startOffset, endOffset, sentenceIndex, text, color, note } = req.body;
+        const { id, contextKey, startOffset, endOffset, sentenceIndex, text, color, note } = validatedData;
 
         // Check if annotation exists for this ID and user
         const existing = await prisma.annotation.findFirst({ where: { id, userId } });
@@ -97,17 +126,23 @@ export const saveAnnotation = async (req: any, res: any) => {
         });
         res.json(created);
 
-    } catch (e) {
+    } catch (e: any) {
         console.error(e);
+        if (e.name === 'ZodError') {
+            return res.status(400).json({ error: "Invalid input", details: e.errors });
+        }
         res.status(500).json({ error: "Failed to save annotation" });
     }
 };
 
 // Save Exam Attempt
-export const saveExamAttempt = async (req: any, res: any) => {
+export const saveExamAttempt = async (req: AuthRequest, res: Response) => {
     try {
+        // Validate input
+        const validatedData: SaveExamAttemptInput = SaveExamAttemptSchema.parse(req.body);
+        
         const userId = req.user!.userId;
-        const { id, examId, examTitle, score, maxScore, userAnswers, timestamp } = req.body;
+        const { id, examId, examTitle, score, maxScore, userAnswers, timestamp } = validatedData;
 
         const attempt = await prisma.examAttempt.create({
             data: {
@@ -117,14 +152,81 @@ export const saveExamAttempt = async (req: any, res: any) => {
                 examTitle,
                 score,
                 maxScore,
-                // Prisma Schema defines this as String, so we must stringify the JSON object
-                userAnswers: JSON.stringify(userAnswers),
+                // Prisma automatically handles Json type - no need to stringify
+                userAnswers,
                 timestamp: timestamp ? new Date(timestamp) : new Date()
             }
         });
         res.json(attempt);
-    } catch (e) {
+    } catch (e: any) {
         console.error(e);
+        if (e.name === 'ZodError') {
+            return res.status(400).json({ error: "Invalid input", details: e.errors });
+        }
         res.status(500).json({ error: "Failed to save exam result" });
+    }
+};
+
+// Log Learning Activity
+export const logActivity = async (req: AuthRequest, res: Response) => {
+    try {
+        // Validate input
+        const validatedData: LogActivityInput = LogActivitySchema.parse(req.body);
+        
+        const userId = req.user!.userId;
+        const { activityType, duration, itemsStudied, metadata } = validatedData;
+
+        // Get today's date at midnight for consistent day tracking
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const activity = await prisma.learningActivity.create({
+            data: {
+                userId,
+                activityType,
+                duration: duration || null,
+                itemsStudied: itemsStudied || null,
+                // Prisma automatically handles Json type - no need to stringify
+                metadata: metadata || null,
+                date: today
+            }
+        });
+
+        res.json(activity);
+    } catch (e: any) {
+        console.error("Log Activity Error:", e);
+        if (e.name === 'ZodError') {
+            return res.status(400).json({ error: "Invalid input", details: e.errors });
+        }
+        res.status(500).json({ error: "Failed to log activity" });
+    }
+};
+
+// Update Learning Progress
+export const updateLearningProgress = async (req: AuthRequest, res: Response) => {
+    try {
+        // Validate input
+        const validatedData: UpdateLearningProgressInput = UpdateLearningProgressSchema.parse(req.body);
+        
+        const userId = req.user!.userId;
+        const { lastInstitute, lastLevel, lastUnit, lastModule } = validatedData;
+
+        const user = await prisma.user.update({
+            where: { id: userId },
+            data: {
+                lastInstitute,
+                lastLevel,
+                lastUnit,
+                lastModule
+            }
+        });
+
+        res.json({ success: true });
+    } catch (e: any) {
+        console.error("Update Learning Progress Error:", e);
+        if (e.name === 'ZodError') {
+            return res.status(400).json({ error: "Invalid input", details: e.errors });
+        }
+        res.status(500).json({ error: "Failed to update learning progress" });
     }
 };

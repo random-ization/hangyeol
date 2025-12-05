@@ -130,5 +130,74 @@ export const api = {
             method: 'DELETE',
             headers: getHeaders()
         });
+    },
+
+    // Profile Management
+    updateProfile: async (updates: { name?: string; avatar?: string }) => {
+        const res = await fetch(`${API_URL}/user/profile`, {
+            method: 'PUT',
+            headers: getHeaders(),
+            body: JSON.stringify(updates)
+        });
+        if (!res.ok) throw new Error('Failed to update profile');
+        return res.json();
+    },
+
+    changePassword: async (currentPassword: string, newPassword: string) => {
+        const res = await fetch(`${API_URL}/user/password`, {
+            method: 'PUT',
+            headers: getHeaders(),
+            body: JSON.stringify({ currentPassword, newPassword })
+        });
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.message || 'Failed to change password');
+        }
+        return res.json();
+    },
+
+    uploadAvatar: async (file: File) => {
+        const formData = new FormData();
+        formData.append('avatar', file);
+        
+        // Note: FormData requires special handling, don't include Content-Type header
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/user/avatar`, {
+            method: 'POST',
+            headers: {
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                // Content-Type is automatically set by browser for FormData
+            },
+            body: formData
+        });
+        if (!res.ok) throw new Error('Failed to upload avatar');
+        return res.json();
+    },
+
+    // Learning Activity Tracking
+    logActivity: async (activityType: 'VOCAB' | 'READING' | 'LISTENING' | 'GRAMMAR' | 'EXAM', duration?: number, itemsStudied?: number, metadata?: any) => {
+        const res = await fetch(`${API_URL}/user/activity`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({
+                activityType,
+                duration,
+                itemsStudied,
+                metadata
+            })
+        });
+        if (!res.ok) throw new Error('Failed to log activity');
+        return res.json();
+    },
+
+    // Learning Progress Tracking
+    updateLearningProgress: async (progress: { lastInstitute?: string; lastLevel?: number; lastUnit?: number; lastModule?: string }) => {
+        const res = await fetch(`${API_URL}/user/progress`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify(progress)
+        });
+        if (!res.ok) throw new Error('Failed to update learning progress');
+        return res.json();
     }
 };

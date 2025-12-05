@@ -18,11 +18,18 @@ model User {
   tier         String        @default("FREE")
   avatar       String?
   createdAt    DateTime      @default(now())
+  
+  // Learning progress tracking
+  lastInstitute String?       // Last selected institute
+  lastLevel     Int?          // Last selected level
+  lastUnit      Int?          // Last selected unit
+  lastModule    String?       // Last active module (VOCAB, READING, LISTENING, GRAMMAR)
 
-  savedWords   SavedWord[]
-  mistakes     Mistake[]
-  annotations  Annotation[]
-  examHistory  ExamAttempt[]
+  savedWords         SavedWord[]
+  mistakes           Mistake[]
+  annotations        Annotation[]
+  examHistory        ExamAttempt[]
+  learningActivities LearningActivity[]
 }
 
 model Institute {
@@ -32,7 +39,7 @@ model Institute {
 }
 
 model TextbookContent {
-  key                  String @id
+  key                  String  @id
   generalContext       String?
   vocabularyList       String?
   readingText          String?
@@ -43,6 +50,7 @@ model TextbookContent {
   listeningTitle       String?
   listeningAudioUrl    String?
   grammarList          String?
+  isPaid               Boolean @default(false) // Whether this unit requires paid subscription
 }
 
 model TopikExam {
@@ -53,8 +61,9 @@ model TopikExam {
   paperType String?
   timeLimit Int
   audioUrl  String?
-  questions String
+  questions Json
   createdAt DateTime @default(now())
+  isPaid    Boolean  @default(false) // Whether this exam requires paid subscription
 }
 
 model SavedWord {
@@ -101,6 +110,20 @@ model ExamAttempt {
   examTitle   String
   score       Int
   maxScore    Int
-  userAnswers String
+  userAnswers Json
   timestamp   DateTime @default(now())
+}
+
+model LearningActivity {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  activityType  String   // 'VOCAB', 'READING', 'LISTENING', 'GRAMMAR', 'EXAM'
+  duration      Int?     // Duration in minutes
+  itemsStudied  Int?     // Number of words/questions/passages studied
+  metadata      Json?    // JSON for additional data
+  createdAt     DateTime @default(now())
+  date          DateTime @default(now()) // Date part for daily tracking
+
+  @@index([userId, date])
 }

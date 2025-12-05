@@ -2,14 +2,31 @@
 // @ts-ignore
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = 'ssunhr@gmail.com';
+  const email = process.env.ADMIN_EMAIL || 'ssunhr@gmail.com';
   
-  // 使用固定密码，方便您登录
-  const password = 'admin123'; 
+  // Get password from environment variable
+  const password = process.env.ADMIN_PASSWORD;
+  
+  if (!password) {
+    throw new Error(
+      'ADMIN_PASSWORD environment variable is required. ' +
+      'Please set it in your .env file or environment. ' +
+      'Example: ADMIN_PASSWORD=your_secure_password'
+    );
+  }
+  
+  if (password.length < 8) {
+    throw new Error('ADMIN_PASSWORD must be at least 8 characters long for security');
+  }
+  
   const hashedPassword = await bcrypt.hash(password, 10);
 
   console.log('正在更新管理员账号...');
@@ -34,7 +51,7 @@ async function main() {
   console.log('管理员账号已更新 (Admin Updated)');
   console.log('---------------------------------------------');
   console.log(`账号 (Email)   : ${email}`);
-  console.log(`密码 (Password): ${password}`);
+  console.log(`密码 (Password): *****  (从环境变量获取 / from environment variable)`);
   console.log('=============================================\n');
 }
 

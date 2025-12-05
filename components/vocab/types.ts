@@ -1,0 +1,35 @@
+import { VocabularyItem } from '../../types';
+
+export interface ExtendedVocabularyItem extends VocabularyItem {
+  unit: number;
+  id: string;
+}
+
+export type LearningMode = 'CARDS' | 'LEARN' | 'LIST';
+export type QuestionType = 'CHOICE_K_TO_N' | 'CHOICE_N_TO_K' | 'WRITING_N_TO_K' | 'WRITING_K_TO_N';
+
+export interface VocabSettings {
+  flashcard: {
+    batchSize: number;
+    random: boolean;
+    cardFront: 'KOREAN' | 'NATIVE';
+    autoTTS: boolean;
+  };
+  learn: {
+    batchSize: number;
+    random: boolean;
+    types: {
+      multipleChoice: boolean;
+      writing: boolean;
+    };
+    answers: {
+      korean: boolean;
+      native: boolean;
+    };
+  };
+}
+
+export interface SessionStats {
+  correct: ExtendedVocabularyItem[];
+  incorrect: ExtendedVocabularyItem[];
+}

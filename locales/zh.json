@@ -270,5 +270,24 @@
   "upgradeComingSoon": "支付功能即将推出！请联系客服。",
   "continueFromLast": "从上次继续",
   "resumeLearning": "继续学习",
-  "startNew": "开始新课程"
+  "startNew": "开始新课程",
+  "freeContent": "免费",
+  "paidContent": "付费",
+  "contentLocked": "付费内容",
+  "upgradeToAccess": "升级后可访问此内容",
+  "upgradeTitle": "升级到高级版",
+  "upgradeDescription": "解锁所有教材内容和 TOPIK 考试",
+  "upgradeFeaturesList": {
+    "allTextbooksUnits": "全部教材课程",
+    "allExamsAccess": "全部 TOPIK 真题",
+    "unlimitedLearning": "无限制学习"
+  },
+  "maybeLater": "稍后再说",
+  "setAsFree": "设为免费",
+  "setAsPaid": "设为付费",
+  "bulkSetFree": "设置前 N 课免费",
+  "bulkSetAllFree": "全部设为免费",
+  "bulkSetAllPaid": "全部设为付费",
+  "free": "免费",
+  "paid": "付费"
 }

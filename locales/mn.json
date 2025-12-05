@@ -269,5 +269,24 @@
   "upgradeComingSoon": "Төлбөрийн систем удахгүй! Дэмжлэгтэй холбогдоно уу.",
   "continueFromLast": "Сүүлчээс үргэлжлүүлэх",
   "resumeLearning": "Суралцахыг үргэлжлүүлэх",
-  "startNew": "Шинээр эхлэх"
+  "startNew": "Шинээр эхлэх",
+  "freeContent": "Үнэгүй",
+  "paidContent": "Төлбөртэй",
+  "contentLocked": "Төлбөртэй контент",
+  "upgradeToAccess": "Энэ контентод хандахын тулд шилжих",
+  "upgradeTitle": "Premium руу шилжих",
+  "upgradeDescription": "Бүх сурах бичиг болон TOPIK шалгалтыг нээх",
+  "upgradeFeaturesList": {
+    "allTextbooksUnits": "Бүх хичээлийн контент",
+    "allExamsAccess": "Бүх TOPIK дасгал шалгалт",
+    "unlimitedLearning": "Хязгааргүй суралцах"
+  },
+  "maybeLater": "Дараа нь",
+  "setAsFree": "Үнэгүй болгох",
+  "setAsPaid": "Төлбөртэй болгох",
+  "bulkSetFree": "Эхний N хичээлийг үнэгүй болгох",
+  "bulkSetAllFree": "Бүгдийг үнэгүй болгох",
+  "bulkSetAllPaid": "Бүгдийг төлбөртэй болгох",
+  "free": "Үнэгүй",
+  "paid": "Төлбөртэй"
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, CheckCircle, FileText, History as HistoryIcon, ArrowLeft, Eye } from 'lucide-react';
+import { Calendar, CheckCircle, FileText, History as HistoryIcon, ArrowLeft, Eye, Lock } from 'lucide-react';
 import { TopikExam, ExamAttempt, Language } from '../../types';
 import { getLabels } from '../../utils/i18n';
 
@@ -12,6 +12,7 @@ interface ExamListProps {
   onReviewAttempt: (attempt: ExamAttempt) => void;
   showHistoryView?: boolean;
   onBack?: () => void;
+  canAccessContent?: (exam: TopikExam) => boolean;
 }
 
 export const ExamList: React.FC<ExamListProps> = ({
@@ -23,6 +24,7 @@ export const ExamList: React.FC<ExamListProps> = ({
   onReviewAttempt,
   showHistoryView = false,
   onBack,
+  canAccessContent,
 }) => {
   const labels = getLabels(language);
 
@@ -128,17 +130,27 @@ export const ExamList: React.FC<ExamListProps> = ({
         {exams.map((exam) => {
           const attemptCount = getAttemptCount(exam.id);
           const bestScore = getBestScore(exam.id);
-          const isLocked = canAccessContent && !canAccessContent(exam);
+          const isLocked = canAccessContent ? !canAccessContent(exam) : false;
 
           return (
             <div
               key={exam.id}
               onClick={() => onSelectExam(exam)}
-              className="bg-white rounded-xl p-6 border-2 border-slate-200 hover:border-indigo-300 hover:shadow-lg cursor-pointer transition-all"
+              className={`bg-white rounded-xl p-6 border-2 border-slate-200 hover:border-indigo-300 hover:shadow-lg cursor-pointer transition-all relative ${
+                isLocked ? 'opacity-75' : ''
+              }`}
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold text-slate-800 mb-1">{exam.title}</h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-lg font-bold text-slate-800">{exam.title}</h3>
+                    {isLocked && (
+                      <span className="flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold">
+                        <Lock className="w-3 h-3" />
+                        {labels.paidContent || 'Premium'}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-slate-500">{exam.description}</p>
                 </div>
               </div>

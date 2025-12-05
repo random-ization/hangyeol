@@ -160,6 +160,7 @@ export const TopikModule: React.FC<TopikModuleProps> = ({
         onSelectExam={selectExam}
         onViewHistory={() => setView('HISTORY_LIST')}
         onReviewAttempt={reviewExam}
+        canAccessContent={canAccessContent}
       />
     );
   }
@@ -175,6 +176,7 @@ export const TopikModule: React.FC<TopikModuleProps> = ({
         onReviewAttempt={reviewExam}
         showHistoryView={true}
         onBack={() => setView('LIST')}
+        canAccessContent={canAccessContent}
       />
     );
   }
@@ -243,3 +245,6 @@ export const TopikModule: React.FC<TopikModuleProps> = ({
 
   return null;
 };
+
+// Export as default for backward compatibility
+export default TopikModule;

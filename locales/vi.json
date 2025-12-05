@@ -268,5 +268,24 @@
   "upgradeComingSoon": "Tính năng thanh toán sắp ra mắt! Vui lòng liên hệ hỗ trợ.",
   "continueFromLast": "Tiếp tục từ lần cuối",
   "resumeLearning": "Tiếp tục học",
-  "startNew": "Bắt đầu mới"
+  "startNew": "Bắt đầu mới",
+  "freeContent": "Miễn phí",
+  "paidContent": "Trả phí",
+  "contentLocked": "Nội dung cao cấp",
+  "upgradeToAccess": "Nâng cấp để truy cập nội dung này",
+  "upgradeTitle": "Nâng cấp lên Premium",
+  "upgradeDescription": "Mở khóa tất cả nội dung giáo trình và bài thi TOPIK",
+  "upgradeFeaturesList": {
+    "allTextbooksUnits": "Tất cả bài học giáo trình",
+    "allExamsAccess": "Tất cả bài thi thực hành TOPIK",
+    "unlimitedLearning": "Học không giới hạn"
+  },
+  "maybeLater": "Để sau",
+  "setAsFree": "Đặt miễn phí",
+  "setAsPaid": "Đặt trả phí",
+  "bulkSetFree": "Đặt N bài đầu miễn phí",
+  "bulkSetAllFree": "Đặt tất cả miễn phí",
+  "bulkSetAllPaid": "Đặt tất cả trả phí",
+  "free": "Miễn phí",
+  "paid": "Trả phí"
 }

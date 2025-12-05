@@ -270,5 +270,24 @@
   "upgradeComingSoon": "Payment integration coming soon! Please contact support.",
   "continueFromLast": "Continue from Last Session",
   "resumeLearning": "Resume Learning",
-  "startNew": "Start New"
+  "startNew": "Start New",
+  "freeContent": "Free",
+  "paidContent": "Paid",
+  "contentLocked": "Premium content",
+  "upgradeToAccess": "Upgrade to access this content",
+  "upgradeTitle": "Upgrade to Premium",
+  "upgradeDescription": "Unlock all textbook content and TOPIK exams",
+  "upgradeFeaturesList": {
+    "allTextbooksUnits": "All textbook lessons",
+    "allExamsAccess": "All TOPIK practice exams",
+    "unlimitedLearning": "Unlimited learning"
+  },
+  "maybeLater": "Maybe Later",
+  "setAsFree": "Set as Free",
+  "setAsPaid": "Set as Paid",
+  "bulkSetFree": "Set first N units free",
+  "bulkSetAllFree": "Set all free",
+  "bulkSetAllPaid": "Set all paid",
+  "free": "Free",
+  "paid": "Paid"
 }

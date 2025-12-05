@@ -93,6 +93,18 @@ const LegalDocumentEditor: React.FC<LegalDocumentEditorProps> = ({ language }) =
     }
   };
 
+  // Helper function to escape HTML to prevent XSS
+  const escapeHtml = (text: string): string => {
+    const map: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;',
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+  };
+
   const formatPreview = (content: string): string => {
     if (!content) return '';
 
@@ -101,11 +113,11 @@ const LegalDocumentEditor: React.FC<LegalDocumentEditorProps> = ({ language }) =
     return paragraphs
       .map(para => {
         if (para.trim().startsWith('# ')) {
-          return `<h1 class="text-3xl font-bold mb-6 mt-8">${para.substring(2).trim()}</h1>`;
+          return `<h1 class="text-3xl font-bold mb-6 mt-8">${escapeHtml(para.substring(2).trim())}</h1>`;
         } else if (para.trim().startsWith('## ')) {
-          return `<h2 class="text-2xl font-bold mb-4 mt-6">${para.substring(3).trim()}</h2>`;
+          return `<h2 class="text-2xl font-bold mb-4 mt-6">${escapeHtml(para.substring(3).trim())}</h2>`;
         } else if (para.trim().startsWith('### ')) {
-          return `<h3 class="text-xl font-bold mb-3 mt-5">${para.substring(4).trim()}</h3>`;
+          return `<h3 class="text-xl font-bold mb-3 mt-5">${escapeHtml(para.substring(4).trim())}</h3>`;
         }
 
         if (para.trim().match(/^[-*]\s/)) {
@@ -113,7 +125,7 @@ const LegalDocumentEditor: React.FC<LegalDocumentEditorProps> = ({ language }) =
           const listItems = items
             .map(item => {
               const cleanItem = item.replace(/^[-*]\s/, '').trim();
-              return `<li class="mb-2">${cleanItem}</li>`;
+              return `<li class="mb-2">${escapeHtml(cleanItem)}</li>`;
             })
             .join('');
           return `<ul class="my-4 ml-6 list-disc">${listItems}</ul>`;
@@ -124,13 +136,13 @@ const LegalDocumentEditor: React.FC<LegalDocumentEditorProps> = ({ language }) =
           const listItems = items
             .map(item => {
               const cleanItem = item.replace(/^\d+\.\s/, '').trim();
-              return `<li class="mb-2">${cleanItem}</li>`;
+              return `<li class="mb-2">${escapeHtml(cleanItem)}</li>`;
             })
             .join('');
           return `<ol class="my-4 ml-6 list-decimal">${listItems}</ol>`;
         }
 
-        return `<p class="mb-4 leading-relaxed">${para.trim()}</p>`;
+        return `<p class="mb-4 leading-relaxed">${escapeHtml(para.trim())}</p>`;
       })
       .join('');
   };

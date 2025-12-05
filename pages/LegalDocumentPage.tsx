@@ -117,6 +117,18 @@ const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({ language, documen
   );
 };
 
+// Helper function to escape HTML to prevent XSS
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  };
+  return text.replace(/[&<>"']/g, m => map[m]);
+}
+
 // Helper function to format plain text content with basic HTML
 function formatContent(content: string): string {
   if (!content) return '';
@@ -128,11 +140,11 @@ function formatContent(content: string): string {
     .map(para => {
       // Check if it's a heading (starts with #)
       if (para.trim().startsWith('# ')) {
-        return `<h1>${para.substring(2).trim()}</h1>`;
+        return `<h1>${escapeHtml(para.substring(2).trim())}</h1>`;
       } else if (para.trim().startsWith('## ')) {
-        return `<h2>${para.substring(3).trim()}</h2>`;
+        return `<h2>${escapeHtml(para.substring(3).trim())}</h2>`;
       } else if (para.trim().startsWith('### ')) {
-        return `<h3>${para.substring(4).trim()}</h3>`;
+        return `<h3>${escapeHtml(para.substring(4).trim())}</h3>`;
       }
 
       // Check if it's a list
@@ -141,7 +153,7 @@ function formatContent(content: string): string {
         const listItems = items
           .map(item => {
             const cleanItem = item.replace(/^[-*]\s/, '').trim();
-            return `<li>${cleanItem}</li>`;
+            return `<li>${escapeHtml(cleanItem)}</li>`;
           })
           .join('');
         return `<ul>${listItems}</ul>`;
@@ -153,14 +165,14 @@ function formatContent(content: string): string {
         const listItems = items
           .map(item => {
             const cleanItem = item.replace(/^\d+\.\s/, '').trim();
-            return `<li>${cleanItem}</li>`;
+            return `<li>${escapeHtml(cleanItem)}</li>`;
           })
           .join('');
         return `<ol>${listItems}</ol>`;
       }
 
       // Regular paragraph
-      return `<p>${para.trim()}</p>`;
+      return `<p>${escapeHtml(para.trim())}</p>`;
     })
     .join('');
 }

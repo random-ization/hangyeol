@@ -43,7 +43,10 @@ export const ExamList: React.FC<ExamListProps> = ({
   const getBestScore = (examId: string): number | null => {
     const attempts = history.filter(h => h.examId === examId);
     if (attempts.length === 0) return null;
-    const scores = attempts.map(a => (a.score / a.totalScore) * 100);
+    const scores = attempts.map(a => {
+      const total = a.totalScore || a.maxScore;
+      return total > 0 ? (a.score / total) * 100 : 0;
+    });
     return Math.max(...scores);
   };
 

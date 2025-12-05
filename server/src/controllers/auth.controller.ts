@@ -114,7 +114,11 @@ const formatUser = (user: any) => {
     lastModule: user.lastModule,
     // Subscription details
     subscriptionType: user.subscriptionType,
-    subscriptionExpiry: user.subscriptionExpiry ? user.subscriptionExpiry.getTime() : undefined,
+    subscriptionExpiry: user.subscriptionExpiry
+      ? typeof user.subscriptionExpiry.getTime === 'function'
+        ? user.subscriptionExpiry.getTime()
+        : undefined
+      : undefined,
   };
 };
 

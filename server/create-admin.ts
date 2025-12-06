@@ -1,12 +1,14 @@
 // @ts-ignore
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, defineAdapter } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 
 // Load environment variables
 dotenv.config();
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  adapter: defineAdapter({ url: process.env.DATABASE_URL })
+});
 
 async function main() {
   const email = process.env.ADMIN_EMAIL || 'ssunhr@gmail.com';

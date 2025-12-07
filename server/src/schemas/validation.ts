@@ -124,7 +124,7 @@ export const SaveTopikExamSchema = z.object({
       passage: z.string().optional(),
       audioUrl: z.string().optional(),
       question: z.string(),
-      questionImage: z.string().optional(),
+      Image: z.string().optional(),
       options: z.array(z.string()),
       optionImages: z.array(z.string()).optional(),
       correctAnswer: z.number().int().min(0),

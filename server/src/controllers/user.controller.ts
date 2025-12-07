@@ -261,4 +261,54 @@ export const updateProfileAvatar = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ error: 'Failed to update avatar' });
   }
 };
+// 更新个人资料 (修改名字)
+export const updateProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const validatedData: UpdateProfileInput = UpdateProfileSchema.parse(req.body);
+    const userId = req.user!.userId;
 
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { ...validatedData },
+    });
+
+    const { password: _, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+  } catch (e: any) {
+    if (e.name === 'ZodError') {
+      return res.status(400).json({ error: 'Invalid input', details: e.errors });
+    }
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+};
+
+// 修改密码
+export const changePassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const validatedData: ChangePasswordInput = ChangePasswordSchema.parse(req.body);
+    const userId = req.user!.userId;
+    const { currentPassword, newPassword } = validatedData;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const isValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isValid) {
+      return res.status(400).json({ error: 'Incorrect current password' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    res.json({ success: true });
+  } catch (e: any) {
+    if (e.name === 'ZodError') {
+      return res.status(400).json({ error: 'Invalid input', details: e.errors });
+    }
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+};

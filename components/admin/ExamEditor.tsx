@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TopikExam, TopikQuestion, TopikType, Language } from '../../types';
-import { 
-  Plus, Save, Trash2, FileText, Headphones, Loader2, ChevronRight, 
-  Lock, Unlock, Upload, ImageIcon, CheckSquare, Edit2, ArrowLeft,
-  GraduationCap, Clock
+import {
+  Save, Trash2, FileText, Headphones, Loader2, Lock, Unlock, Upload, 
+  ArrowLeft, CheckSquare, ImageIcon, Edit2, Plus
 } from 'lucide-react';
-import { api } from '../../services/api';
+import { api } from '../../services/api'; // ✅ 引入 API 服务
 
-// --- 结构定义 (保持原 UI 的精髓) ---
+// --- 结构定义 (来自您的 AdminPanel.tsx) ---
 interface ExamSectionStructure {
     range: number[];
     instruction: string;
@@ -81,23 +80,20 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Labels... (简化版，复用您已有的)
+  // Labels 简化版，按需扩展
   const labels = {
       en: { save: 'Save Exam', delete: 'Delete Exam', createNew: 'Create New' },
       zh: { save: '保存考试', delete: '删除考试', createNew: '创建新考试' },
-      vi: { save: 'Lưu', delete: 'Xóa', createNew: 'Tạo mới' },
-      mn: { save: 'Хадгалах', delete: 'Устгах', createNew: 'Үүсгэх' }
   };
-  const t = labels[language] || labels.en;
+  const t = labels[language as keyof typeof labels] || labels.en;
 
-  // --- 关键优化：上传文件到存储空间 (S3/Spaces) ---
+  // ✅ 核心优化：通用上传函数，对接 S3/Spaces
   const handleFileUpload = async (
     file: File, 
     onSuccess: (url: string) => void
   ) => {
     setUploading(true);
     try {
-      // 使用 api.uploadMedia 直接上传到云端
       const res = await api.uploadMedia(file);
       onSuccess(res.url);
     } catch (e) {
@@ -108,7 +104,7 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
     }
   };
 
-  // --- Exam Logic ---
+  // --- Handlers ---
   const createNewExam = (type: TopikType) => {
     const questions: TopikQuestion[] = [];
     for (let i = 1; i <= 50; i++) {
@@ -119,7 +115,7 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
         question: `Question ${i}`,
         options: ['', '', '', ''],
         correctAnswer: 0,
-        image: '', // 统一使用 image
+        image: '', // ✅ 统一使用 image 字段
         explanation: '',
         score: 2,
         optionImages: type === 'LISTENING' ? ['', '', '', ''] : undefined,
@@ -131,7 +127,7 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
       type,
       title: `TOPIK II ${type === 'READING' ? 'Reading' : 'Listening'} - New`,
       description: '',
-      round: 35, // 默认届数
+      round: 35, // ✅ 初始化 Round
       timeLimit: type === 'READING' ? 70 : 60,
       isPaid: false,
       questions,
@@ -182,17 +178,24 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
     setSaving(false);
   };
 
+  const deleteExam = () => {
+    if (selectedExam && window.confirm(`Delete ${selectedExam.title}?`)) {
+      onDeleteTopikExam(selectedExam.id);
+      setSelectedExam(null);
+    }
+  };
+
   const currentExam = selectedExam;
   const STRUCTURE = currentExam?.type === 'LISTENING' ? TOPIK_LISTENING_STRUCTURE : TOPIK_READING_STRUCTURE;
   const getQ = (id: number) => currentExam?.questions.find(q => q.id === id);
 
-  // --- Render Visual Editor ---
+  // --- Render Visual Editor (您最喜欢的 UI 部分) ---
   const renderVisualEditor = () => {
       if (!currentExam) return null;
 
       return (
           <div className="flex h-full bg-slate-100">
-              {/* Left Sidebar: Navigation (Pills) */}
+              {/* Left Sidebar: Navigation */}
               <div className="w-16 bg-white border-r border-slate-200 overflow-y-auto flex flex-col items-center py-4 gap-2 no-scrollbar">
                   {STRUCTURE.map((section, idx) => (
                       <button 
@@ -314,7 +317,7 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
                                                       {/* Single Question Passage/Image */}
                                                       {!isGrouped && (
                                                           <div className="mb-2">
-                                                              {/* Image Upload */}
+                                                              {/* Image Upload - ✅ 优化：支持直接上传 */}
                                                               {(section.type === 'IMAGE_OPTIONAL' || q.image) && (
                                                                   <div className="mb-2">
                                                                       {q.image ? (
@@ -340,8 +343,6 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
                                                                       <textarea 
                                                                           className="w-full bg-white p-2 text-[15px] resize-none outline-none border-b border-dashed border-slate-300 focus:border-indigo-500 h-24"
                                                                           placeholder="Box content..."
-                                                                          // Note: Assuming 'explanation' field reused for box content or add 'contextBox' to types if needed. 
-                                                                          // For now, using passage as fallback if simple structure.
                                                                           value={q.passage || ''}
                                                                           onChange={(e) => updateQuestion(q.id, 'passage', e.target.value)}
                                                                       />

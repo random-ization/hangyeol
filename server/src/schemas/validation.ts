@@ -118,26 +118,27 @@ export const SaveTopikExamSchema = z.object({
   round: z.number().int(),
   timeLimit: z.number().int().min(1),
   
-  // [新增] 添加音频字段，允许字符串、null 或 undefined
+  // ✅ 修复：添加音频字段，允许为空
   audioUrl: z.string().optional().nullable(),
   
   isPaid: z.boolean().optional(),
   
   questions: z.array(
     z.object({
+      id: z.union([z.string(), z.number()]).optional(),
       number: z.number().int(),
-      passage: z.string().optional().nullable(), // 允许 null
-      audioUrl: z.string().optional().nullable(), // 允许 null
+      passage: z.string().optional().nullable(),
+      audioUrl: z.string().optional().nullable(),
       question: z.string(),
       
-      // [修改] 将 questionImage 改为 image，与前端 ExamEditor.tsx 保持一致
-      // 同时允许 null 或空字符串
+      // ✅ 修复：统一字段名为 image (匹配前端)，允许为空
       image: z.string().optional().nullable(),
       
       options: z.array(z.string()),
       optionImages: z.array(z.string()).optional().nullable(),
       correctAnswer: z.number().int().min(0),
       explanation: z.string().optional().nullable(),
+      score: z.number().optional().default(2),
     })
   ),
 });
@@ -152,7 +153,7 @@ export const ChangePasswordSchema = z.object({
   newPassword: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
-// Type exports for TypeScript
+// Type exports
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 export type LoginInput = z.infer<typeof LoginSchema>;
 export type SaveWordInput = z.infer<typeof SaveWordSchema>;

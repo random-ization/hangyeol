@@ -58,16 +58,17 @@ model TextbookContent {
 }
 
 model TopikExam {
-  id        String   @id
-  title     String
-  round     Int
-  type      String
-  paperType String?
-  timeLimit Int
-  audioUrl  String?
-  questions Json
-  createdAt DateTime @default(now())
-  isPaid    Boolean  @default(false) // Whether this exam requires paid subscription
+  id          String   @id
+  title       String
+  round       Int
+  type        String
+  paperType   String?
+  timeLimit   Int
+  audioUrl    String?
+  description String?  @db.Text
+  questions   Json
+  createdAt   DateTime @default(now())
+  isPaid      Boolean  @default(false) // Whether this exam requires paid subscription
 }
 
 model SavedWord {

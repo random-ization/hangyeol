@@ -1,9 +1,8 @@
 import { Request, Response } from 'express';
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma'; // <- use named import
 
 // Helper to check admin role (assumes authenticate middleware set req.user)
 const isAdmin = (req: Request) => {
-  // Adjust according to your middleware: maybe req.user or res.locals.user
   const u = (req as any).user;
   return u && u.role === 'ADMIN';
 };

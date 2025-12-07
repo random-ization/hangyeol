@@ -11,7 +11,9 @@ import {
   ChevronRight,
   Lock,
   Unlock,
+  Upload,
 } from 'lucide-react';
+import { api } from '../../services/api';
 
 interface ExamEditorProps {
   topikExams: TopikExam[];
@@ -31,7 +33,41 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
   const [selectedExam, setSelectedExam] = useState<TopikExam | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<number>(1);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const handleFileUpload = async (
+    file: File,
+    target: 'exam' | 'question',
+    field: string,
+    questionIndex?: number
+  ) => {
+    if (!selectedExam) return;
+    setUploading(true);
 
+    try {
+      const res = await api.uploadMedia(file);
+      const url = res.url;
+
+      if (target === 'exam') {
+        // 更新考试元数据 (如听力音频)
+        updateExamMetadata(field as keyof TopikExam, url);
+      } else if (target === 'question' && typeof questionIndex === 'number') {
+        // 更新特定题目 (如题目图片)
+        // 注意：这里需要稍微修改一下逻辑以支持直接更新 state，或者复用 updateQuestion
+        // 由于 updateQuestion 目前只支持当前 editingQuestion，我们这里手动处理一下以确保安全
+        const updatedQuestions = [...selectedExam.questions];
+        const qIdx = updatedQuestions.findIndex(q => q.number === questionIndex);
+        if (qIdx !== -1) {
+          // 使用类型断言或 any 来处理动态字段赋值
+          updatedQuestions[qIdx] = { ...updatedQuestions[qIdx], [field]: url };
+          setSelectedExam({ ...selectedExam, questions: updatedQuestions });
+        }
+      }
+    } catch (e) {
+      alert('Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
   const labels = {
     en: {
       examEditor: 'TOPIK Exam Editor',
@@ -328,6 +364,42 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
                       className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     />
                   </div>
+                  {selectedExam.type === 'LISTENING' && (
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Exam Audio
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={selectedExam.audioUrl || ''}
+                          readOnly
+                          placeholder="Upload audio file..."
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-500"
+                        />
+                        <label
+                          className={`flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 transition-colors ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          {uploading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Upload className="w-4 h-4" />
+                          )}
+                          <span className="ml-2">Upload</span>
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="audio/*"
+                            disabled={uploading}
+                            onChange={e =>
+                              e.target.files?.[0] &&
+                              handleFileUpload(e.target.files[0], 'exam', 'audioUrl')
+                            }
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       {t.paidContent}
@@ -444,13 +516,52 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         {t.image}
                       </label>
-                      <input
-                        type="text"
-                        value={currentQuestion.image}
-                        onChange={e => updateQuestion('image', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                        placeholder="https://..."
-                      />
+                     <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {t.image}
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={currentQuestion.image || ''}
+                          readOnly
+                          placeholder="Image URL"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-500"
+                        />
+                        <label className="flex items-center justify-center px-4 py-2 bg-gray-600 text-white rounded-lg cursor-pointer hover:bg-gray-700 min-w-[100px]">
+                          {uploading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Upload className="w-4 h-4 mr-2" />
+                              Upload
+                            </>
+                          )}
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            disabled={uploading}
+                            onChange={e =>
+                              e.target.files?.[0] &&
+                              handleFileUpload(
+                                e.target.files[0],
+                                'question',
+                                'image',
+                                currentQuestion.number
+                              )
+                            }
+                          />
+                        </label>
+                      </div>
+                      {currentQuestion.image && (
+                        <div className="mt-2 p-2 border border-gray-200 rounded-lg inline-block">
+                          <img
+                            src={currentQuestion.image}
+                            alt="Preview"
+                            className="h-32 object-contain"
+                          />
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">

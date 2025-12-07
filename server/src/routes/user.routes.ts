@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.middleware';
-import { uploadAvatar } from '../lib/storage'; // 👈 导入 storage
-import { updateProfileAvatar } from '../controllers/user.controller';
+import { uploadAvatar } from '../lib/storage';
 import {
   saveWord,
   saveMistake,
@@ -9,11 +8,14 @@ import {
   saveExamAttempt,
   logActivity,
   updateLearningProgress,
+  updateProfileAvatar,
+  updateProfile,
+  changePassword
 } from '../controllers/user.controller';
 
 const router = Router();
 
-router.use(authenticate); // Protect all routes
+router.use(authenticate);
 
 router.post('/word', saveWord);
 router.post('/mistake', saveMistake);
@@ -22,5 +24,7 @@ router.post('/exam', saveExamAttempt);
 router.post('/activity', logActivity);
 router.post('/progress', updateLearningProgress);
 router.post('/avatar', uploadAvatar.single('avatar'), updateProfileAvatar);
+router.put('/profile', updateProfile);
+router.put('/password', changePassword);
 
 export default router;

@@ -21,6 +21,17 @@ const AdminPage: React.FC = () => {
     return <Navigate to="/" replace />;
   }
 
+  // 计算实际的统计数据（可选优化）
+  const stats = {
+    totalUsers: 1, // 这里如果是真实应用应该从API获取
+    activeLearners: 1, // 修正字段名: activeUsers -> activeLearners
+    totalTextbooks: institutes.length, // 补全: 使用机构数量或教材数量
+    totalTopikExams: topikExams.length, // 补全: 使用考试数量
+    premiumUsers: 0,
+    totalRevenue: 0,
+    contentCoverage: Object.keys(textbookContexts).length,
+  };
+
   return (
     <AdminPanel
       institutes={institutes}
@@ -33,13 +44,7 @@ const AdminPage: React.FC = () => {
       users={[user]}
       onUpdateUser={() => {}}
       onDeleteUser={() => {}}
-      stats={{
-        totalUsers: 1,
-        activeUsers: 1,
-        premiumUsers: 0,
-        totalRevenue: 0,
-        contentCoverage: 0,
-      }}
+      stats={stats} // 使用修复后的 stats 对象
       topikExams={topikExams}
       onAddTopikExam={saveTopikExam}
       onUpdateTopikExam={saveTopikExam}

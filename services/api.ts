@@ -200,6 +200,32 @@ export const api = {
       body: formData,
     });
   },
+  uploadMedia: async (file: File): Promise<{ url: string }> => {
+    const formData = new FormData();
+    formData.append('file', file); // 对应后端 upload.routes.ts 中的 uploadMedia.single('file')
+
+    const token = localStorage.getItem('token');
+    
+    // 注意：这里使用 fetch 而不是 request 封装函数，以确保 FormData 的 Content-Type 被浏览器自动正确处理
+    const res = await fetch(`${API_URL}/upload`, { 
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+
+    if (!res.ok) {
+      let errorMessage = 'Upload failed';
+      try {
+        const errorData = await res.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch {}
+      throw new Error(errorMessage);
+    }
+    
+    return res.json();
+  },
 
   // Learning Activity Tracking
   logActivity: async (

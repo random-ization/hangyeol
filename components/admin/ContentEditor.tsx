@@ -19,6 +19,8 @@ import {
   Lock,
   Unlock,
   DollarSign,
+  Plus,
+  BookOpen,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -27,6 +29,7 @@ interface ContentEditorProps {
   textbookContexts: TextbookContextMap;
   language: Language;
   onSaveContext: (key: string, content: TextbookContent) => void;
+  onAddInstitute?: (name: string) => void;
 }
 
 type ContentType = 'vocab' | 'reading' | 'listening' | 'grammar';
@@ -38,6 +41,7 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
   textbookContexts,
   language,
   onSaveContext,
+  onAddInstitute,
 }) => {
   const labels = getLabels(language);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -50,6 +54,10 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('IDLE');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [bulkCount, setBulkCount] = useState<number>(3);
+
+  // State for adding new institute
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newInstituteName, setNewInstituteName] = useState('');
 
   // Helper: Get or create content object
   const getContent = (level: number, unit: number): TextbookContent => {
@@ -381,9 +389,67 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
             ))}
           </select>
         ) : (
-          <div className="bg-red-50 p-3 rounded-lg border border-red-200 text-red-700">
-            <p className="font-medium">No textbooks available</p>
-            <p className="text-sm mt-1">Please add textbooks/institutes in the database first.</p>
+          <div className="space-y-4">
+            <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+              <div className="flex items-center gap-2 text-amber-800 mb-2">
+                <BookOpen className="w-5 h-5" />
+                <p className="font-medium">No textbooks available</p>
+              </div>
+              <p className="text-amber-700 text-sm">Add your first textbook to start managing content.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Add New Institute Button/Form */}
+        {onAddInstitute && (
+          <div className="mt-4">
+            {!showAddForm ? (
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add New Textbook
+              </button>
+            ) : (
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <h4 className="font-medium text-green-800 mb-3">Add New Textbook</h4>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newInstituteName}
+                    onChange={e => setNewInstituteName(e.target.value)}
+                    placeholder="Enter textbook name (e.g., Yonsei, Sogang, Ewha)"
+                    className="flex-1 px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                  <button
+                    onClick={() => {
+                      if (newInstituteName.trim()) {
+                        onAddInstitute(newInstituteName.trim());
+                        setNewInstituteName('');
+                        setShowAddForm(false);
+                      }
+                    }}
+                    disabled={!newInstituteName.trim()}
+                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setNewInstituteName('');
+                      setShowAddForm(false);
+                    }}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <p className="text-green-600 text-xs mt-2">
+                  This will create a textbook with 6 levels (1-6), each with 10 units.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

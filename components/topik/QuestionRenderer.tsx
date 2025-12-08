@@ -145,13 +145,13 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
             )}
 
             {/* 题目文字 */}
-            {question.questionText && (
+            {question.question && (
               <div
                 className={`${FONT_SANS} text-[17px] font-semibold text-slate-900 leading-snug mb-4 cursor-text`}
                 onMouseUp={onTextSelect}
                 dangerouslySetInnerHTML={{
                   __html: highlightText(
-                    question.questionText.replace(/\(\s*\)/g, '( &nbsp;&nbsp;&nbsp;&nbsp; )')
+                    question.question.replace(/\(\s*\)/g, '( &nbsp;&nbsp;&nbsp;&nbsp; )')
                   )
                 }}
               />

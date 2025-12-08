@@ -76,37 +76,17 @@ export const CreateInstituteSchema = z.object({
 
 export const SaveContentSchema = z.object({
   key: z.string().min(1, 'Key is required'),
-  title: z.string().optional().nullable(),
-  vocabulary: z.array(z.any()).optional(),
-  reading: z
-    .object({
-      text: z.string(),
-      translation: z.string().optional(),
-    })
-    .optional()
-    .nullable(),
-  listening: z
-    .object({
-      audioUrl: z.string().optional(),
-      script: z.string().optional(),
-      translation: z.string().optional(),
-    })
-    .optional()
-    .nullable(),
-  grammar: z
-    .array(
-      z.object({
-        pattern: z.string(),
-        definition: z.string(),
-        examples: z.array(
-          z.object({
-            korean: z.string(),
-            translation: z.string(),
-          })
-        ),
-      })
-    )
-    .optional(),
+  // Match Prisma model field names exactly
+  generalContext: z.string().optional().nullable(),
+  vocabularyList: z.string().optional().nullable(),  // JSON string
+  readingText: z.string().optional().nullable(),
+  readingTranslation: z.string().optional().nullable(),
+  readingTitle: z.string().optional().nullable(),
+  listeningScript: z.string().optional().nullable(),
+  listeningTranslation: z.string().optional().nullable(),
+  listeningTitle: z.string().optional().nullable(),
+  listeningAudioUrl: z.string().optional().nullable(),
+  grammarList: z.string().optional().nullable(),  // JSON string
   isPaid: z.boolean().optional(),
 });
 
@@ -117,12 +97,12 @@ export const SaveTopikExamSchema = z.object({
   type: z.enum(['READING', 'LISTENING']),
   round: z.number().int(),
   timeLimit: z.number().int().min(1),
-  
+
   // ✅ 修复：添加音频字段，允许为空
   audioUrl: z.string().optional().nullable(),
-  
+
   isPaid: z.boolean().optional(),
-  
+
   questions: z.array(
     z.object({
       id: z.union([z.string(), z.number()]).optional(),
@@ -130,10 +110,10 @@ export const SaveTopikExamSchema = z.object({
       passage: z.string().optional().nullable(),
       audioUrl: z.string().optional().nullable(),
       question: z.string(),
-      
+
       // ✅ 修复：统一字段名为 image (匹配前端)，允许为空
       image: z.string().optional().nullable(),
-      
+
       options: z.array(z.string()),
       optionImages: z.array(z.string()).optional().nullable(),
       correctAnswer: z.number().int().min(0),

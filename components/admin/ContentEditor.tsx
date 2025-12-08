@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Institute,
   Language,
@@ -7,6 +7,7 @@ import {
   LevelConfig,
 } from '../../types';
 import { getLabels } from '../../utils/i18n';
+import { api } from '../../services/api';
 import {
   Plus,
   Save,
@@ -18,6 +19,9 @@ import {
   ChevronDown,
   Eye,
   Trash2,
+  Upload,
+  Play,
+  Pause,
 } from 'lucide-react';
 
 interface ContentEditorProps {
@@ -64,6 +68,17 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
   const [showPreview, setShowPreview] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
 
+  // Reading/Listening entries (supports multiple entries)
+  interface ContentEntry {
+    text: string;
+    translation: string;
+  }
+  const [readingEntries, setReadingEntries] = useState<ContentEntry[]>([{ text: '', translation: '' }]);
+  const [listeningEntries, setListeningEntries] = useState<ContentEntry[]>([{ text: '', translation: '' }]);
+  const [listeningAudioUrl, setListeningAudioUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+
   // Add textbook modal state
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTextbookName, setNewTextbookName] = useState('');
@@ -89,6 +104,52 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
   // Get existing content for current selection
   const existingContent = contentKey ? textbookContexts[contentKey] : null;
 
+  // Load existing content into entries (supports both old single-string and new JSON array format)
+  useEffect(() => {
+    if (existingContent) {
+      // Try to parse as JSON array, fallback to single entry
+      try {
+        const readingData = existingContent.readingText;
+        if (readingData && readingData.startsWith('[')) {
+          setReadingEntries(JSON.parse(readingData));
+        } else {
+          setReadingEntries([{
+            text: existingContent.readingText || '',
+            translation: existingContent.readingTranslation || ''
+          }]);
+        }
+      } catch {
+        setReadingEntries([{
+          text: existingContent.readingText || '',
+          translation: existingContent.readingTranslation || ''
+        }]);
+      }
+
+      try {
+        const listeningData = existingContent.listeningScript;
+        if (listeningData && listeningData.startsWith('[')) {
+          setListeningEntries(JSON.parse(listeningData));
+        } else {
+          setListeningEntries([{
+            text: existingContent.listeningScript || '',
+            translation: existingContent.listeningTranslation || ''
+          }]);
+        }
+      } catch {
+        setListeningEntries([{
+          text: existingContent.listeningScript || '',
+          translation: existingContent.listeningTranslation || ''
+        }]);
+      }
+
+      setListeningAudioUrl(existingContent.listeningAudioUrl || null);
+    } else {
+      setReadingEntries([{ text: '', translation: '' }]);
+      setListeningEntries([{ text: '', translation: '' }]);
+      setListeningAudioUrl(null);
+    }
+  }, [existingContent]);
+
   // Tab configuration
   const tabs: { id: ContentTab; label: string; icon: string; format: string; placeholder: string }[] = [
     {
@@ -102,15 +163,15 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
       id: 'reading',
       label: String(labels.reading || 'Reading'),
       icon: '📖',
-      format: '본문 (여러 줄 가능)\n---\n번역',
-      placeholder: '오늘 날씨가 좋습니다.\n공원에 갔습니다.\n---\nThe weather is nice today.\nI went to the park.',
+      format: '', // Two-column layout, no format hint needed
+      placeholder: '',
     },
     {
       id: 'listening',
       label: String(labels.listening || 'Listening'),
       icon: '🎧',
-      format: '스크립트 (여러 줄 가능)\n---\n번역',
-      placeholder: '안녕하세요?\n네, 안녕하세요.\n---\nHello?\nYes, hello.',
+      format: '', // Two-column layout, no format hint needed
+      placeholder: '',
     },
     {
       id: 'grammar',
@@ -122,6 +183,36 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
   ];
 
   const currentTab = tabs.find(t => t.id === activeTab)!;
+
+  // Audio upload handler
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const result = await api.uploadMedia(file);
+      setListeningAudioUrl(result.url);
+    } catch (error) {
+      console.error('Failed to upload audio:', error);
+      alert('音频上传失败，请重试');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Audio playback
+  const toggleAudioPlayback = () => {
+    const audio = document.getElementById('preview-audio') as HTMLAudioElement;
+    if (audio) {
+      if (isPlaying) {
+        audio.pause();
+      } else {
+        audio.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
 
   // Parse input based on active tab
   const parseInput = (input: string): any[] => {
@@ -178,10 +269,20 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
   const handleSave = async () => {
     if (!contentKey || !selectedInstitute) return;
 
+    // Validate: for vocab/grammar, need textInput; for reading/listening, check entries
+    if (activeTab === 'vocab' || activeTab === 'grammar') {
+      if (!textInput.trim()) return;
+    } else if (activeTab === 'reading') {
+      const hasContent = readingEntries.some(e => e.text.trim() || e.translation.trim());
+      if (!hasContent) return;
+    } else if (activeTab === 'listening') {
+      const hasContent = listeningEntries.some(e => e.text.trim() || e.translation.trim()) || listeningAudioUrl;
+      if (!hasContent) return;
+    }
+
     setSaveStatus('saving');
 
     try {
-      const parsed = parseInput(textInput);
       const content: TextbookContent = existingContent
         ? { ...existingContent }
         : {
@@ -198,14 +299,21 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
         };
 
       if (activeTab === 'vocab') {
+        const parsed = parseInput(textInput);
         content.vocabularyList = JSON.stringify(parsed);
       } else if (activeTab === 'reading') {
-        content.readingText = parsed[0]?.text || '';
-        content.readingTranslation = parsed[0]?.translation || '';
+        // Store as JSON array for multiple entries
+        const validEntries = readingEntries.filter(e => e.text.trim() || e.translation.trim());
+        content.readingText = JSON.stringify(validEntries);
+        content.readingTranslation = ''; // Not used when storing as JSON
       } else if (activeTab === 'listening') {
-        content.listeningScript = parsed[0]?.text || '';
-        content.listeningTranslation = parsed[0]?.translation || '';
+        // Store as JSON array for multiple entries
+        const validEntries = listeningEntries.filter(e => e.text.trim() || e.translation.trim());
+        content.listeningScript = JSON.stringify(validEntries);
+        content.listeningTranslation = ''; // Not used when storing as JSON
+        content.listeningAudioUrl = listeningAudioUrl;
       } else if (activeTab === 'grammar') {
+        const parsed = parseInput(textInput);
         content.grammarList = JSON.stringify(parsed);
       }
 
@@ -441,34 +549,179 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
 
           {/* Content Entry Area */}
           <div className="p-4 space-y-4">
-            {/* Format Hint */}
-            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-              <p className="text-sm font-medium text-blue-800">Format:</p>
-              <p className="text-sm text-blue-700 font-mono whitespace-pre-wrap">{currentTab.format}</p>
-            </div>
+            {/* Format Hint - only for vocab and grammar */}
+            {(activeTab === 'vocab' || activeTab === 'grammar') && currentTab.format && (
+              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                <p className="text-sm font-medium text-blue-800">Format:</p>
+                <p className="text-sm text-blue-700 font-mono whitespace-pre-wrap">{currentTab.format}</p>
+              </div>
+            )}
 
-            {/* Textarea */}
-            <textarea
-              value={textInput}
-              onChange={e => setTextInput(e.target.value)}
-              placeholder={currentTab.placeholder}
-              rows={10}
-              className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 resize-y"
-            />
+            {/* Audio Upload - Listening only */}
+            {activeTab === 'listening' && (
+              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <p className="text-sm font-medium text-purple-800 mb-3">🎧 音频文件</p>
+                <div className="flex items-center gap-3">
+                  <label className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 cursor-pointer transition-colors flex items-center gap-2">
+                    {isUploading ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> 上传中...</>
+                    ) : (
+                      <><Upload className="w-4 h-4" /> 上传音频</>
+                    )}
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={handleAudioUpload}
+                      className="hidden"
+                      disabled={isUploading}
+                    />
+                  </label>
+
+                  {listeningAudioUrl && (
+                    <>
+                      <button
+                        onClick={toggleAudioPlayback}
+                        className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+                      >
+                        {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                        {isPlaying ? '暂停' : '播放'}
+                      </button>
+                      <button
+                        onClick={() => setListeningAudioUrl(null)}
+                        className="px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <span className="text-sm text-gray-500 truncate max-w-xs">
+                        {listeningAudioUrl.split('/').pop()}
+                      </span>
+                      <audio
+                        id="preview-audio"
+                        src={listeningAudioUrl}
+                        onEnded={() => setIsPlaying(false)}
+                        className="hidden"
+                      />
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Multi-entry layout for Reading/Listening */}
+            {(activeTab === 'reading' || activeTab === 'listening') ? (
+              <div className="space-y-4">
+                {(activeTab === 'reading' ? readingEntries : listeningEntries).map((entry, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium text-gray-600">
+                        {activeTab === 'reading' ? `📖 阅读 #${index + 1}` : `🎧 听力 #${index + 1}`}
+                      </span>
+                      {(activeTab === 'reading' ? readingEntries : listeningEntries).length > 1 && (
+                        <button
+                          onClick={() => {
+                            if (activeTab === 'reading') {
+                              setReadingEntries(prev => prev.filter((_, i) => i !== index));
+                            } else {
+                              setListeningEntries(prev => prev.filter((_, i) => i !== index));
+                            }
+                          }}
+                          className="text-red-500 hover:bg-red-50 p-1 rounded transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Left: Original text */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">原文</label>
+                        <textarea
+                          value={entry.text}
+                          onChange={e => {
+                            if (activeTab === 'reading') {
+                              setReadingEntries(prev => prev.map((item, i) =>
+                                i === index ? { ...item, text: e.target.value } : item
+                              ));
+                            } else {
+                              setListeningEntries(prev => prev.map((item, i) =>
+                                i === index ? { ...item, text: e.target.value } : item
+                              ));
+                            }
+                          }}
+                          placeholder={activeTab === 'reading'
+                            ? '오늘 날씨가 좋습니다...'
+                            : '안녕하세요?...'
+                          }
+                          rows={6}
+                          className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 resize-y"
+                        />
+                      </div>
+                      {/* Right: Translation */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">翻译</label>
+                        <textarea
+                          value={entry.translation}
+                          onChange={e => {
+                            if (activeTab === 'reading') {
+                              setReadingEntries(prev => prev.map((item, i) =>
+                                i === index ? { ...item, translation: e.target.value } : item
+                              ));
+                            } else {
+                              setListeningEntries(prev => prev.map((item, i) =>
+                                i === index ? { ...item, translation: e.target.value } : item
+                              ));
+                            }
+                          }}
+                          placeholder="今天天气很好..."
+                          rows={6}
+                          className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 resize-y"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {/* Add Entry Button */}
+                <button
+                  onClick={() => {
+                    if (activeTab === 'reading') {
+                      setReadingEntries(prev => [...prev, { text: '', translation: '' }]);
+                    } else {
+                      setListeningEntries(prev => [...prev, { text: '', translation: '' }]);
+                    }
+                  }}
+                  className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-500 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  添加第 {(activeTab === 'reading' ? readingEntries : listeningEntries).length + 1} 条
+                </button>
+              </div>
+            ) : (
+              /* Single textarea for vocab and grammar */
+              <textarea
+                value={textInput}
+                onChange={e => setTextInput(e.target.value)}
+                placeholder={currentTab.placeholder}
+                rows={10}
+                className="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 resize-y"
+              />
+            )}
 
             {/* Actions */}
             <div className="flex items-center gap-3">
-              <button
-                onClick={handlePreview}
-                disabled={!textInput.trim()}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-              >
-                <Eye className="w-4 h-4" />
-                Preview
-              </button>
+              {/* Preview button - only for vocab and grammar */}
+              {(activeTab === 'vocab' || activeTab === 'grammar') && (
+                <button
+                  onClick={handlePreview}
+                  disabled={!textInput.trim()}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                >
+                  <Eye className="w-4 h-4" />
+                  Preview
+                </button>
+              )}
               <button
                 onClick={handleSave}
-                disabled={!textInput.trim() || saveStatus === 'saving'}
+                disabled={saveStatus === 'saving'}
                 className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
               >
                 {saveStatus === 'saving' ? (
@@ -481,7 +734,7 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
                   <><Save className="w-4 h-4" /> Save</>
                 )}
               </button>
-              {textInput && (
+              {(activeTab === 'vocab' || activeTab === 'grammar') && textInput && (
                 <button
                   onClick={() => { setTextInput(''); setShowPreview(false); }}
                   className="px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors"

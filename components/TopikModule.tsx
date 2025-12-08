@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { TopikExam, Language, TopikQuestion, ExamAttempt, Annotation } from '../types';
 import { Clock, CheckCircle, FileText, Trophy, History, RotateCcw, Eye, ArrowLeft, Calendar, Check, X, MessageSquare, Trash2, Play, Pause, FastForward, MoreHorizontal } from 'lucide-react';
 import { getLabels } from '../utils/i18n';
@@ -31,48 +32,17 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
   const labels = getLabels(language);
   const questionRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
-  // ✅ 优化: 使用 useMemo 缓存过滤结果，避免每次渲染重新计算
-  const readingExams = useMemo(() => exams.filter(e => e.type === 'READING'), [exams]);
-  const listeningExams = useMemo(() => exams.filter(e => e.type === 'LISTENING'), [exams]);
+  // Filter exams by type for List View
+  const readingExams = exams.filter(e => e.type === 'READING');
+  const listeningExams = exams.filter(e => e.type === 'LISTENING');
 
   const examContextPrefix = currentExam ? `TOPIK-${currentExam.id}` : '';
 
-  // ✅ 优化: 使用 useMemo 缓存 sidebar annotations
-  const sidebarAnnotations = useMemo(() =>
-    annotations.filter(a => a.contextKey.startsWith(examContextPrefix) && a.note && a.note.trim().length > 0),
-    [annotations, examContextPrefix]
-  );
+  // Sidebar logic: Show annotations for current exam that have notes
+  const sidebarAnnotations = annotations
+    .filter(a => a.contextKey.startsWith(examContextPrefix) && a.note && a.note.trim().length > 0);
 
-  // ✅ 优化: 使用 useCallback 包装 submitExam 避免在 useEffect 中重新创建
-  const submitExam = useCallback(() => {
-    setTimerActive(false);
-    if (!currentExam) return;
-
-    let score = 0;
-    let totalScore = 0;
-    currentExam.questions.forEach(q => {
-      const qScore = q.score || 2;
-      totalScore += qScore;
-      if (userAnswers[q.id] === q.correctAnswer) {
-        score += qScore;
-      }
-    });
-
-    const attempt: ExamAttempt = {
-      id: Date.now().toString(),
-      examId: currentExam.id,
-      examTitle: currentExam.title,
-      score: score,
-      maxScore: totalScore,
-      timestamp: Date.now(),
-      userAnswers: { ...userAnswers }
-    };
-    onSaveHistory(attempt);
-    setCurrentReviewAttempt(attempt);
-    setView('RESULT');
-  }, [currentExam, userAnswers, onSaveHistory]);
-
-  // Timer Logic - 使用 submitExam callback
+  // Timer Logic
   useEffect(() => {
     let interval: number;
     if (timerActive && timeLeft > 0) {
@@ -83,7 +53,7 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
       submitExam();
     }
     return () => clearInterval(interval);
-  }, [timerActive, timeLeft, submitExam]);
+  }, [timerActive, timeLeft]);
 
   // Close annotation menu on click outside
   useEffect(() => {
@@ -101,58 +71,85 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showAnnotationMenu]);
 
-  // ✅ 优化: 使用 useCallback 包装事件处理函数
-  const selectExam = useCallback((exam: TopikExam) => {
+  const selectExam = (exam: TopikExam) => {
     setCurrentExam(exam);
     setUserAnswers({});
     setTimeLeft(exam.timeLimit * 60);
     setView('COVER');
-  }, []);
+  };
 
-  const startExam = useCallback(() => {
+  const startExam = () => {
     setTimerActive(true);
     setView('EXAM');
-  }, []);
+  };
 
-  const handleAnswer = useCallback((questionId: number, optionIdx: number) => {
+  const submitExam = () => {
+    setTimerActive(false);
+    if (!currentExam) return;
+
+    // Calculate Score
+    let score = 0;
+    let totalScore = 0;
+    currentExam.questions.forEach(q => {
+      totalScore += q.score;
+      if (userAnswers[q.id] === q.correctAnswer) {
+        score += q.score;
+      }
+    });
+
+    // Save Attempt
+    const attempt: ExamAttempt = {
+      id: Date.now().toString(),
+      examId: currentExam.id,
+      examTitle: currentExam.title,
+      score: score,
+      maxScore: totalScore,
+      timestamp: Date.now(),
+      userAnswers: { ...userAnswers }
+    };
+    onSaveHistory(attempt);
+    setCurrentReviewAttempt(attempt);
+    setView('RESULT');
+  };
+
+  const handleAnswer = (questionId: number, optionIdx: number) => {
     // Prevent changing answers in Review Mode
     if (view === 'REVIEW') return;
     setUserAnswers(prev => ({ ...prev, [questionId]: optionIdx }));
-  }, [view]);
+  };
 
-  const formatTime = useCallback((seconds: number) => {
+  const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${s < 10 ? '0' : ''}${s}`;
-  }, []);
+  };
 
-  const scrollToQuestion = useCallback((id: number) => {
+  const scrollToQuestion = (id: number) => {
     const el = questionRefs.current[id];
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, []);
+  };
 
-  // ✅ 优化: useMemo 缓存静态映射函数
-  const getCircleNumber = useMemo(() => {
+  const getCircleNumber = (num: number) => {
     const map = ['①', '②', '③', '④'];
-    return (num: number) => map[num] || `${num + 1}`;
-  }, []);
+    return map[num] || `${num + 1}`;
+  };
 
-  // ✅ 优化: useCallback 包装导航函数
-  const viewHistoryList = useCallback((examId: string) => {
+  const viewHistoryList = (examId: string) => {
+    // Find attempts for this exam
     setCurrentExam(exams.find(e => e.id === examId) || null);
     setView('HISTORY_LIST');
-  }, [exams]);
+  };
 
-  const openReview = useCallback((attempt: ExamAttempt) => {
+  const openReview = (attempt: ExamAttempt) => {
     setCurrentReviewAttempt(attempt);
     setCurrentExam(exams.find(e => e.id === attempt.examId) || null);
-    setUserAnswers(attempt.userAnswers);
+    setUserAnswers(attempt.userAnswers); // Load saved answers for display
     setView('REVIEW');
-  }, [exams]);
+  };
 
-  // --- Annotation Handlers ---
+  // --- Annotation Handlers (unchanged) ---
   const handleTextSelection = (contextKey: string) => {
     if (view !== 'REVIEW') return;
 
@@ -228,7 +225,7 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
     }
   };
 
-  // --- Render Annotated Text ---
+  // --- Render Annotated Text (unchanged) ---
   const renderAnnotatedText = (text: string | undefined, subContextKey: string) => {
     if (!text) return null;
     const fullContextKey = `${examContextPrefix}-${subContextKey}`;
@@ -293,7 +290,7 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
     );
   };
 
-  // --- Floating Audio Player Component ---
+  // --- Floating Audio Player Component (unchanged) ---
   const FloatingAudioPlayer = ({ src }: { src: string }) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -426,14 +423,11 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
 
   // --- RENDERERS FOR SPECIAL LAYOUTS ---
   const renderPassageContent = (q: TopikQuestion) => {
-    // ✅ 兼容性修复：支持 image 和 imageUrl 字段
-    const displayImage = q.image || q.imageUrl;
-
-    if (displayImage) {
+    if (q.imageUrl) {
       return (
         <div className="mb-6 mx-auto max-w-[95%] flex justify-start">
           <img
-            src={displayImage}
+            src={q.imageUrl}
             alt={`Question ${q.id} content`}
             className="max-h-[400px] object-contain border border-slate-200 shadow-sm"
           />
@@ -499,104 +493,112 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
     const questionKey = `Q${q.id}-PROMPT`;
 
     // Check if question has image options
-    const hasImageOptions = q.optionImages && q.optionImages.some(img => img && img.length > 0);
+    const hasImageOptions = q.optionImages && q.optionImages.some(img => img.length > 0);
 
-    // 仿真 TOPIK 试卷样式
     return (
-      <div key={q.id} ref={el => { questionRefs.current[q.id] = el; }} className={`${isGroupedChild ? 'mb-6' : 'mb-10'}`}>
-        {showPassage && renderPassageContent(q)}
-
-        {/* 题号 + 题干 - 在同一行显示 */}
-        <div className="flex items-baseline mb-4">
-          <span className="text-[15px] text-slate-900 mr-2 shrink-0">{q.id}.</span>
+      <div key={q.id} ref={el => { questionRefs.current[q.id] = el; }} className={`flex gap-4 ${isGroupedChild ? 'mb-8' : 'mb-12'}`}>
+        <div className="text-lg font-sans text-slate-900 min-w-[28px] pt-0.5">
+          {q.id}.
+        </div>
+        <div className="flex-1 w-full min-w-0">
+          {showPassage && renderPassageContent(q)}
           {q.question && (
-            <span className="text-[15px] text-slate-900 leading-relaxed">
+            <div className="mb-4 text-[18px] font-bold text-slate-900 leading-relaxed break-keep tracking-tight">
               {renderAnnotatedText(q.question, questionKey)}
-            </span>
+            </div>
+          )}
+
+          {hasImageOptions ? (
+            <div className="grid grid-cols-2 gap-4">
+              {q.optionImages!.map((img, optIdx) => {
+                let borderClass = "border-slate-200 hover:border-indigo-300";
+                let bgClass = "bg-white";
+                let opacityClass = "";
+
+                if (isReview) {
+                  if (optIdx === q.correctAnswer) borderClass = "border-green-500 ring-2 ring-green-100";
+                  else if (userAnswer === optIdx && userAnswer !== q.correctAnswer) borderClass = "border-red-500 ring-2 ring-red-100";
+                  else opacityClass = "opacity-50";
+                } else {
+                  if (userAnswer === optIdx) borderClass = "border-indigo-600 ring-2 ring-indigo-100";
+                }
+
+                return (
+                  <button
+                    key={optIdx}
+                    onClick={() => handleAnswer(q.id, optIdx)}
+                    disabled={isReview}
+                    className={`relative aspect-[4/3] rounded-xl border-2 overflow-hidden transition-all ${borderClass} ${bgClass} ${opacityClass}`}
+                  >
+                    <div className={`absolute top-2 left-2 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold z-10 ${userAnswer === optIdx || (isReview && optIdx === q.correctAnswer) ? 'bg-indigo-600 text-white' : 'bg-slate-100/90 text-slate-600 shadow-sm'}`}>
+                      {getCircleNumber(optIdx)}
+                    </div>
+                    {img ? (
+                      <img src={img} className="w-full h-full object-contain" alt={`Option ${optIdx + 1}`} />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50">No Image</div>
+                    )}
+                    {isReview && optIdx === q.correctAnswer && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-green-500/10">
+                        <Check className="w-12 h-12 text-green-600 drop-shadow-md" />
+                      </div>
+                    )}
+                    {isReview && userAnswer === optIdx && userAnswer !== q.correctAnswer && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-red-500/10">
+                        <X className="w-12 h-12 text-red-600 drop-shadow-md" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className={`grid ${q.options.some(o => o.length > 25) ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'} gap-x-8 gap-y-2`}>
+              {q.options.map((opt, optIdx) => {
+                let optionClass = "hover:bg-slate-100 border-transparent bg-transparent";
+                if (isReview) {
+                  if (optIdx === q.correctAnswer) optionClass = "bg-green-100 border-green-500 text-green-900 font-bold";
+                  else if (userAnswer === optIdx && userAnswer !== q.correctAnswer) optionClass = "bg-red-100 border-red-500 text-red-900 font-bold";
+                  else optionClass = "opacity-50";
+                } else {
+                  if (userAnswer === optIdx) optionClass = "bg-indigo-50/50";
+                }
+                return (
+                  <label key={optIdx} className={`flex items-start cursor-pointer p-2 rounded -ml-2 transition-colors border ${optionClass}`}>
+                    <input type="radio" name={`q-${q.id}`} className="hidden" checked={userAnswer === optIdx} onChange={() => handleAnswer(q.id, optIdx)} disabled={isReview} />
+                    <span className={`text-lg mr-2 font-sans ${userAnswer === optIdx ? 'text-black font-bold' : 'text-slate-500'}`}>{getCircleNumber(optIdx)}</span>
+                    <span className={`text-[17px] leading-relaxed mt-0.5 ${userAnswer === optIdx && !isReview ? 'text-indigo-900 font-bold underline decoration-indigo-300 underline-offset-4' : 'text-slate-800'}`}>{opt}</span>
+                    {isReview && optIdx === q.correctAnswer && <Check className="w-5 h-5 text-green-600 ml-auto" />}
+                    {isReview && userAnswer === optIdx && userAnswer !== q.correctAnswer && <X className="w-5 h-5 text-red-600 ml-auto" />}
+                  </label>
+                )
+              })}
+            </div>
           )}
         </div>
-
-        {/* 选项区域 */}
-        {hasImageOptions ? (
-          <div className="grid grid-cols-2 gap-4 ml-6">
-            {q.optionImages!.map((img, optIdx) => {
-              let borderClass = "border-slate-200 hover:border-indigo-300";
-              let bgClass = "bg-white";
-              let opacityClass = "";
-              if (isReview) {
-                if (optIdx === q.correctAnswer) borderClass = "border-green-500 ring-2 ring-green-100";
-                else if (userAnswer === optIdx && userAnswer !== q.correctAnswer) borderClass = "border-red-500 ring-2 ring-red-100";
-                else opacityClass = "opacity-50";
-              } else {
-                if (userAnswer === optIdx) borderClass = "border-indigo-600 ring-2 ring-indigo-100";
-              }
-              return (
-                <button key={optIdx} onClick={() => handleAnswer(q.id, optIdx)} disabled={isReview}
-                  className={`relative aspect-[4/3] rounded-xl border-2 overflow-hidden transition-all ${borderClass} ${bgClass} ${opacityClass}`}>
-                  <div className={`absolute top-2 left-2 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold z-10 ${userAnswer === optIdx || (isReview && optIdx === q.correctAnswer) ? 'bg-indigo-600 text-white' : 'bg-slate-100/90 text-slate-600 shadow-sm'}`}>
-                    {getCircleNumber(optIdx)}
-                  </div>
-                  {img ? <img src={img} className="w-full h-full object-contain" alt={`Option ${optIdx + 1}`} /> : <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50">No Image</div>}
-                  {isReview && optIdx === q.correctAnswer && <div className="absolute inset-0 flex items-center justify-center bg-green-500/10"><Check className="w-12 h-12 text-green-600 drop-shadow-md" /></div>}
-                  {isReview && userAnswer === optIdx && userAnswer !== q.correctAnswer && <div className="absolute inset-0 flex items-center justify-center bg-red-500/10"><X className="w-12 h-12 text-red-600 drop-shadow-md" /></div>}
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          /* 仿真 TOPIK 文字选项 - 2列网格布局 */
-          <div className="grid grid-cols-2 gap-x-16 gap-y-2 ml-6">
-            {q.options.map((opt, optIdx) => {
-              let optionClass = "hover:bg-slate-50";
-              if (isReview) {
-                if (optIdx === q.correctAnswer) optionClass = "bg-green-100 text-green-900";
-                else if (userAnswer === optIdx && userAnswer !== q.correctAnswer) optionClass = "bg-red-100 text-red-900";
-                else optionClass = "opacity-60";
-              } else {
-                if (userAnswer === optIdx) optionClass = "bg-blue-50";
-              }
-              return (
-                <label key={optIdx} className={`flex items-start cursor-pointer py-1 rounded transition-colors ${optionClass}`}>
-                  <input type="radio" name={`q-${q.id}`} className="hidden" checked={userAnswer === optIdx} onChange={() => handleAnswer(q.id, optIdx)} disabled={isReview} />
-                  <span className="text-[15px] mr-2 text-slate-700">{getCircleNumber(optIdx)}</span>
-                  <span className={`text-[15px] leading-relaxed text-slate-900 ${userAnswer === optIdx ? 'font-medium' : ''}`}>{opt}</span>
-                  {isReview && optIdx === q.correctAnswer && <Check className="w-4 h-4 text-green-600 ml-1 shrink-0" />}
-                  {isReview && userAnswer === optIdx && userAnswer !== q.correctAnswer && <X className="w-4 h-4 text-red-600 ml-1 shrink-0" />}
-                </label>
-              )
-            })}
-          </div>
-        )}
       </div>
     );
   };
 
   const renderExamContent = () => {
+    // ... (renderExamContent unchanged)
     if (!currentExam) return null;
     const nodes: React.ReactNode[] = [];
     let i = 0;
     while (i < currentExam.questions.length) {
       const q = currentExam.questions[i];
-
-      // Instruction - 仿真 TOPIK 试卷 ※ 格式
       if (q.instruction) {
         nodes.push(
-          <div key={`inst-${q.id}`} className="mb-8 mt-10 text-[16px] text-slate-900 font-medium">
-            <span className="mr-2">※</span>{q.instruction}
+          <div key={`inst-${q.id}`} className="mb-6 font-bold text-slate-800 text-[17px] bg-slate-100/50 p-2 rounded border-l-4 border-slate-800">
+            {q.instruction}
           </div>
         );
       }
-
-      // Grouping Logic (based on groupCount or similar patterns if explicit groupCount is missing)
-      // Note: The Admin Editor creates separate questions, but we need to know grouping.
-      // If groupCount exists, use it. Otherwise default to 1.
       const groupCount = q.groupCount && q.groupCount > 1 ? q.groupCount : 1;
-
       if (groupCount > 1) {
         const subQuestions = currentExam.questions.slice(i, i + groupCount);
         nodes.push(
           <div key={`group-${q.id}`} className="mb-12 break-inside-avoid">
-            {/* Only the first question in the group holds the shared passage/image */}
             {renderPassageContent(q)}
             <div className="pl-0 mt-6">
               {subQuestions.map(subQ => renderQuestionBlock(subQ, false, true))}
@@ -613,6 +615,7 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
   };
 
   const renderReviewHeader = () => {
+    // ... (renderReviewHeader unchanged)
     if (!currentExam || !currentReviewAttempt) return null;
     const correctQs: number[] = [];
     const wrongQs: number[] = [];
@@ -655,8 +658,11 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
     );
   };
 
+  // ... (rest of main render unchanged)
+
   // --- MAIN RENDER ---
   if (view === 'LIST') {
+    // ... (Unchanged LIST View code from original file)
     return (
       <div className="max-w-5xl mx-auto space-y-8">
         <div className="flex items-center justify-between mb-6">
@@ -670,7 +676,6 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
               Reading
             </h3>
             <div className="space-y-4">
-              {readingExams.length === 0 && <p className="text-slate-400 text-sm">No reading exams available.</p>}
               {readingExams.map(exam => {
                 const attempts = history.filter(h => h.examId === exam.id);
                 const hasAttempts = attempts.length > 0;
@@ -724,7 +729,6 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
               Listening
             </h3>
             <div className="space-y-4">
-              {listeningExams.length === 0 && <p className="text-slate-400 text-sm">No listening exams available.</p>}
               {listeningExams.map(exam => {
                 const attempts = history.filter(h => h.examId === exam.id);
                 const hasAttempts = attempts.length > 0;
@@ -776,6 +780,7 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
   }
 
   if (view === 'HISTORY_LIST' && currentExam) {
+    // ... (HISTORY_LIST view unchanged)
     const attempts = history.filter(h => h.examId === currentExam.id).sort((a, b) => b.timestamp - a.timestamp);
     return (
       <div className="max-w-3xl mx-auto space-y-6">
@@ -811,6 +816,7 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
   }
 
   if (view === 'COVER' && currentExam) {
+    // ... (COVER view unchanged)
     return (
       <div className="min-h-screen bg-slate-200 py-8 flex justify-center items-start">
         <div className="bg-white w-full max-w-[800px] shadow-2xl min-h-[1000px] p-12 border border-slate-300 relative">
@@ -864,13 +870,23 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
           <div className={`flex-1 overflow-y-auto p-4 lg:p-8 flex justify-center bg-slate-200 ${view === 'EXAM' ? 'select-none' : 'select-text'}`}>
             {/* THE PAPER */}
             <div className="bg-white w-full max-w-[850px] shadow-xl h-max min-h-[1200px] pb-20 border border-slate-300 relative text-black">
-              {/* Exam Header - 仿真 TOPIK 试卷样式 */}
-              <div className="pt-8 px-12 pb-6 mb-8">
+              {/* Exam Header */}
+              <div className="pt-12 px-12 pb-6 text-center border-b-2 border-black mb-8">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center space-x-1">
+                    <div className="bg-slate-800 text-white rounded-full p-1"><Trophy className="w-3 h-3" /></div><span className="font-bold">TOPIK</span>
+                  </div>
+                  <span className="text-sm text-slate-500">제{currentExam.round}회 한국어능력시험</span>
+                </div>
+                <div className="border-2 border-black rounded-full inline-block px-12 py-2 mb-6">
+                  <h1 className="text-3xl font-extrabold tracking-widest font-sans">TOPIK Ⅱ <span className="bg-black text-white rounded-full px-2 ml-2 text-2xl">B</span></h1>
+                </div>
                 <div className="flex justify-center">
-                  <div className="border-2 border-black rounded-[30px] px-10 py-3">
-                    <h1 className="text-2xl font-bold tracking-wide">
-                      TOPIK Ⅱ {currentExam.type === 'READING' ? '읽기' : '듣기'} (1번 ~ {currentExam.questions.length}번)
-                    </h1>
+                  <div className="flex border border-slate-400 bg-slate-100">
+                    <div className="px-6 py-2 border-r border-slate-400 font-bold bg-slate-200 text-lg">
+                      {currentExam.type === 'READING' ? '2교시' : '1교시'}
+                    </div>
+                    <div className="px-12 py-2 font-bold text-lg bg-slate-100">{currentExam.type === 'READING' ? '읽 기' : '듣 기'}</div>
                   </div>
                 </div>
               </div>
@@ -880,7 +896,7 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
                 {renderExamContent()}
               </div>
 
-              {/* Annotation Menu */}
+              {/* Annotation Menu (unchanged) */}
               {showAnnotationMenu && menuPosition && view === 'REVIEW' && (
                 <div
                   className="annotation-menu fixed z-50 bg-white shadow-xl border border-slate-200 rounded-xl p-4 w-72 animate-in zoom-in-95 duration-200 text-left"
@@ -956,6 +972,7 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
   }
 
   if (view === 'RESULT' && currentExam && currentReviewAttempt) {
+    // ... (RESULT view unchanged)
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-8 text-center animate-in zoom-in-95 duration-300">

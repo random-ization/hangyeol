@@ -58,10 +58,10 @@ const LearnModeView: React.FC<LearnModeViewProps> = React.memo(
 
     const generateDistractors = useCallback(
       (correctAnswer: string, count: number = 3): string[] => {
-        const pool = allWords.filter(
+        const pool: ExtendedVocabularyItem[] = allWords.filter(
           w => (currentQuestionType.includes('K_TO_N') ? w.english : w.korean) !== correctAnswer
         );
-        const shuffled = shuffleArray(pool);
+        const shuffled: ExtendedVocabularyItem[] = shuffleArray(pool);
         return shuffled
           .slice(0, count)
           .map(w => (currentQuestionType.includes('K_TO_N') ? w.english : w.korean));
@@ -187,15 +187,14 @@ const LearnModeView: React.FC<LearnModeViewProps> = React.memo(
                         key={idx}
                         onClick={() => !showFeedback && setSelectedAnswer(choice)}
                         disabled={showFeedback}
-                        className={`p-4 rounded-xl text-left font-medium transition-all ${
-                          showCorrect
+                        className={`p-4 rounded-xl text-left font-medium transition-all ${showCorrect
                             ? 'bg-emerald-100 border-2 border-emerald-500 text-emerald-700'
                             : showWrong
                               ? 'bg-red-100 border-2 border-red-500 text-red-700'
                               : isSelected
                                 ? 'bg-white border-2 border-indigo-500 text-indigo-700'
                                 : 'bg-white border border-slate-300 hover:border-indigo-300 text-slate-700'
-                        } ${showFeedback ? 'cursor-default' : 'cursor-pointer'}`}
+                          } ${showFeedback ? 'cursor-default' : 'cursor-pointer'}`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-lg">{choice}</span>
@@ -216,13 +215,12 @@ const LearnModeView: React.FC<LearnModeViewProps> = React.memo(
                     onKeyPress={e => e.key === 'Enter' && !showFeedback && checkAnswer()}
                     disabled={showFeedback}
                     placeholder={labels.typeAnswer || 'Type your answer...'}
-                    className={`w-full p-4 text-lg rounded-xl border-2 transition-all ${
-                      showFeedback
+                    className={`w-full p-4 text-lg rounded-xl border-2 transition-all ${showFeedback
                         ? isCorrect
                           ? 'border-emerald-500 bg-emerald-50'
                           : 'border-red-500 bg-red-50'
                         : 'border-slate-300 focus:border-indigo-500'
-                    } focus:outline-none`}
+                      } focus:outline-none`}
                     autoFocus
                   />
                   {showFeedback && !isCorrect && (
@@ -254,11 +252,10 @@ const LearnModeView: React.FC<LearnModeViewProps> = React.memo(
               ) : (
                 <button
                   onClick={handleNext}
-                  className={`px-8 py-3 font-bold rounded-xl transition-all flex items-center gap-2 ${
-                    isCorrect
+                  className={`px-8 py-3 font-bold rounded-xl transition-all flex items-center gap-2 ${isCorrect
                       ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
                       : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                  }`}
+                    }`}
                 >
                   {learnIndex < learnQueue.length - 1 ? (
                     <>

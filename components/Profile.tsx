@@ -81,7 +81,7 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
     setIsUploadingAvatar(true);
     try {
       const result = await api.uploadAvatar(file);
-      updateUser({ avatar: result.avatarUrl });
+      updateUser({ avatar: result.url });
       success(labels.avatarUpdated);
     } catch (err) {
       error('Failed to upload avatar');
@@ -106,7 +106,7 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
 
     setIsChangingPassword(true);
     try {
-      await api.changePassword(currentPassword, newPassword);
+      await api.changePassword({ currentPassword, newPassword });
       success(labels.passwordUpdated);
       setCurrentPassword('');
       setNewPassword('');
@@ -129,9 +129,9 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
   const averageScore =
     examsTaken > 0
       ? Math.round(
-          examHistory.reduce((sum, exam) => sum + (exam.score / exam.maxScore) * 100, 0) /
-            examsTaken
-        )
+        examHistory.reduce((sum, exam) => sum + (exam.score / exam.maxScore) * 100, 0) /
+        examsTaken
+      )
       : 0;
 
   const daysSinceJoin = Math.floor((Date.now() - user.joinDate) / (1000 * 60 * 60 * 24));
@@ -245,9 +245,8 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
                 {labels.joinedDate}: {new Date(user.joinDate).toLocaleDateString()}
               </span>
               <span
-                className={`flex items-center gap-1 px-3 py-1 rounded-full font-medium ${
-                  user.tier === 'PAID' ? 'bg-amber-400 text-amber-900' : 'bg-white/20 text-white'
-                }`}
+                className={`flex items-center gap-1 px-3 py-1 rounded-full font-medium ${user.tier === 'PAID' ? 'bg-amber-400 text-amber-900' : 'bg-white/20 text-white'
+                  }`}
               >
                 {user.tier === 'PAID' && <Crown size={14} />}
                 {getMembershipLabel()}
@@ -268,11 +267,10 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
         <div className="flex border-b border-slate-200">
           <button
             onClick={() => setActiveTab('info')}
-            className={`flex-1 px-6 py-4 font-medium transition-colors ${
-              activeTab === 'info'
+            className={`flex-1 px-6 py-4 font-medium transition-colors ${activeTab === 'info'
                 ? 'text-indigo-600 border-b-2 border-indigo-600'
                 : 'text-slate-600 hover:text-slate-900'
-            }`}
+              }`}
           >
             <div className="flex items-center justify-center gap-2">
               <UserIcon size={20} />
@@ -281,11 +279,10 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
           </button>
           <button
             onClick={() => setActiveTab('security')}
-            className={`flex-1 px-6 py-4 font-medium transition-colors ${
-              activeTab === 'security'
+            className={`flex-1 px-6 py-4 font-medium transition-colors ${activeTab === 'security'
                 ? 'text-indigo-600 border-b-2 border-indigo-600'
                 : 'text-slate-600 hover:text-slate-900'
-            }`}
+              }`}
           >
             <div className="flex items-center justify-center gap-2">
               <Lock size={20} />
@@ -294,11 +291,10 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
           </button>
           <button
             onClick={() => setActiveTab('stats')}
-            className={`flex-1 px-6 py-4 font-medium transition-colors ${
-              activeTab === 'stats'
+            className={`flex-1 px-6 py-4 font-medium transition-colors ${activeTab === 'stats'
                 ? 'text-indigo-600 border-b-2 border-indigo-600'
                 : 'text-slate-600 hover:text-slate-900'
-            }`}
+              }`}
           >
             <div className="flex items-center justify-center gap-2">
               <BarChart3 size={20} />
@@ -344,11 +340,10 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
                 </label>
                 <div className="space-y-3">
                   <div
-                    className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium ${
-                      user.tier === 'PAID'
+                    className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium ${user.tier === 'PAID'
                         ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300'
                         : 'bg-slate-50 border-2 border-slate-200'
-                    }`}
+                      }`}
                   >
                     {user.tier === 'PAID' && <Crown className="text-amber-600" size={20} />}
                     <span className={user.tier === 'PAID' ? 'text-amber-900' : 'text-slate-700'}>
@@ -567,9 +562,8 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
                         >
                           <div className="flex items-center gap-4">
                             <div
-                              className={`p-2 rounded-lg ${
-                                passed ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-                              }`}
+                              className={`p-2 rounded-lg ${passed ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                                }`}
                             >
                               {passed ? <CheckCircle size={24} /> : <XCircle size={24} />}
                             </div>

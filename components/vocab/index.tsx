@@ -186,7 +186,8 @@ const VocabModule: React.FC<VocabModuleProps> = ({
     );
   }
 
-  const availableUnits = Array.from(new Set(allWords.map(w => w.unit))).sort((a, b) => a - b);
+  const availableUnits: number[] = Array.from(new Set(allWords.map(w => w.unit).filter((u): u is number => typeof u === 'number')));
+  availableUnits.sort((a, b) => a - b);
 
   if (allWords.length === 0) {
     return (
@@ -257,11 +258,10 @@ const VocabModule: React.FC<VocabModuleProps> = ({
               setViewMode('CARDS');
               setIsSessionComplete(false);
             }}
-            className={`flex-1 lg:flex-none flex items-center justify-center px-4 py-2 rounded-md transition-all whitespace-nowrap ${
-              viewMode === 'CARDS'
-                ? 'bg-white text-indigo-700 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
+            className={`flex-1 lg:flex-none flex items-center justify-center px-4 py-2 rounded-md transition-all whitespace-nowrap ${viewMode === 'CARDS'
+              ? 'bg-white text-indigo-700 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700'
+              }`}
           >
             <Layers className="w-4 h-4 mr-2" />
             {labels.flashcards}
@@ -271,11 +271,10 @@ const VocabModule: React.FC<VocabModuleProps> = ({
               setViewMode('LEARN');
               setIsSessionComplete(false);
             }}
-            className={`flex-1 lg:flex-none flex items-center justify-center px-4 py-2 rounded-md transition-all whitespace-nowrap ${
-              viewMode === 'LEARN'
-                ? 'bg-white text-indigo-700 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
+            className={`flex-1 lg:flex-none flex items-center justify-center px-4 py-2 rounded-md transition-all whitespace-nowrap ${viewMode === 'LEARN'
+              ? 'bg-white text-indigo-700 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700'
+              }`}
           >
             <Brain className="w-4 h-4 mr-2" />
             {labels.learn}
@@ -285,11 +284,10 @@ const VocabModule: React.FC<VocabModuleProps> = ({
               setViewMode('LIST');
               setIsSessionComplete(false);
             }}
-            className={`flex-1 lg:flex-none flex items-center justify-center px-4 py-2 rounded-md transition-all whitespace-nowrap ${
-              viewMode === 'LIST'
-                ? 'bg-white text-indigo-700 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
+            className={`flex-1 lg:flex-none flex items-center justify-center px-4 py-2 rounded-md transition-all whitespace-nowrap ${viewMode === 'LIST'
+              ? 'bg-white text-indigo-700 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700'
+              }`}
           >
             <ListIcon className="w-4 h-4 mr-2" />
             {labels.list}

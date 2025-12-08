@@ -797,7 +797,8 @@ const VocabModule: React.FC<VocabModuleProps> = ({
     );
   }
 
-  const availableUnits = Array.from(new Set(allWords.map(w => w.unit))).sort((a, b) => a - b);
+  const availableUnits: number[] = Array.from(new Set(allWords.map(w => w.unit).filter((u): u is number => typeof u === 'number')));
+  availableUnits.sort((a, b) => a - b);
 
   if (allWords.length === 0) {
     return (
@@ -1171,7 +1172,7 @@ const VocabModule: React.FC<VocabModuleProps> = ({
                 <h3 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-4 text-center">
                   {/* If Prompt is Korean */}
                   {currentQuestionType === 'CHOICE_K_TO_N' ||
-                  currentQuestionType === 'WRITING_K_TO_N'
+                    currentQuestionType === 'WRITING_K_TO_N'
                     ? currentLearnItem.korean
                     : currentLearnItem.english}
                 </h3>
@@ -1180,13 +1181,13 @@ const VocabModule: React.FC<VocabModuleProps> = ({
                 {(currentQuestionType === 'CHOICE_K_TO_N' ||
                   currentQuestionType === 'WRITING_K_TO_N' ||
                   settings.flashcard.autoTTS) && (
-                  <button
-                    className="p-2 rounded-full bg-white/50 hover:bg-white text-slate-700 transition-colors"
-                    onClick={() => speak(currentLearnItem.korean)}
-                  >
-                    <Volume2 className="w-6 h-6" />
-                  </button>
-                )}
+                    <button
+                      className="p-2 rounded-full bg-white/50 hover:bg-white text-slate-700 transition-colors"
+                      onClick={() => speak(currentLearnItem.korean)}
+                    >
+                      <Volume2 className="w-6 h-6" />
+                    </button>
+                  )}
               </div>
 
               {/* Options / Input Area */}
@@ -1235,13 +1236,12 @@ const VocabModule: React.FC<VocabModuleProps> = ({
                             : labels.typeMeaning
                         }
                         disabled={quizState !== 'QUESTION'}
-                        className={`w-full p-4 pr-12 text-xl font-bold text-center rounded-xl border-2 outline-none shadow-sm transition-all ${
-                          quizState === 'CORRECT'
+                        className={`w-full p-4 pr-12 text-xl font-bold text-center rounded-xl border-2 outline-none shadow-sm transition-all ${quizState === 'CORRECT'
                             ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                             : quizState === 'WRONG'
                               ? 'border-red-500 bg-red-50 text-red-700'
                               : 'border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10'
-                        }`}
+                          }`}
                         autoFocus
                       />
                       <button

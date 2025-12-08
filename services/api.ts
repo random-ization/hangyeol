@@ -61,7 +61,7 @@ export async function request<T = any>(path: string, opts: RequestInit = {}): Pr
 // 单一的 api 导出对象 —— 把所有前端需要调用的接口方法都放在这里
 export const api = {
   // --- Auth ---
-  register: async (data: { email: string; password: string }) =>
+  register: async (data: { name?: string; email: string; password: string }) =>
     request('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -151,7 +151,79 @@ export const api = {
     return (await res.json()) as { url: string };
   },
 
+  // --- User Learning Data ---
+  saveWord: async (word: any) =>
+    request('/user/word', {
+      method: 'POST',
+      body: JSON.stringify(word),
+    }),
+
+  saveMistake: async (word: any) =>
+    request('/user/mistake', {
+      method: 'POST',
+      body: JSON.stringify(word),
+    }),
+
+  saveAnnotation: async (annotation: any) =>
+    request('/user/annotation', {
+      method: 'POST',
+      body: JSON.stringify(annotation),
+    }),
+
+  saveExamAttempt: async (attempt: any) =>
+    request('/user/exam', {
+      method: 'POST',
+      body: JSON.stringify(attempt),
+    }),
+
+  logActivity: async (activityType: string, duration?: number, itemsStudied?: number, metadata?: any) =>
+    request('/user/activity', {
+      method: 'POST',
+      body: JSON.stringify({ activityType, duration, itemsStudied, metadata }),
+    }),
+
+  updateLearningProgress: async (progress: any) =>
+    request('/user/progress', {
+      method: 'POST',
+      body: JSON.stringify(progress),
+    }),
+
+  // --- Profile ---
+  updateProfile: async (updates: { name?: string; email?: string }) =>
+    request('/user/profile', {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    }),
+
+  uploadAvatar: async (file: File): Promise<{ url: string }> => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const token = getTokenFromStorage();
+
+    const res = await fetch(`${API_URL}/user/avatar`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      } as any,
+      body: formData,
+      credentials: 'same-origin',
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(errText || 'Upload failed');
+    }
+    return (await res.json()) as { url: string };
+  },
+
+  changePassword: async (data: { currentPassword: string; newPassword: string }) =>
+    request('/user/password', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
   // 其余 api 方法按需添加，务必使用上面的 request(...) 以确保 Authorization 被正确注入
 };
 
 export default api; // 如果项目里有使用 default import 的地方，保留 default 导出；否则可删
+

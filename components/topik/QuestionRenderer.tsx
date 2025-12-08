@@ -13,6 +13,7 @@ interface QuestionRendererProps {
   onAnswerChange?: (optionIndex: number) => void;
   onTextSelect?: () => void;
   annotations?: Annotation[];
+  activeAnnotationId?: string | null;
   contextPrefix?: string;
 }
 
@@ -35,12 +36,36 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
     onTextSelect,
     annotations = [],
     contextPrefix = '',
+    activeAnnotationId,
   }) => {
     const labels = useMemo(() => getLabels(language), [language]);
     const contextKey = useMemo(
       () => `${contextPrefix}-Q${questionIndex}`,
       [contextPrefix, questionIndex]
     );
+
+    // Helper for highlight styles
+    const getHighlightClass = (color: string = 'yellow', isActive: boolean) => {
+      const base = "box-decoration-clone cursor-pointer transition-all duration-200 px-0.5 rounded-sm ";
+      if (isActive) {
+        // Active: Full highlight
+        switch (color) {
+          case 'green': return base + 'bg-green-300 text-green-900';
+          case 'blue': return base + 'bg-blue-300 text-blue-900';
+          case 'pink': return base + 'bg-pink-300 text-pink-900';
+          case 'yellow': default: return base + 'bg-yellow-300 text-yellow-900';
+        }
+      } else {
+        // Inactive: Underline only
+        switch (color) {
+          case 'green': return base + 'bg-transparent border-b-2 border-green-500 hover:bg-green-50';
+          case 'blue': return base + 'bg-transparent border-b-2 border-blue-500 hover:bg-blue-50';
+          case 'pink': return base + 'bg-transparent border-b-2 border-pink-500 hover:bg-pink-50';
+          // User specifically requested yellow underline
+          case 'yellow': default: return base + 'bg-transparent border-b-2 border-yellow-500 hover:bg-yellow-50';
+        }
+      }
+    };
 
     // Get annotations for this question
     const questionAnnotations = useMemo(
@@ -59,23 +84,21 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
           const annotatedText = annotation.text || annotation.selectedText;
           if (!annotatedText) return;
 
-          const colorMap: Record<string, string> = {
-            green: 'bg-green-200',
-            blue: 'bg-blue-200',
-            pink: 'bg-pink-200',
-            yellow: 'bg-yellow-200'
-          };
-          const highlightClass = colorMap[annotation.color || 'yellow'] || 'bg-yellow-200';
+          const isActive = activeAnnotationId === annotation.id ||
+            (annotation.id === 'temp' && !activeAnnotationId); // Temp is always active-ish? Or just default
+
+          const className = getHighlightClass(annotation.color || 'yellow', isActive);
 
           const regex = new RegExp(
             `(${annotatedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`,
             'gi'
           );
-          result = result.replace(regex, `<mark class="${highlightClass} px-0.5">$1</mark>`);
+          // Add data-annotation-id for positioning
+          result = result.replace(regex, `<mark data-annotation-id="${annotation.id}" class="${className}">$1</mark>`);
         });
         return result;
       },
-      [questionAnnotations]
+      [questionAnnotations, activeAnnotationId]
     );
 
     // Determine if answer is correct/incorrect
@@ -146,9 +169,10 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
                 let optionClass = `flex items-start gap-2 ${cursorStyle} py-2 px-3 rounded transition-all border select-text `;
 
                 if (status === 'correct') {
-                  optionClass += "bg-green-50 border-green-400 text-green-900";
+                  // User requested to remove box/border styles, keeping only text color and icon
+                  optionClass += "border-transparent text-green-700 font-medium";
                 } else if (status === 'incorrect') {
-                  optionClass += "bg-red-50 border-2 border-red-500 text-red-900";
+                  optionClass += "border-transparent text-red-700 font-medium";
                 } else if (isSelected) {
                   optionClass += "bg-indigo-50 border-indigo-300 text-indigo-900";
                 } else {

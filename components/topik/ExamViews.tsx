@@ -273,6 +273,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
     const [selectionContextKey, setSelectionContextKey] = useState('');
     const [noteInput, setNoteInput] = useState('');
     const [selectedColor, setSelectedColor] = useState<'yellow' | 'green' | 'blue' | 'pink'>('yellow');
+    const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null);
 
     // Available highlight colors
     const COLORS = [
@@ -304,20 +305,40 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
       setSelectionContextKey(contextKey);
       setMenuPosition({ top: rect.bottom + 10, left: rect.left });
       setShowAnnotationMenu(true);
-      setNoteInput('');
+
+      // Check for existing annotation to pre-fill
+      const existing = annotations.find(a =>
+        a.contextKey === contextKey &&
+        (a.text === selectedText || a.selectedText === selectedText)
+      );
+
+      if (existing) {
+        setNoteInput(existing.note || '');
+        if (existing.color) setSelectedColor(existing.color as any);
+        setActiveAnnotationId(existing.id);
+      } else {
+        setNoteInput('');
+        setActiveAnnotationId(null);
+      }
     };
 
     // Save annotation
     const saveAnnotation = async () => {
       if (!selectionText || !noteInput.trim()) return;
 
+      // Check if updating existing
+      const existing = annotations.find(a =>
+        a.contextKey === selectionContextKey &&
+        (a.text === selectionText || a.selectedText === selectionText)
+      );
+
       const annotation: Annotation = {
-        id: Date.now().toString(),
+        id: existing ? existing.id : Date.now().toString(),
         contextKey: selectionContextKey,
         text: selectionText,
         note: noteInput,
         color: selectedColor,
-        timestamp: Date.now(),
+        timestamp: existing ? existing.timestamp : Date.now(),
       };
 
       try {
@@ -329,7 +350,58 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
       setShowAnnotationMenu(false);
       setNoteInput('');
       setSelectionText('');
+      setActiveAnnotationId(null);
       window.getSelection()?.removeAllRanges();
+    };
+
+    const handleEditAnnotation = (ann: Annotation) => {
+      setSelectionText(ann.text || ann.selectedText || '');
+      setSelectionContextKey(ann.contextKey);
+      setNoteInput(ann.note || '');
+      if (ann.color) setSelectedColor(ann.color as any);
+      setActiveAnnotationId(ann.id);
+
+      // Find element to position menu
+      // We will update QuestionRenderer to add id={`annotation-${ann.id}`}
+      // We look across all refs? No, just document query
+      // The content might be in a QuestionRenderer
+
+      // We schedule this after a small delay or immediately try
+      setTimeout(() => {
+        // Try to find the mark/span
+        // Note: We need to update QuestionRenderer to add IDs to the highlights
+        // Currently it might not have them. We will add them next.
+        // Assuming ID format: `annotation-highlight-${ann.id}`
+        // Ideally we find the *first* occurrence
+        const el = document.querySelector(`[data-annotation-id="${ann.id}"]`);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          setMenuPosition({ top: rect.bottom + 10, left: rect.left });
+          setShowAnnotationMenu(true);
+        } else {
+          // Fallback or just show menu in center? 
+          // If element not seen, maybe scroll to it?
+          // For now, if not found, we might just show it relative to sidebar? No.
+          // Let's assume it will be found if we are reviewing.
+          setShowAnnotationMenu(true);
+          // Fallback position if needed, but let's hope it's visible. 
+          // If not visible, we can't place it correctly.
+          // Auto-scroll to it first?
+          const qIndexStr = ann.contextKey.split('-Q')[1];
+          if (qIndexStr) {
+            const qIdx = parseInt(qIndexStr);
+            questionRefs.current[qIdx]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Retry finding element after scroll?
+            setTimeout(() => {
+              const elRetry = document.querySelector(`[data-annotation-id="${ann.id}"]`);
+              if (elRetry) {
+                const rect = elRetry.getBoundingClientRect();
+                setMenuPosition({ top: rect.bottom + 10, left: rect.left });
+              }
+            }, 500);
+          }
+        }
+      }, 0);
     };
 
     // Delete annotation
@@ -426,6 +498,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
                       }
                       contextPrefix={`TOPIK-${exam.id}`}
                       onTextSelect={() => handleTextSelect(idx)}
+                      activeAnnotationId={activeAnnotationId}
                     />
                   </div>
                 </div>
@@ -451,18 +524,32 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
                   {sidebarAnnotations.map((ann) => (
                     <div
                       key={ann.id}
-                      className="p-3 rounded-lg border border-slate-200 bg-yellow-50 hover:border-yellow-300 transition-colors group"
+                      className={`p-3 rounded-lg border transition-colors group relative ${activeAnnotationId === ann.id
+                        ? 'bg-yellow-100 border-yellow-400'
+                        : 'bg-yellow-50 border-slate-200 hover:border-yellow-300'
+                        }`}
+                      onMouseEnter={() => setActiveAnnotationId(ann.id)}
+                      onMouseLeave={() => setActiveAnnotationId(null)}
                     >
                       <div className="text-xs text-slate-500 mb-1 italic line-clamp-2">
                         "{ann.text}"
                       </div>
                       <div className="text-sm text-slate-700 font-medium">{ann.note}</div>
-                      <button
-                        onClick={() => deleteAnnotation(ann.id)}
-                        className="mt-2 text-xs text-red-500 hover:text-red-600 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 className="w-3 h-3" /> 删除
-                      </button>
+
+                      <div className="flex gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                        <button
+                          onClick={() => handleEditAnnotation(ann)}
+                          className="text-xs text-indigo-500 hover:text-indigo-600 flex items-center gap-1"
+                        >
+                          <MessageSquare className="w-3 h-3" /> 编辑
+                        </button>
+                        <button
+                          onClick={() => deleteAnnotation(ann.id)}
+                          className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3 h-3" /> 删除
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -507,6 +594,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
               <button
                 onClick={() => {
                   setShowAnnotationMenu(false);
+                  setActiveAnnotationId(null);
                   window.getSelection()?.removeAllRanges();
                 }}
                 className="text-slate-400 hover:text-slate-600"
@@ -544,6 +632,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
               <button
                 onClick={() => {
                   setShowAnnotationMenu(false);
+                  setActiveAnnotationId(null);
                   window.getSelection()?.removeAllRanges();
                 }}
                 className="px-3 py-1.5 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600"

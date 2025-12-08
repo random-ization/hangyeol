@@ -593,11 +593,11 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
     while (i < currentExam.questions.length) {
       const q = currentExam.questions[i];
 
-      // Instruction
+      // Instruction - 仿真 TOPIK 试卷 ※ 格式
       if (q.instruction) {
         nodes.push(
-          <div key={`inst-${q.id}`} className="mb-6 font-bold text-slate-800 text-[17px] bg-slate-100/50 p-2 rounded border-l-4 border-slate-800">
-            {q.instruction}
+          <div key={`inst-${q.id}`} className="mb-8 mt-10 text-[16px] text-slate-900 font-medium">
+            <span className="mr-2">※</span>{q.instruction}
           </div>
         );
       }
@@ -879,23 +879,13 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
           <div className={`flex-1 overflow-y-auto p-4 lg:p-8 flex justify-center bg-slate-200 ${view === 'EXAM' ? 'select-none' : 'select-text'}`}>
             {/* THE PAPER */}
             <div className="bg-white w-full max-w-[850px] shadow-xl h-max min-h-[1200px] pb-20 border border-slate-300 relative text-black">
-              {/* Exam Header */}
-              <div className="pt-12 px-12 pb-6 text-center border-b-2 border-black mb-8">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center space-x-1">
-                    <div className="bg-slate-800 text-white rounded-full p-1"><Trophy className="w-3 h-3" /></div><span className="font-bold">TOPIK</span>
-                  </div>
-                  <span className="text-sm text-slate-500">제{currentExam.round}회 한국어능력시험</span>
-                </div>
-                <div className="border-2 border-black rounded-full inline-block px-12 py-2 mb-6">
-                  <h1 className="text-3xl font-extrabold tracking-widest font-sans">TOPIK Ⅱ <span className="bg-black text-white rounded-full px-2 ml-2 text-2xl">{currentExam.paperType || 'B'}</span></h1>
-                </div>
+              {/* Exam Header - 仿真 TOPIK 试卷样式 */}
+              <div className="pt-8 px-12 pb-6 mb-8">
                 <div className="flex justify-center">
-                  <div className="flex border border-slate-400 bg-slate-100">
-                    <div className="px-6 py-2 border-r border-slate-400 font-bold bg-slate-200 text-lg">
-                      {currentExam.type === 'READING' ? '2교시' : '1교시'}
-                    </div>
-                    <div className="px-12 py-2 font-bold text-lg bg-slate-100">{currentExam.type === 'READING' ? '읽 기' : '듣 기'}</div>
+                  <div className="border-2 border-black rounded-[30px] px-10 py-3">
+                    <h1 className="text-2xl font-bold tracking-wide">
+                      TOPIK Ⅱ {currentExam.type === 'READING' ? '읽기' : '듣기'} (1번 ~ {currentExam.questions.length}번)
+                    </h1>
                   </div>
                 </div>
               </div>

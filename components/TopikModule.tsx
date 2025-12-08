@@ -133,23 +133,24 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
     }
   }, []);
 
-  const getCircleNumber = (num: number) => {
+  // ✅ 优化: useMemo 缓存静态映射函数
+  const getCircleNumber = useMemo(() => {
     const map = ['①', '②', '③', '④'];
-    return map[num] || `${num + 1}`;
-  };
+    return (num: number) => map[num] || `${num + 1}`;
+  }, []);
 
-  const viewHistoryList = (examId: string) => {
-    // Find attempts for this exam
+  // ✅ 优化: useCallback 包装导航函数
+  const viewHistoryList = useCallback((examId: string) => {
     setCurrentExam(exams.find(e => e.id === examId) || null);
     setView('HISTORY_LIST');
-  };
+  }, [exams]);
 
-  const openReview = (attempt: ExamAttempt) => {
+  const openReview = useCallback((attempt: ExamAttempt) => {
     setCurrentReviewAttempt(attempt);
     setCurrentExam(exams.find(e => e.id === attempt.examId) || null);
-    setUserAnswers(attempt.userAnswers); // Load saved answers for display
+    setUserAnswers(attempt.userAnswers);
     setView('REVIEW');
-  };
+  }, [exams]);
 
   // --- Annotation Handlers ---
   const handleTextSelection = (contextKey: string) => {

@@ -226,16 +226,28 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
   const handleAddTextbook = async () => {
     if (!newTextbookName.trim()) return;
 
+    // Defensive check
+    if (typeof onAddInstitute !== 'function') {
+      console.error('onAddInstitute is not a function:', onAddInstitute);
+      alert('Error: Add function not available. Please refresh the page.');
+      return;
+    }
+
     const levels: LevelConfig[] = Array.from({ length: newLevelCount }, (_, i) => ({
       level: i + 1,
       units: newUnitsPerLevel,
     }));
 
-    await onAddInstitute(newTextbookName.trim(), levels);
-    setNewTextbookName('');
-    setNewLevelCount(6);
-    setNewUnitsPerLevel(10);
-    setShowAddModal(false);
+    try {
+      await onAddInstitute(newTextbookName.trim(), levels);
+      setNewTextbookName('');
+      setNewLevelCount(6);
+      setNewUnitsPerLevel(10);
+      setShowAddModal(false);
+    } catch (err) {
+      console.error('Failed to create textbook:', err);
+      alert('Failed to create textbook. Please check if the backend server is running.');
+    }
   };
 
   // Load existing content when tab or selection changes

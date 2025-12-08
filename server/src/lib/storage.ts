@@ -19,7 +19,23 @@ const s3Config = new S3Client({
 // 2. 定义允许的文件类型
 const ALLOWED_MIME_TYPES: Record<string, string[]> = {
   avatar: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-  media: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-m4a'],
+  media: [
+    // Images
+    'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+    // Audio - comprehensive list for TOPIK listening exams
+    'audio/mpeg',        // MP3
+    'audio/mp3',         // MP3 (non-standard but sometimes used)
+    'audio/wav',         // WAV
+    'audio/wave',        // WAV alternative
+    'audio/x-wav',       // WAV alternative
+    'audio/x-m4a',       // M4A
+    'audio/m4a',         // M4A alternative
+    'audio/mp4',         // M4A/MP4 audio
+    'audio/aac',         // AAC
+    'audio/ogg',         // OGG
+    'audio/webm',        // WebM audio
+    'audio/flac',        // FLAC
+  ],
 };
 
 // 3. 创建通用上传器生成函数
@@ -42,7 +58,7 @@ const createUploader = (folder: string, type: 'avatar' | 'media') => {
         cb(null, `${folder}/${year}/${month}/${uniqueSuffix}${ext}`);
       },
     }),
-    limits: { fileSize: type === 'media' ? 20 * 1024 * 1024 : 5 * 1024 * 1024 }, // 媒体20MB，头像5MB
+    limits: { fileSize: type === 'media' ? 100 * 1024 * 1024 : 5 * 1024 * 1024 }, // 媒体100MB（TOPIK听力），头像5MB
     fileFilter: (req, file, cb) => {
       if (ALLOWED_MIME_TYPES[type].includes(file.mimetype)) {
         cb(null, true);

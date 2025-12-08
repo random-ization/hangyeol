@@ -132,8 +132,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, onLoginSuc
         newItem = vocabItem as VocabularyItem;
       }
 
-      const updatedSavedWords = [...user.savedWords, newItem];
-      setUser({ ...user, savedWords: updatedSavedWords });
+      // Use functional update to prevent race conditions
+      setUser(prev => {
+        if (!prev) return prev;
+        return { ...prev, savedWords: [...prev.savedWords, newItem] };
+      });
 
       try {
         await api.saveWord(newItem);
@@ -141,28 +144,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, onLoginSuc
         console.error('Failed to save word', e);
       }
     },
-    [user]
+    []
   );
 
   const recordMistake = useCallback(
     async (word: VocabularyItem) => {
-      if (!user) return;
-      const updatedMistakes = [...user.mistakes, word];
-      setUser({ ...user, mistakes: updatedMistakes });
+      // Use functional update to prevent race conditions
+      setUser(prev => {
+        if (!prev) return prev;
+        return { ...prev, mistakes: [...prev.mistakes, word] };
+      });
       try {
         await api.saveMistake(word);
       } catch (e) {
         console.error(e);
       }
     },
-    [user]
+    []
   );
 
   const clearMistakes = useCallback(() => {
-    if (user && window.confirm('Are you sure?')) {
-      setUser({ ...user, mistakes: [] });
+    if (window.confirm('Are you sure?')) {
+      setUser(prev => prev ? { ...prev, mistakes: [] } : prev);
     }
-  }, [user]);
+  }, []);
 
   const saveAnnotation = useCallback(
     async (annotation: Annotation) => {
@@ -198,9 +203,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, onLoginSuc
 
   const saveExamAttempt = useCallback(
     async (attempt: ExamAttempt) => {
-      if (!user) return;
-      const updatedHistory = [...(user.examHistory || []), attempt];
-      setUser({ ...user, examHistory: updatedHistory });
+      // Use functional update to prevent race conditions
+      setUser(prev => {
+        if (!prev) return prev;
+        return { ...prev, examHistory: [...(prev.examHistory || []), attempt] };
+      });
       try {
         await api.saveExamAttempt(attempt);
         // Log exam activity
@@ -212,7 +219,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, onLoginSuc
         console.error(e);
       }
     },
-    [user]
+    []
   );
 
   const deleteExamAttempt = useCallback(
@@ -253,7 +260,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, onLoginSuc
 
   const updateLearningProgress = useCallback(
     async (institute: string, level: number, unit?: number, module?: string) => {
-      if (!user) return;
       try {
         await api.updateLearningProgress({
           lastInstitute: institute,
@@ -261,18 +267,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, onLoginSuc
           lastUnit: unit,
           lastModule: module,
         });
-        setUser({
-          ...user,
-          lastInstitute: institute,
-          lastLevel: level,
-          lastUnit: unit,
-          lastModule: module,
+        // Use functional update to prevent race conditions
+        setUser(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            lastInstitute: institute,
+            lastLevel: level,
+            lastUnit: unit,
+            lastModule: module,
+          };
         });
       } catch (e) {
         console.error('Failed to update learning progress', e);
       }
     },
-    [user]
+    []
   );
 
   const canAccessContent = useCallback(

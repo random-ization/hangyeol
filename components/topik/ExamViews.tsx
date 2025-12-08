@@ -365,47 +365,63 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
       if (ann.color) setSelectedColor(ann.color as any);
       setActiveAnnotationId(ann.id);
 
-      // Find element to position menu
-      // We will update QuestionRenderer to add id={`annotation-${ann.id}`}
-      // We look across all refs? No, just document query
-      // The content might be in a QuestionRenderer
-
-      // We schedule this after a small delay or immediately try
-      setTimeout(() => {
-        // Try to find the mark/span
-        // Note: We need to update QuestionRenderer to add IDs to the highlights
-        // Currently it might not have them. We will add them next.
-        // Assuming ID format: `annotation-highlight-${ann.id}`
-        // Ideally we find the *first* occurrence
+      // Helper to position menu
+      const positionMenu = () => {
         const el = document.querySelector(`[data-annotation-id="${ann.id}"]`);
         if (el) {
           const rect = el.getBoundingClientRect();
           setMenuPosition({ top: rect.bottom + 10, left: rect.left });
           setShowAnnotationMenu(true);
+          // Scroll into view if needed
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } else {
-          // Fallback or just show menu in center? 
-          // If element not seen, maybe scroll to it?
-          // For now, if not found, we might just show it relative to sidebar? No.
-          // Let's assume it will be found if we are reviewing.
-          setShowAnnotationMenu(true);
-          // Fallback position if needed, but let's hope it's visible. 
-          // If not visible, we can't place it correctly.
-          // Auto-scroll to it first?
+          // If precise highlight not found, try to locate the question container
           const qIndexStr = ann.contextKey.split('-Q')[1];
           if (qIndexStr) {
             const qIdx = parseInt(qIndexStr);
-            questionRefs.current[qIdx]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Retry finding element after scroll?
-            setTimeout(() => {
-              const elRetry = document.querySelector(`[data-annotation-id="${ann.id}"]`);
-              if (elRetry) {
-                const rect = elRetry.getBoundingClientRect();
-                setMenuPosition({ top: rect.bottom + 10, left: rect.left });
-              }
-            }, 500);
+            const questionEl = questionRefs.current[qIdx];
+
+            if (questionEl) {
+              questionEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              const rect = questionEl.getBoundingClientRect();
+              // Position in the center of the question container as fallback
+              setMenuPosition({
+                top: rect.top + (rect.height / 2),
+                left: rect.left + (rect.width / 2)
+              });
+              setShowAnnotationMenu(true);
+            } else {
+              // Last resort: show in center of screen
+              const viewportWidth = window.innerWidth;
+              const viewportHeight = window.innerHeight;
+              setMenuPosition({
+                top: viewportHeight / 2,
+                left: viewportWidth / 2 - 144 // Half of menu width (approx 288px)
+              });
+              setShowAnnotationMenu(true);
+            }
           }
         }
-      }, 0);
+      };
+
+      // Try immediately
+      const el = document.querySelector(`[data-annotation-id="${ann.id}"]`);
+      if (el) {
+        positionMenu();
+      } else {
+        // If not found, maybe it's off screen or needs scroll?
+        // Let's scroll to question first then try to find it
+        const qIndexStr = ann.contextKey.split('-Q')[1];
+        if (qIndexStr) {
+          const qIdx = parseInt(qIndexStr);
+          questionRefs.current[qIdx]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+          // Wait for scroll/render?
+          setTimeout(positionMenu, 300);
+        } else {
+          positionMenu();
+        }
+      }
     };
 
     // Delete annotation

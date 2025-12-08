@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Institute,
   Language,
@@ -72,12 +72,105 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
   interface ContentEntry {
     text: string;
     translation: string;
+    audioUrl?: string; // Restored
   }
   const [readingEntries, setReadingEntries] = useState<ContentEntry[]>([{ text: '', translation: '' }]);
   const [listeningEntries, setListeningEntries] = useState<ContentEntry[]>([{ text: '', translation: '' }]);
   const [listeningAudioUrl, setListeningAudioUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [entryUploadingIndex, setEntryUploadingIndex] = useState<number | null>(null); // Restored
+  const [entryPlayingIndex, setEntryPlayingIndex] = useState<number | null>(null); // Restored
   const [isPlaying, setIsPlaying] = useState(false);
+
+  // ... (activeTab state and others remain)
+
+  // Audio refs
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const entryAudioRefs = useRef<Record<number, HTMLAudioElement | null>>({}); // Restored
+
+  // ... (useEffect remains)
+
+  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    setIsUploading(true);
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await api.uploadFile(formData);
+      setListeningAudioUrl(response.url);
+    } catch (error) {
+      console.error('Failed to upload audio', error);
+      alert('Failed to upload audio');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleEntryAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    setEntryUploadingIndex(index);
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await api.uploadFile(formData);
+      const newEntries = [...listeningEntries];
+      newEntries[index] = { ...newEntries[index], audioUrl: response.url };
+      setListeningEntries(newEntries);
+    } catch (error) {
+      console.error('Failed to upload entry audio', error);
+      alert('Failed to upload audio');
+    } finally {
+      setEntryUploadingIndex(null);
+    }
+  };
+
+  const toggleAudioPlayback = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const toggleEntryAudioPlayback = (index: number) => {
+    const audio = entryAudioRefs.current[index];
+    if (audio) {
+      if (entryPlayingIndex === index) {
+        audio.pause();
+        setEntryPlayingIndex(null);
+      } else {
+        // Pause others
+        Object.values(entryAudioRefs.current).forEach(a => (a as HTMLAudioElement)?.pause());
+        if (audioRef.current) {
+          audioRef.current.pause();
+          setIsPlaying(false);
+        }
+
+        audio.play();
+        setEntryPlayingIndex(index);
+      }
+    }
+  };
+
+  // ... (handleSave logic - will be updated implicitly if it treats entries as JSON, which it does)
+
+  // ...
+
+  // Inside the render,specifically the Listening Tab part:
+  /*
+  The following replacement targets the rendering logic for listening entries.
+  We need to inject the audio control UI for each entry.
+  */
+
 
   // Add textbook modal state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -104,51 +197,55 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
   // Get existing content for current selection
   const existingContent = contentKey ? textbookContexts[contentKey] : null;
 
-  // Load existing content into entries (supports both old single-string and new JSON array format)
+  // Load existing content into entries when switching units (contentKey changes)
   useEffect(() => {
-    if (existingContent) {
+    const content = contentKey ? textbookContexts[contentKey] : null;
+
+    if (content) {
       // Try to parse as JSON array, fallback to single entry
       try {
-        const readingData = existingContent.readingText;
+        const readingData = content.readingText;
         if (readingData && readingData.startsWith('[')) {
           setReadingEntries(JSON.parse(readingData));
         } else {
           setReadingEntries([{
-            text: existingContent.readingText || '',
-            translation: existingContent.readingTranslation || ''
+            text: content.readingText || '',
+            translation: content.readingTranslation || ''
           }]);
         }
       } catch {
         setReadingEntries([{
-          text: existingContent.readingText || '',
-          translation: existingContent.readingTranslation || ''
+          text: content.readingText || '',
+          translation: content.readingTranslation || ''
         }]);
       }
 
       try {
-        const listeningData = existingContent.listeningScript;
+        const listeningData = content.listeningScript;
         if (listeningData && listeningData.startsWith('[')) {
           setListeningEntries(JSON.parse(listeningData));
         } else {
           setListeningEntries([{
-            text: existingContent.listeningScript || '',
-            translation: existingContent.listeningTranslation || ''
+            text: content.listeningScript || '',
+            translation: content.listeningTranslation || ''
           }]);
         }
       } catch {
         setListeningEntries([{
-          text: existingContent.listeningScript || '',
-          translation: existingContent.listeningTranslation || ''
+          text: content.listeningScript || '',
+          translation: content.listeningTranslation || ''
         }]);
       }
 
-      setListeningAudioUrl(existingContent.listeningAudioUrl || null);
+      setListeningAudioUrl(content.listeningAudioUrl || null);
     } else {
+      // Only reset when switching to a new empty unit
       setReadingEntries([{ text: '', translation: '' }]);
       setListeningEntries([{ text: '', translation: '' }]);
       setListeningAudioUrl(null);
     }
-  }, [existingContent]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentKey]); // Only run when switching units, not when textbookContexts updates
 
   // Tab configuration
   const tabs: { id: ContentTab; label: string; icon: string; format: string; placeholder: string }[] = [
@@ -184,35 +281,7 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
 
   const currentTab = tabs.find(t => t.id === activeTab)!;
 
-  // Audio upload handler
-  const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
 
-    setIsUploading(true);
-    try {
-      const result = await api.uploadMedia(file);
-      setListeningAudioUrl(result.url);
-    } catch (error) {
-      console.error('Failed to upload audio:', error);
-      alert('音频上传失败，请重试');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  // Audio playback
-  const toggleAudioPlayback = () => {
-    const audio = document.getElementById('preview-audio') as HTMLAudioElement;
-    if (audio) {
-      if (isPlaying) {
-        audio.pause();
-      } else {
-        audio.play();
-      }
-      setIsPlaying(!isPlaying);
-    }
-  };
 
   // Parse input based on active tab
   const parseInput = (input: string): any[] => {
@@ -631,6 +700,60 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
                         </button>
                       )}
                     </div>
+
+                    {/* Audio Controls for Listening Entry */}
+                    {activeTab === 'listening' && (
+                      <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-100 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {entry.audioUrl ? (
+                            <>
+                              <button
+                                onClick={() => toggleEntryAudioPlayback(index)}
+                                className="w-8 h-8 flex items-center justify-center bg-purple-100 text-purple-600 rounded-full hover:bg-purple-200 transition-colors"
+                              >
+                                {entryPlayingIndex === index ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 text-purple-600 ml-0.5" />}
+                              </button>
+                              <span className="text-xs text-purple-700 font-medium">
+                                音频已上传
+                              </span>
+                              <audio
+                                ref={el => { entryAudioRefs.current[index] = el; }}
+                                src={entry.audioUrl}
+                                onEnded={() => setEntryPlayingIndex(null)}
+                              />
+                            </>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">暂无音频</span>
+                          )}
+                        </div>
+
+                        <label className={`
+                          flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors
+                          ${entryUploadingIndex === index
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-white border border-purple-200 text-purple-600 hover:bg-purple-50 hover:border-purple-300'
+                          }
+                        `}>
+                          <input
+                            type="file"
+                            accept="audio/*"
+                            className="hidden"
+                            disabled={entryUploadingIndex === index}
+                            onChange={(e) => handleEntryAudioUpload(e, index)}
+                          />
+                          {entryUploadingIndex === index ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Upload className="w-3 h-3" />
+                          )}
+                          {entryUploadingIndex === index
+                            ? '上传中...'
+                            : (entry.audioUrl ? '更换音频' : '上传音频')
+                          }
+                        </label>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-4">
                       {/* Left: Original text */}
                       <div>

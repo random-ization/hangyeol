@@ -180,7 +180,34 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
                 }
 
                 if (showCorrect) {
-                  optionClass += " cursor-not-allowed";
+                  optionClass += " cursor-text"; // Allow text selection in review mode
+                } else {
+                  optionClass += " cursor-pointer";
+                }
+
+                // Render as div in review mode to ensure text selection works (buttons can be problematic)
+                if (showCorrect) {
+                  return (
+                    <div
+                      key={optionIndex}
+                      onMouseUp={onTextSelect}
+                      className={optionClass}
+                    >
+                      {/* 圆圈数字 ①②③④ */}
+                      <span className={`text-[16px] ${FONT_SANS} shrink-0 ${isSelected || status ? 'font-bold' : 'text-slate-500'}`}>
+                        {getCircleNumber(optionIndex)}
+                      </span>
+
+                      {/* 选项文字 */}
+                      <span className={`text-[15px] leading-snug flex-1 text-left ${isSelected && !showCorrect ? 'font-medium' : ''}`}>
+                        <span dangerouslySetInnerHTML={{ __html: highlightText(option) }} />
+                      </span>
+
+                      {/* 结果图标 */}
+                      {status === 'correct' && <Check className="w-5 h-5 text-green-600 shrink-0 ml-2" />}
+                      {status === 'incorrect' && <X className="w-5 h-5 text-red-600 shrink-0 ml-2" />}
+                    </div>
+                  );
                 }
 
                 return (

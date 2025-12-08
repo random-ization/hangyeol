@@ -227,6 +227,29 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  uploadFile: async (formData: FormData): Promise<{ url: string }> => {
+    const token = getTokenFromStorage();
+    const headers: any = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Note: Do not set Content-Type header when sending FormData, 
+    // fetch will automatically set it to multipart/form-data with boundary
+
+    const res = await fetch(`${API_URL}/upload`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(errText || 'Upload failed');
+    }
+    return (await res.json()) as { url: string };
+  },
+
   // 其余 api 方法按需添加，务必使用上面的 request(...) 以确保 Authorization 被正确注入
 };
 

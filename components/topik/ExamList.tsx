@@ -83,8 +83,18 @@ export const ExamList: React.FC<ExamListProps> = ({
           )}
 
           {history.map((attempt, idx) => {
-            const percentage = attempt.totalScore > 0 ? (attempt.score / attempt.totalScore) * 100 : 0;
+            const matchingExam = exams.find(e => e.id === attempt.examId);
+            const totalScore = attempt.maxScore || attempt.totalScore || 100;
+            const percentage = totalScore > 0 ? (attempt.score / totalScore) * 100 : 0;
             const passed = percentage >= 60;
+
+            // Derive question counts if missing
+            const totalQuestions = matchingExam ? matchingExam.questions.length : (attempt as any).totalQuestions || '?';
+            const correctCount = attempt.correctCount ?? (matchingExam ? matchingExam.questions.reduce((acc, q, qIdx) => {
+              // userAnswers keys might be string in JSON, need to ensure type safety
+              const userAns = (attempt.userAnswers as any)[qIdx];
+              return acc + (userAns === q.correctAnswer ? 1 : 0);
+            }, 0) : '?');
 
             return (
               <div
@@ -97,7 +107,7 @@ export const ExamList: React.FC<ExamListProps> = ({
                     <div className="flex items-center gap-4 text-sm text-slate-600 mt-1">
                       <span>{attempt.timestamp ? new Date(attempt.timestamp).toLocaleDateString() : 'N/A'}</span>
                       <span>
-                        {attempt.correctCount} / {attempt.totalQuestions}{' '}
+                        {correctCount} / {totalQuestions}{' '}
                         {labels.correct || 'correct'}
                       </span>
                     </div>

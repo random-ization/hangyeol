@@ -59,11 +59,19 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
           const annotatedText = annotation.text || annotation.selectedText;
           if (!annotatedText) return;
 
+          const colorMap: Record<string, string> = {
+            green: 'bg-green-200',
+            blue: 'bg-blue-200',
+            pink: 'bg-pink-200',
+            yellow: 'bg-yellow-200'
+          };
+          const highlightClass = colorMap[annotation.color || 'yellow'] || 'bg-yellow-200';
+
           const regex = new RegExp(
             `(${annotatedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`,
             'gi'
           );
-          result = result.replace(regex, '<mark class="bg-yellow-200 px-0.5">$1</mark>');
+          result = result.replace(regex, `<mark class="${highlightClass} px-0.5">$1</mark>`);
         });
         return result;
       },
@@ -133,12 +141,12 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
                 const isSelected = userAnswer === optionIndex;
 
                 // 动态样式
-                let optionClass = "flex items-start gap-2 cursor-pointer py-2 px-3 rounded transition-all border ";
+                let optionClass = "flex items-start gap-2 cursor-pointer py-2 px-3 rounded transition-all border select-text ";
 
                 if (status === 'correct') {
                   optionClass += "bg-green-50 border-green-400 text-green-900";
                 } else if (status === 'incorrect') {
-                  optionClass += "bg-red-50 border-red-400 text-red-900 line-through opacity-80";
+                  optionClass += "bg-red-50 border-2 border-red-500 text-red-900";
                 } else if (isSelected) {
                   optionClass += "bg-indigo-50 border-indigo-300 text-indigo-900";
                 } else {
@@ -153,7 +161,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
                   <button
                     key={optionIndex}
                     onClick={() => !showCorrect && onAnswerChange?.(optionIndex)}
-                    disabled={showCorrect}
+                    onMouseUp={onTextSelect}
+                    aria-disabled={showCorrect}
                     className={optionClass}
                   >
                     {/* 圆圈数字 ①②③④ */}

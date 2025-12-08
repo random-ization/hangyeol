@@ -302,7 +302,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
 
       setSelectionText(selectedText);
       setSelectionContextKey(contextKey);
-      setMenuPosition({ top: rect.bottom + window.scrollY + 10, left: rect.left + window.scrollX });
+      setMenuPosition({ top: rect.bottom + 10, left: rect.left });
       setShowAnnotationMenu(true);
       setNoteInput('');
     };
@@ -336,6 +336,15 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
     const deleteAnnotation = (annotationId: string) => {
       onDeleteAnnotation(annotationId);
     };
+
+    const tempAnnotation: Annotation | null = showAnnotationMenu && selectionText && selectionContextKey ? {
+      id: 'temp',
+      contextKey: selectionContextKey,
+      text: selectionText,
+      note: '',
+      color: selectedColor, // Preview current color
+      timestamp: Date.now()
+    } : null;
 
     return (
       <div className="min-h-screen bg-slate-200 flex flex-col">
@@ -409,7 +418,12 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
                       correctAnswer={question.correctAnswer}
                       language={language}
                       showCorrect={true}
-                      annotations={annotations}
+                      // Merge saved annotations with current temp annotation (if context matches)
+                      annotations={
+                        tempAnnotation && tempAnnotation.contextKey === `TOPIK-${exam.id}-Q${idx}`
+                          ? [...annotations, tempAnnotation]
+                          : annotations
+                      }
                       contextPrefix={`TOPIK-${exam.id}`}
                       onTextSelect={() => handleTextSelect(idx)}
                     />

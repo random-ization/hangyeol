@@ -243,3 +243,4 @@ export const ExamSession: React.FC<ExamSessionProps> = React.memo(
     );
   }
 );
+

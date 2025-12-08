@@ -13,8 +13,10 @@ interface LearningContextType {
   // Learning Position
   selectedInstitute: string;
   setSelectedInstitute: (id: string) => void;
+  setInstitute: (id: string) => void; // Alias for setSelectedInstitute
   selectedLevel: number;
   setSelectedLevel: (level: number) => void;
+  setLevel: (level: number) => void; // Alias for setSelectedLevel
   activeModule: LearningModuleType | null;
   setActiveModule: (module: LearningModuleType | null) => void;
 
@@ -58,8 +60,10 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
   const value: LearningContextType = {
     selectedInstitute,
     setSelectedInstitute,
+    setInstitute: setSelectedInstitute, // Alias
     selectedLevel,
     setSelectedLevel,
+    setLevel: setSelectedLevel, // Alias
     activeModule,
     setActiveModule,
     activeCustomList,

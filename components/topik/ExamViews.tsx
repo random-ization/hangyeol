@@ -296,18 +296,30 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
     );
 
     // Handle text selection for annotation
-    const handleTextSelect = (questionIndex: number) => {
+    const handleTextSelect = (questionIndex: number, e?: React.MouseEvent) => {
       const selection = window.getSelection();
       if (!selection || selection.toString().trim() === '') return;
 
       const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
+      let rect = range.getBoundingClientRect();
       const selectedText = selection.toString().trim();
       const contextKey = `${examContextPrefix}-Q${questionIndex}`;
 
+      // Robust positioning fallback using mouse event
+      if ((rect.top === 0 && rect.bottom === 0) || (rect.width === 0 && rect.height === 0)) {
+        if (e) {
+          console.log('Using mouse event fallback for menu position');
+          setMenuPosition({ top: e.clientY + 10, left: e.clientX });
+        } else {
+          // Absolute fallback if no event and no rect (shouldn't happen with updated calls)
+          setMenuPosition({ top: window.innerHeight / 2, left: window.innerWidth / 2 });
+        }
+      } else {
+        setMenuPosition({ top: rect.bottom + 10, left: rect.left });
+      }
+
       setSelectionText(selectedText);
       setSelectionContextKey(contextKey);
-      setMenuPosition({ top: rect.bottom + 10, left: rect.left });
       setShowAnnotationMenu(true);
 
       // Check for existing annotation to pre-fill
@@ -502,7 +514,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
                   )}
 
                   {/* 题目 */}
-                  <div className="mb-10" onMouseUp={() => handleTextSelect(idx)}>
+                  <div className="mb-10" onMouseUp={(e) => handleTextSelect(idx, e)}>
                     <QuestionRenderer
                       question={question}
                       questionIndex={idx}
@@ -517,7 +529,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
                           : annotations
                       }
                       contextPrefix={`TOPIK-${exam.id}`}
-                      onTextSelect={() => handleTextSelect(idx)}
+                      onTextSelect={(e) => handleTextSelect(idx, e)}
                       activeAnnotationId={activeAnnotationId}
                     />
                   </div>

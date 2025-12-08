@@ -11,7 +11,7 @@ interface QuestionRendererProps {
   language: Language;
   showCorrect: boolean;
   onAnswerChange?: (optionIndex: number) => void;
-  onTextSelect?: () => void;
+  onTextSelect?: (e: React.MouseEvent) => void;
   annotations?: Annotation[];
   activeAnnotationId?: string | null;
   contextPrefix?: string;

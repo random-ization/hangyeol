@@ -177,7 +177,21 @@ export const generateReadingPassage = async (
 ): Promise<ReadingContent | null> => {
   if (content?.readingText && content.readingText.trim().length > 0) {
     const title = content.readingTitle || 'Reading Practice';
-    const manualTranslation = content.readingTranslation || '';
+    let koreanText = content.readingText;
+    let manualTranslation = content.readingTranslation || '';
+
+    // Attempt to parse JSON (new format)
+    if (koreanText.trim().startsWith('[')) {
+      try {
+        const parsed = JSON.parse(koreanText);
+        if (Array.isArray(parsed)) {
+          koreanText = parsed.map((e: any) => e.text).join('\n\n');
+          manualTranslation = parsed.map((e: any) => e.translation).join('\n\n');
+        }
+      } catch (e) {
+        // Ignore, treat as raw text
+      }
+    }
 
     let fallbackVocab: { word: string; meaning: string; pos?: string }[] = [];
     try {
@@ -189,11 +203,11 @@ export const generateReadingPassage = async (
           pos: v.pos,
         }));
       }
-    } catch {}
+    } catch { }
 
     return {
       title: title,
-      koreanText: content.readingText,
+      koreanText: koreanText,
       englishTranslation: manualTranslation,
       keyVocabulary: fallbackVocab,
     };
@@ -212,7 +226,7 @@ export const generateGrammarLesson = async (
     try {
       const parsed = JSON.parse(content.grammarList);
       if (Array.isArray(parsed)) return parsed;
-    } catch (e) {}
+    } catch (e) { }
   }
   return [];
 };

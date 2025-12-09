@@ -6,6 +6,7 @@ import { X, ChevronRight, MessageSquare, Trash2, Check } from 'lucide-react';
 import { getLabels } from '../utils/i18n';
 import { useAnnotation } from '../hooks/useAnnotation';
 import AnnotationMenu from './AnnotationMenu';
+import { getPreviewFromContent } from '../utils/textUtils';
 
 interface ReadingModuleProps {
   course: CourseSelection;
@@ -282,9 +283,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
           <div className="space-y-4">
             {unitsWithReading.map(u => {
               const c = levelContexts[u];
-              const title = c.readingText
-                ? c.readingText.substring(0, 50) + '...'
-                : `Unit ${u}`;
+              const title = getPreviewFromContent(c.readingText, 50) || `Unit ${u}`;
               return (
                 <button
                   key={u}

@@ -6,6 +6,7 @@ import { Play, Pause, RotateCcw, Volume2, ChevronRight, Music, MessageSquare, Tr
 import { getLabels } from '../utils/i18n';
 import { useAnnotation } from '../hooks/useAnnotation';
 import AnnotationMenu from './AnnotationMenu';
+import { getPreviewFromContent } from '../utils/textUtils';
 
 interface ListeningModuleProps {
   course: CourseSelection;
@@ -263,9 +264,7 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
           <div className="space-y-4">
             {unitsWithAudio.map(u => {
               const c = levelContexts[u];
-              const title = c.listeningScript
-                ? c.listeningScript.substring(0, 50) + '...'
-                : `Track ${u}`;
+              const title = getPreviewFromContent(c.listeningScript, 50) || `Track ${u}`;
               return (
                 <button
                   key={u}

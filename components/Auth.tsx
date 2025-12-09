@@ -7,10 +7,11 @@ import { AlertCircle } from 'lucide-react';
 interface AuthProps {
   onLogin: (user: User) => void;
   language: Language;
+  initialMode?: 'login' | 'register';
 }
 
-const Auth: React.FC<AuthProps> = ({ onLogin, language }) => {
-  const [isRegistering, setIsRegistering] = useState(false);
+const Auth: React.FC<AuthProps> = ({ onLogin, language, initialMode = 'login' }) => {
+  const [isRegistering, setIsRegistering] = useState(initialMode === 'register');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

@@ -4,6 +4,8 @@ import { useAuth } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 // Lazy load pages for code splitting
+const Landing = lazy(() => import('./pages/Landing'));
+const CoursesOverview = lazy(() => import('./pages/CoursesOverview'));
 const AuthPage = lazy(() => import('./pages/AuthPage'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -35,7 +37,10 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({ canAccessContent, onShowUp
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* === 公开路由 (无需登录) === */}
-        <Route path="/" element={<AuthPage />} />
+        <Route path="/" element={<Landing language={language} />} />
+        <Route path="/login" element={<AuthPage />} />
+        <Route path="/register" element={<AuthPage />} />
+        <Route path="/courses" element={<CoursesOverview language={language} />} />
         <Route
           path="/terms"
           element={<LegalDocumentPage language={language} documentType="terms" />}

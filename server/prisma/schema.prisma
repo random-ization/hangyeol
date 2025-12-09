@@ -140,3 +140,14 @@ model LegalDocument {
   updatedAt DateTime @default(now())
   updatedBy String?  // Admin user ID who updated it
 }
+
+model DailyPhrase {
+  id           String   @id @default(uuid())
+  korean       String   // 韩文句子，例如：좋은 하루 되세요!
+  romanization String   // 发音，例如：Jo-eun ha-ru doe-se-yo!
+  chinese      String   // 中文翻译
+  english      String?  // 英文翻译（可选）
+  dayIndex     Int      @unique // 第几天（1-365，循环使用）
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

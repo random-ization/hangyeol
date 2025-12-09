@@ -29,3 +29,15 @@ export const authenticate = (req: any, res: any, next: any) => {
     return res.status(403).json({ error: 'Invalid token' });
   }
 };
+
+export const requireAdmin = (req: any, res: any, next: any) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  next();
+};

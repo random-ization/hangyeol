@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import adminRoutes from './routes/admin.routes';
 import uploadRoutes from './routes/upload.routes';
+import dailyPhraseRoutes from './routes/dailyPhrase.routes';
 
 const app = express();
 
@@ -24,6 +25,8 @@ app.use('/api/admin', adminRoutes);
 console.log('[Server] /api/admin registered');
 app.use('/api/upload', uploadRoutes);
 console.log('[Server] /api/upload registered');
+app.use('/api/daily-phrase', dailyPhraseRoutes);
+console.log('[Server] /api/daily-phrase registered');
 
 // Health Check
 app.get('/health', (req, res) => {

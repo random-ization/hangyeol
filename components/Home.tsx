@@ -11,6 +11,7 @@ import {
   BookMarked,
   MessageSquare,
 } from 'lucide-react';
+import DailyPhrase from './DailyPhrase';
 
 interface HomeProps {
   user: User;
@@ -127,25 +128,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, language }) => {
 
         {/* 3. Sidebar (Right Column) - Daily Content */}
         <div className="space-y-6">
-          <div className="bg-[#fff9e6] p-6 rounded-2xl border border-yellow-200 shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-yellow-300 rounded-full opacity-20"></div>
-
-            <div className="flex items-center gap-2 mb-4">
-              <MessageSquare className="w-5 h-5 text-yellow-600" />
-              <span className="text-xs font-bold text-yellow-700 uppercase tracking-widest">
-                {labels.dailyExpression}
-              </span>
-            </div>
-
-            <div className="space-y-2 mb-4">
-              <h3 className="text-2xl font-bold text-slate-800">좋은 하루 되세요!</h3>
-              <p className="text-slate-600 font-medium">Jo-eun ha-ru doe-se-yo!</p>
-            </div>
-
-            <div className="bg-white/60 p-3 rounded-lg backdrop-blur-sm border border-yellow-100/50">
-              <p className="text-sm text-slate-700">{labels.dailyMeaning}</p>
-            </div>
-          </div>
+          <DailyPhrase />
 
           {/* Review Mini Card */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">

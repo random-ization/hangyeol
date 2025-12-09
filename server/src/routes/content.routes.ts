@@ -2,6 +2,8 @@ import { Router } from 'express';
 import {
   getInstitutes,
   createInstitute,
+  updateInstitute,
+  deleteInstitute,
   getContent,
   saveContent,
   getTopikExams,
@@ -22,6 +24,8 @@ router.get('/legal/:type', getLegalDocument); // Public access to legal document
 
 // Admin write access
 router.post('/institutes', authenticate, createInstitute);
+router.put('/institutes/:id', authenticate, updateInstitute);
+router.delete('/institutes/:id', authenticate, deleteInstitute);
 router.post('/textbook', authenticate, saveContent);
 router.post('/topik', authenticate, saveTopikExam);
 router.delete('/topik/:id', authenticate, deleteTopikExam);

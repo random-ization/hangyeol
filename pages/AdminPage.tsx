@@ -13,6 +13,7 @@ const AdminPage: React.FC = () => {
     textbookContexts,
     topikExams,
     addInstitute,
+    updateInstitute,
     deleteInstitute,
     saveTextbookContext,
     saveTopikExam,
@@ -78,7 +79,7 @@ const AdminPage: React.FC = () => {
   return (
     <AdminPanel
       institutes={institutes}
-      onUpdateInstitutes={() => {}}
+      onUpdateInstitute={updateInstitute}
       onAddInstitute={addInstitute}
       onDeleteInstitute={deleteInstitute}
       textbookContexts={textbookContexts}

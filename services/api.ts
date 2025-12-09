@@ -99,6 +99,15 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(institute),
     }),
+  updateInstitute: async (id: string, name: string) =>
+    request(`/content/institutes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name }),
+    }),
+  deleteInstitute: async (id: string) =>
+    request(`/content/institutes/${id}`, {
+      method: 'DELETE',
+    }),
 
   getTextbookContent: async () => request<Record<string, any>>('/content/textbook'),
   saveTextbookContent: async (key: string, content: any) =>

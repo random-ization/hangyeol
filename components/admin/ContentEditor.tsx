@@ -22,6 +22,7 @@ import {
   Upload,
   Play,
   Pause,
+  Pencil,
 } from 'lucide-react';
 
 interface ContentEditorProps {
@@ -30,7 +31,8 @@ interface ContentEditorProps {
   language: Language;
   onSaveContext: (key: string, content: TextbookContent) => void;
   onAddInstitute: (name: string, levels?: LevelConfig[]) => void | Promise<void>;
-  onDeleteInstitute?: (id: string) => void;
+  onUpdateInstitute?: (id: string, name: string) => Promise<void>;
+  onDeleteInstitute?: (id: string) => Promise<void>;
 }
 
 type ContentTab = 'vocab' | 'reading' | 'listening' | 'grammar';
@@ -52,6 +54,7 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
   language,
   onSaveContext,
   onAddInstitute,
+  onUpdateInstitute,
   onDeleteInstitute,
 }) => {
   const labels = getLabels(language);
@@ -590,12 +593,28 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
               Add Textbook
             </button>
 
+            {selectedInstitute && onUpdateInstitute && (
+              <button
+                onClick={() => {
+                  const newName = prompt('Enter new name for textbook:', selectedInstitute.name);
+                  if (newName && newName.trim() !== selectedInstitute.name) {
+                    onUpdateInstitute(selectedInstitute.id, newName.trim());
+                  }
+                }}
+                className="p-2.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                title="Rename textbook"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            )}
+
             {selectedInstitute && onDeleteInstitute && (
               <button
                 onClick={() => {
                   if (confirm(`Delete "${selectedInstitute.name}"?`)) {
-                    onDeleteInstitute(selectedInstitute.id);
-                    setSelectedInstitute(null);
+                    onDeleteInstitute(selectedInstitute.id)
+                      .then(() => setSelectedInstitute(null))
+                      .catch(() => alert('Failed to delete'));
                   }
                 }}
                 className="p-2.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"

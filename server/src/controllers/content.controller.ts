@@ -40,6 +40,35 @@ export const createInstitute = async (req: Request, res: Response) => {
   }
 };
 
+export const updateInstitute = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+
+    const institute = await prisma.institute.update({
+      where: { id },
+      data: { name },
+    });
+    res.json({ ...institute, levels: JSON.parse(institute.levels) });
+  } catch (e: any) {
+    res.status(500).json({ error: 'Failed to update institute' });
+  }
+};
+
+export const deleteInstitute = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.institute.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ error: 'Failed to delete institute' });
+  }
+};
+
 // --- Textbook Content ---
 export const getContent = async (req: Request, res: Response) => {
   try {

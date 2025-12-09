@@ -62,6 +62,7 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
   const [editNoteInput, setEditNoteInput] = useState('');
   const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null);
+  const [hoveredAnnotationId, setHoveredAnnotationId] = useState<string | null>(null);
 
   const {
     contentRef,
@@ -200,21 +201,21 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
       let className = 'relative rounded px-0 py-0.5 box-decoration-clone transition-all ';
 
       if (currentAnn) {
-        const isActive = activeAnnotationId === currentAnn.id || editingAnnotationId === currentAnn.id;
+        const isActive = activeAnnotationId === currentAnn.id || editingAnnotationId === currentAnn.id || hoveredAnnotationId === currentAnn.id;
 
-        const colorMap: { [key: string]: { bg: string, activeBg: string } } = {
-          'yellow': { bg: 'bg-yellow-200', activeBg: 'bg-yellow-300 ring-2 ring-yellow-400' },
-          'green': { bg: 'bg-green-200', activeBg: 'bg-green-300 ring-2 ring-green-400' },
-          'blue': { bg: 'bg-blue-200', activeBg: 'bg-blue-300 ring-2 ring-blue-400' },
-          'pink': { bg: 'bg-pink-200', activeBg: 'bg-pink-300 ring-2 ring-pink-400' },
+        const colorMap: { [key: string]: { border: string, bg: string, activeBg: string } } = {
+          'yellow': { border: 'border-yellow-400', bg: 'bg-yellow-200', activeBg: 'bg-yellow-300 ring-2 ring-yellow-400' },
+          'green': { border: 'border-green-400', bg: 'bg-green-200', activeBg: 'bg-green-300 ring-2 ring-green-400' },
+          'blue': { border: 'border-blue-400', bg: 'bg-blue-200', activeBg: 'bg-blue-300 ring-2 ring-blue-400' },
+          'pink': { border: 'border-pink-400', bg: 'bg-pink-200', activeBg: 'bg-pink-300 ring-2 ring-pink-400' },
         };
         const colors = colorMap[currentAnn.color || 'yellow'] || colorMap['yellow'];
 
-        className += 'cursor-pointer rounded-sm ';
+        className += 'cursor-pointer ';
         if (isActive) {
-          className += `${colors.activeBg} `;
+          className += `rounded-sm ${colors.activeBg} `;
         } else {
-          className += `${colors.bg} hover:brightness-95 `;
+          className += `border-b-2 ${colors.border} hover:bg-opacity-50 hover:${colors.bg} `;
         }
       }
 
@@ -233,9 +234,7 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
             }}
           >
             {segmentText}
-            {currentAnn.note && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full border border-white shadow-sm"></span>
-            )}
+            {/* Red dot removed here */}
           </span>
         );
       } else {
@@ -279,9 +278,9 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
           <div className="grid gap-4">
             {unitsWithAudio.map(u => {
               const c = levelContexts[u];
-              const title = c.listeningScript
+              const title = c.listeningTitle || (c.listeningScript
                 ? c.listeningScript.substring(0, 60) + (c.listeningScript.length > 60 ? '...' : '')
-                : `Track ${u}`;
+                : `Track ${u}`);
               return (
                 <button
                   key={u}
@@ -454,6 +453,8 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
                         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       }
                     }}
+                    onMouseEnter={() => setHoveredAnnotationId(ann.id)}
+                    onMouseLeave={() => setHoveredAnnotationId(null)}
                   >
                     <div className="flex items-start gap-2 mb-2">
                       <div className={`w-1.5 h-1.5 mt-1.5 rounded-full shrink-0 ${{

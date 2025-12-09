@@ -56,9 +56,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, language, initialMode = 'login' })
 
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-600 shadow-lg mb-6 text-white font-bold text-2xl">
-              D
-            </div>
+            <img src="/logo.jpg" alt="Logo" className="w-20 h-20 rounded-2xl shadow-lg mb-6 hover:scale-105 transition-transform" />
             <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
               {isRegistering ? (language === 'zh' ? '创建账号' : 'Create Account') : (labels.welcomeBack || 'Welcome Back')}
             </h1>

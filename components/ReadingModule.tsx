@@ -64,6 +64,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
   const [editNoteInput, setEditNoteInput] = useState('');
   const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null);
+  const [hoveredAnnotationId, setHoveredAnnotationId] = useState<string | null>(null); // New hover state
 
   const {
     contentRef,
@@ -98,6 +99,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
   );
 
   useEffect(() => {
+    // ... existing useEffect code ...
     const fetchContent = async () => {
       if (!activeUnit) return;
 
@@ -141,6 +143,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
   };
 
   const koreanSentenceRanges = useMemo(() => {
+    // ... existing implementation ...
     if (!passage?.koreanText) return [];
     const ranges: { start: number; end: number }[] = [];
     const regex = /[^.!?\n]+[.!?\n]*/g;
@@ -196,21 +199,22 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
       let className = 'relative rounded px-0 py-0.5 box-decoration-clone transition-all ';
 
       if (currentAnn) {
-        const isActive = activeAnnotationId === currentAnn.id || editingAnnotationId === currentAnn.id;
+        const isActive = activeAnnotationId === currentAnn.id || editingAnnotationId === currentAnn.id || hoveredAnnotationId === currentAnn.id;
 
-        const colorMap: { [key: string]: { bg: string, activeBg: string } } = {
-          'yellow': { bg: 'bg-yellow-200', activeBg: 'bg-yellow-300 ring-2 ring-yellow-400' },
-          'green': { bg: 'bg-green-200', activeBg: 'bg-green-300 ring-2 ring-green-400' },
-          'blue': { bg: 'bg-blue-200', activeBg: 'bg-blue-300 ring-2 ring-blue-400' },
-          'pink': { bg: 'bg-pink-200', activeBg: 'bg-pink-300 ring-2 ring-pink-400' },
+        const colorMap: { [key: string]: { border: string, bg: string, activeBg: string } } = {
+          'yellow': { border: 'border-yellow-400', bg: 'bg-yellow-100', activeBg: 'bg-yellow-300' },
+          'green': { border: 'border-green-400', bg: 'bg-green-100', activeBg: 'bg-green-300' },
+          'blue': { border: 'border-blue-400', bg: 'bg-blue-100', activeBg: 'bg-blue-300' },
+          'pink': { border: 'border-pink-400', bg: 'bg-pink-100', activeBg: 'bg-pink-300' },
         };
         const colors = colorMap[currentAnn.color || 'yellow'] || colorMap['yellow'];
 
-        className += 'cursor-pointer rounded-sm ';
+        className += 'cursor-pointer ';
         if (isActive) {
-          className += `${colors.activeBg} `;
+          className += `rounded-sm ${colors.activeBg} ring-2 ring-${currentAnn.color || 'yellow'}-400 `;
         } else {
-          className += `${colors.bg} hover:brightness-95 `;
+          // Default: Underline only
+          className += `border-b-2 ${colors.border} hover:bg-opacity-50 hover:${colors.bg} `;
         }
       }
 
@@ -233,9 +237,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
             }}
           >
             {segmentText}
-            {currentAnn.note && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full border border-white shadow-sm"></span>
-            )}
+            {/* Red dot removed here */}
           </span>
         );
       } else {
@@ -249,6 +251,26 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
     }
     return result;
   };
+
+  // ... (TOC View omitted for brevity as it's not changing) ...
+
+  // To insert correct ReplacementContent properly, I need to include the sidebar rendering part too which is further down in the original file, or split this into two replacements if possible, but the limit is contiguous blocks.
+  // The original file structure has renderHighlightedText -> TOC if -> Loading if -> return JSX.
+  // I will assume I need to replace from line 63 down to where sidebar rendering happens.
+  // The sidebar rendering starts around line 430 in original view.
+  // Let me re-read the original file content to make sure I cover all changes.
+  // The sidebar loop is at lines 440+. I need to add onMouseEnter/Leave there.
+
+  // Since I can't replace huge chunks reliably without making mistakes in "unchanged" code, I will use multi_replace_file_content.
+  // But wait, the original tool call is `replace_file_content` which is for single contiguous block.
+  // The changes are:
+  // 1. New state variable `hoveredAnnotationId` (Line 66)
+  // 2. Updated `renderHighlightedText` (Lines 159-251)
+  // 3. Sidebar `div` props (Line 445)
+
+  // I should indeed use `multi_replace_file_content`.
+
+
 
   // --- 1. TOC View (Table of Contents) ---
   if (!activeUnit) {
@@ -280,9 +302,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
           <div className="grid gap-4">
             {unitsWithReading.map(u => {
               const c = levelContexts[u];
-              const title = c.readingText
-                ? c.readingText.substring(0, 60) + (c.readingText.length > 60 ? '...' : '')
-                : `Unit ${u}`;
+              const title = c.readingTitle || `Unit ${u}`;
               return (
                 <button
                   key={u}
@@ -364,8 +384,8 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
           <button
             onClick={() => setShowTranslation(!showTranslation)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${showTranslation
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
           >
             <Languages className="w-4 h-4" />
@@ -459,6 +479,8 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
                         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                       }
                     }}
+                    onMouseEnter={() => setHoveredAnnotationId(ann.id)}
+                    onMouseLeave={() => setHoveredAnnotationId(null)}
                   >
                     <div className="flex items-start gap-2 mb-2">
                       <div className={`w-1.5 h-1.5 mt-1.5 rounded-full shrink-0 ${{

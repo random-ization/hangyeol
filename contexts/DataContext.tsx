@@ -19,7 +19,8 @@ interface DataContextType {
   // Data Actions
   fetchInitialData: () => Promise<void>;
   addInstitute: (name: string, levels?: LevelConfig[]) => Promise<void>;
-  deleteInstitute: (id: string) => void;
+  updateInstitute: (id: string, name: string) => Promise<void>;
+  deleteInstitute: (id: string) => Promise<void>;
   saveTextbookContext: (key: string, content: TextbookContent) => Promise<void>;
   saveTopikExam: (exam: TopikExam) => Promise<void>;
   deleteTopikExam: (id: string) => Promise<void>;
@@ -85,9 +86,26 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     [institutes]
   );
 
+  const updateInstitute = useCallback(
+    async (id: string, name: string) => {
+      try {
+        const updated = await api.updateInstitute(id, name);
+        setInstitutes(institutes.map(i => (i.id === id ? updated : i)));
+      } catch (e) {
+        alert('Failed to update institute');
+      }
+    },
+    [institutes]
+  );
+
   const deleteInstitute = useCallback(
-    (id: string) => {
-      setInstitutes(institutes.filter(i => i.id !== id));
+    async (id: string) => {
+      try {
+        await api.deleteInstitute(id);
+        setInstitutes(institutes.filter(i => i.id !== id));
+      } catch (e) {
+        alert('Failed to delete institute');
+      }
     },
     [institutes]
   );
@@ -136,6 +154,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     topikExams,
     fetchInitialData,
     addInstitute,
+    updateInstitute,
     deleteInstitute,
     saveTextbookContext,
     saveTopikExam,

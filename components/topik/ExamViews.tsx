@@ -494,7 +494,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
               </div>
 
               {/* Title Box */}
-              <div className="bg-black text-white text-center py-4 rounded-xl mb-12 shadow-lg">
+              <div className="bg-black text-white text-center py-4 rounded-xl mb-12 shadow-lg font-serif">
                 <div className="text-xl md:text-3xl font-bold mb-1 tracking-widest">{exam.title}</div>
                 <div className="text-sm md:text-lg font-serif italic">제 {exam.round || '?'} 회 한국어능력시험</div>
               </div>

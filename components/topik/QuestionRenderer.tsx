@@ -17,12 +17,21 @@ interface QuestionRendererProps {
   contextPrefix?: string;
 }
 
-// 仿真 TOPIK 样式常量
 const FONT_SERIF = "font-serif";
 const FONT_SANS = "font-sans";
 
-// 圆圈数字
-const getCircleNumber = (idx: number) => ['①', '②', '③', '④'][idx] || `${idx + 1}`;
+const CircleNumber = ({ num, isSelected }: { num: number; isSelected: boolean }) => {
+  return (
+    <div
+      className={`
+        inline-flex items-center justify-center w-5 h-5 md:w-6 md:h-6 rounded-full border border-black text-xs md:text-sm font-serif mr-2 leading-none flex-shrink-0 transition-colors
+        ${isSelected ? 'bg-black text-white' : 'bg-transparent text-black'}
+      `}
+    >
+      {num}
+    </div>
+  );
+};
 
 export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
   ({
@@ -48,7 +57,6 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
     const getHighlightClass = (color: string = 'yellow', isActive: boolean) => {
       const base = "box-decoration-clone cursor-pointer transition-all duration-200 px-0.5 rounded-sm ";
       if (isActive) {
-        // Active: Full highlight
         switch (color) {
           case 'green': return base + 'bg-green-300 text-green-900';
           case 'blue': return base + 'bg-blue-300 text-blue-900';
@@ -56,12 +64,10 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
           case 'yellow': default: return base + 'bg-yellow-300 text-yellow-900';
         }
       } else {
-        // Inactive: Underline only
         switch (color) {
           case 'green': return base + 'bg-transparent border-b-2 border-green-500 hover:bg-green-50';
           case 'blue': return base + 'bg-transparent border-b-2 border-blue-500 hover:bg-blue-50';
           case 'pink': return base + 'bg-transparent border-b-2 border-pink-500 hover:bg-pink-50';
-          // User specifically requested yellow underline
           case 'yellow': default: return base + 'bg-transparent border-b-2 border-yellow-500 hover:bg-yellow-50';
         }
       }
@@ -77,23 +83,13 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
     const highlightText = useCallback(
       (text: string) => {
         if (questionAnnotations.length === 0) return text;
-
         let result = text;
         questionAnnotations.forEach(annotation => {
-          // Use text (primary) or selectedText (alias), skip if neither exists
           const annotatedText = annotation.text || annotation.selectedText;
           if (!annotatedText) return;
-
-          const isActive = activeAnnotationId === annotation.id ||
-            (annotation.id === 'temp' && !activeAnnotationId); // Temp is always active-ish? Or just default
-
+          const isActive = activeAnnotationId === annotation.id || (annotation.id === 'temp' && !activeAnnotationId);
           const className = getHighlightClass(annotation.color || 'yellow', isActive);
-
-          const regex = new RegExp(
-            `(${annotatedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`,
-            'gi'
-          );
-          // Add data-annotation-id for positioning
+          const regex = new RegExp(`(${annotatedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
           result = result.replace(regex, `<mark data-annotation-id="${annotation.id}" class="${className}">$1</mark>`);
         });
         return result;
@@ -101,7 +97,6 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
       [questionAnnotations, activeAnnotationId]
     );
 
-    // Determine if answer is correct/incorrect
     const getOptionStatus = useCallback(
       (optionIndex: number) => {
         if (!showCorrect) return null;
@@ -112,100 +107,84 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
       [showCorrect, correctAnswer, userAnswer]
     );
 
-    // 判断选项是否需要换行 (长选项用单列)
     const hasLongOptions = question.options.some(opt => opt.length > 25);
 
     return (
       <div className="break-inside-avoid">
-        {/* 题号 + 题干 (PDF Style: 1. Question Text) */}
-        <div className="flex gap-3 mb-4">
-          <span className={`text-[18px] font-bold text-slate-900 ${FONT_SERIF} min-w-[32px] shrink-0 pt-0.5`}>
+        {/* Question Header */}
+        <div className="flex items-start mb-2">
+          <span className={`text-lg font-bold mr-3 min-w-[24px] ${FONT_SERIF}`}>
             {questionIndex + 1}.
           </span>
 
-          <div className="flex-1 min-w-0">
-            {/* 图片材料 */}
+          <div className="flex-1 w-full min-w-0">
+            {/* Image */}
             {question.imageUrl && (
-              <div className="mb-4 flex justify-center bg-white p-2 border border-slate-200 rounded">
-                <img
-                  src={question.imageUrl}
-                  alt={`Question ${questionIndex + 1}`}
-                  className="max-h-[300px] object-contain"
-                />
+              <div className="mb-4 flex justify-center bg-white p-2 border border-black/10 rounded">
+                <img src={question.imageUrl} alt={`Question ${questionIndex + 1}`} className="max-h-[300px] object-contain" />
               </div>
             )}
 
-            {/* 阅读文章 (Passage) */}
+            {/* Passage */}
             {question.passage && (
               <div
-                className={`mb-4 p-5 border border-slate-300 bg-white ${FONT_SERIF} text-[16px] leading-[1.9] text-justify whitespace-pre-wrap text-slate-800 cursor-text`}
+                className={`mb-4 p-5 border border-gray-400 bg-white ${FONT_SERIF} text-lg leading-loose text-justify whitespace-pre-wrap text-black`}
                 onMouseUp={onTextSelect}
                 dangerouslySetInnerHTML={{ __html: highlightText(question.passage) }}
               />
             )}
 
-            {/* 题目文字 */}
+            {/* Question Text */}
             {question.question && (
               <div
-                className={`${FONT_SANS} text-[17px] font-semibold text-slate-900 leading-snug mb-4 cursor-text`}
+                className={`text-lg leading-loose w-full mb-3 cursor-text text-black ${FONT_SERIF}`}
                 onMouseUp={onTextSelect}
                 dangerouslySetInnerHTML={{
-                  __html: highlightText(
-                    question.question.replace(/\(\s*\)/g, '( &nbsp;&nbsp;&nbsp;&nbsp; )')
-                  )
+                  __html: highlightText(question.question.replace(/\(\s*\)/g, '( &nbsp;&nbsp;&nbsp;&nbsp; )'))
                 }}
               />
             )}
 
-            {/* 选项 (Options) - PDF 2列布局 */}
-            <div className={`grid ${hasLongOptions ? 'grid-cols-1 gap-2' : 'grid-cols-2 gap-x-6 gap-y-2'}`}>
+            {/* Options */}
+            <div className={`
+              grid gap-y-2 gap-x-4
+              ${hasLongOptions ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}
+            `}>
               {question.options.map((option, optionIndex) => {
                 const status = getOptionStatus(optionIndex);
                 const isSelected = userAnswer === optionIndex;
+                let optionClass = `flex items-center cursor-pointer py-1 px-2 rounded -ml-2 transition-colors duration-150 relative `;
 
-                // 动态样式
-                // Dynamic styles
-                const cursorStyle = showCorrect ? 'cursor-text' : 'cursor-pointer';
-                let optionClass = `flex items-start gap-2 ${cursorStyle} py-2 px-3 rounded transition-all border select-text `;
-
+                // Conditional Styles for Review/active
                 if (status === 'correct') {
                   // User requested to remove box/border styles, keeping only text color and icon
-                  optionClass += "border-transparent text-green-700 font-medium";
+                  optionClass += " text-green-700 font-bold bg-green-50/50";
                 } else if (status === 'incorrect') {
-                  optionClass += "border-transparent text-red-700 font-medium";
+                  optionClass += " text-red-700 font-bold bg-red-50/50";
                 } else if (isSelected) {
-                  optionClass += "bg-indigo-50 border-indigo-300 text-indigo-900";
+                  // Reference style: blue text, underline, heavy decoration
+                  optionClass += " hover:bg-blue-50";
                 } else {
-                  optionClass += "border-transparent hover:bg-slate-100";
+                  optionClass += " hover:bg-blue-50";
                 }
 
-                if (showCorrect) {
-                  optionClass += " cursor-text"; // Allow text selection in review mode
-                } else {
-                  optionClass += " cursor-pointer";
-                }
+                if (showCorrect) optionClass += " cursor-text";
 
-                // Render as div in review mode to ensure text selection works (buttons can be problematic)
+                const content = (
+                  <React.Fragment>
+                    <CircleNumber num={optionIndex + 1} isSelected={isSelected || status === 'correct'} />
+                    <span className={`text-lg ${isSelected ? 'font-bold text-blue-900 underline decoration-blue-500 decoration-2 underline-offset-4' : ''}`}>
+                      <span dangerouslySetInnerHTML={{ __html: highlightText(option) }} />
+                    </span>
+                    {status === 'correct' && <Check className="w-5 h-5 text-green-600 ml-2" />}
+                    {status === 'incorrect' && <X className="w-5 h-5 text-red-600 ml-2" />}
+                  </React.Fragment>
+                );
+
                 if (showCorrect) {
                   return (
-                    <div
-                      key={optionIndex}
-                      onMouseUp={onTextSelect}
-                      className={optionClass}
-                    >
-                      {/* 圆圈数字 ①②③④ */}
-                      <span className={`text-[16px] ${FONT_SANS} shrink-0 ${isSelected || status ? 'font-bold' : 'text-slate-500'}`}>
-                        {getCircleNumber(optionIndex)}
-                      </span>
-
-                      {/* 选项文字 */}
-                      <span className={`text-[15px] leading-snug flex-1 text-left ${isSelected && !showCorrect ? 'font-medium' : ''}`}>
-                        <span dangerouslySetInnerHTML={{ __html: highlightText(option) }} />
-                      </span>
-
-                      {/* 结果图标 */}
-                      {status === 'correct' && <Check className="w-5 h-5 text-green-600 shrink-0 ml-2" />}
-                      {status === 'incorrect' && <X className="w-5 h-5 text-red-600 shrink-0 ml-2" />}
+                    <div key={optionIndex} onMouseUp={onTextSelect} className={optionClass}>
+                      {content}
                     </div>
                   );
                 }
@@ -213,36 +192,21 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
                 return (
                   <button
                     key={optionIndex}
-                    onClick={() => !showCorrect && onAnswerChange?.(optionIndex)}
+                    onClick={() => onAnswerChange?.(optionIndex)}
                     onMouseUp={onTextSelect}
-                    aria-disabled={showCorrect}
                     className={optionClass}
                   >
-                    {/* 圆圈数字 ①②③④ */}
-                    <span className={`text-[16px] ${FONT_SANS} shrink-0 ${isSelected || status ? 'font-bold' : 'text-slate-500'}`}>
-                      {getCircleNumber(optionIndex)}
-                    </span>
-
-                    {/* 选项文字 */}
-                    <span className={`text-[15px] leading-snug flex-1 text-left ${isSelected && !showCorrect ? 'font-medium' : ''}`}>
-                      {option}
-                    </span>
-
-                    {/* 正确/错误图标 */}
-                    {status === 'correct' && <Check className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />}
-                    {status === 'incorrect' && <X className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />}
+                    {content}
                   </button>
                 );
               })}
             </div>
 
-            {/* 解析 (仅复习模式) */}
+            {/* Explanation */}
             {showCorrect && question.explanation && (
-              <div className="mt-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r text-sm">
-                <div className="font-bold text-blue-900 mb-1">
-                  {labels.explanation || '解析'}
-                </div>
-                <div className="text-blue-800 leading-relaxed">{question.explanation}</div>
+              <div className="mt-4 p-4 bg-gray-100 border-l-4 border-black text-sm font-sans">
+                <div className="font-bold mb-1">{labels.explanation || '해설'}</div>
+                <div className="leading-relaxed">{question.explanation}</div>
               </div>
             )}
           </div>

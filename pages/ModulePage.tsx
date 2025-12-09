@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import React, { useMemo, useEffect } from 'react';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import VocabModule from '../components/vocab';
 import ReadingModule from '../components/ReadingModule';
 import ListeningModule from '../components/ListeningModule';
@@ -13,18 +13,47 @@ import { getLabels } from '../utils/i18n';
 const ModulePage: React.FC = () => {
   const { user, language, saveWord, recordMistake, saveAnnotation } = useAuth();
   const {
-    activeModule,
     setActiveModule,
-    activeCustomList,
     setActiveCustomList,
-    activeListType,
     setActiveListType,
     selectedInstitute,
     selectedLevel,
   } = useLearning();
   const { institutes, textbookContexts } = useData();
   const navigate = useNavigate();
+  const { moduleParam } = useParams<{ moduleParam: string }>();
+  const [searchParams] = useSearchParams();
   const labels = getLabels(language);
+
+  // Derive Module Type from URL
+  const currentModule = useMemo(() => {
+    switch (moduleParam?.toLowerCase()) {
+      case 'vocabulary': return LearningModuleType.VOCABULARY;
+      case 'reading': return LearningModuleType.READING;
+      case 'listening': return LearningModuleType.LISTENING;
+      case 'grammar': return LearningModuleType.GRAMMAR;
+      default: return null;
+    }
+  }, [moduleParam]);
+
+  // Sync URL state to Context (for consistency across app)
+  useEffect(() => {
+    if (currentModule) {
+      setActiveModule(currentModule);
+
+      const listParam = searchParams.get('list');
+      if (listParam === 'saved' && user?.savedWords) {
+        setActiveCustomList(user.savedWords);
+        setActiveListType('SAVED');
+      } else if (listParam === 'mistakes' && user?.mistakes) {
+        setActiveCustomList(user.mistakes);
+        setActiveListType('MISTAKES');
+      } else {
+        setActiveCustomList(null);
+        setActiveListType(null);
+      }
+    }
+  }, [currentModule, searchParams, setActiveModule, setActiveCustomList, setActiveListType, user]);
 
   const currentLevelContexts = useMemo(() => {
     if (!selectedInstitute || !selectedLevel) return {};
@@ -33,11 +62,8 @@ const ModulePage: React.FC = () => {
 
     Object.keys(textbookContexts).forEach(key => {
       if (key.startsWith(prefix)) {
-        // Robust parsing: slice off the prefix to get the unit number
-        // This handles Institute IDs that contain dashes (e.g. UUIDs)
         const unitStr = key.slice(prefix.length);
         const unit = parseInt(unitStr, 10);
-
         if (!isNaN(unit)) {
           contexts[unit] = textbookContexts[key];
         }
@@ -50,16 +76,26 @@ const ModulePage: React.FC = () => {
     return <Navigate to="/" replace />;
   }
 
-  if (!activeModule) {
+  // Redirect if no valid module or no selection
+  if (!currentModule || !selectedInstitute || !selectedLevel) {
     return <Navigate to="/dashboard" replace />;
   }
 
   const handleBack = () => {
-    setActiveModule(null);
-    setActiveCustomList(null);
-    setActiveListType(null);
     navigate('/dashboard');
   };
+
+  // Derive List for immediate render (avoid flickering)
+  const listParam = searchParams.get('list');
+  let derivedCustomList = undefined;
+  let derivedListType = undefined;
+  if (listParam === 'saved') {
+    derivedCustomList = user.savedWords;
+    derivedListType = 'SAVED';
+  } else if (listParam === 'mistakes') {
+    derivedCustomList = user.mistakes;
+    derivedListType = 'MISTAKES';
+  }
 
   return (
     <div>
@@ -69,19 +105,19 @@ const ModulePage: React.FC = () => {
       >
         ← {labels.backCurr}
       </button>
-      {activeModule === LearningModuleType.VOCABULARY && (
+      {currentModule === LearningModuleType.VOCABULARY && (
         <VocabModule
           course={{ instituteId: selectedInstitute, level: selectedLevel, textbookUnit: 0 }}
           instituteName={institutes.find(i => i.id === selectedInstitute)?.name || 'Korean'}
           language={language}
           levelContexts={currentLevelContexts}
-          customWordList={activeCustomList || undefined}
-          customListType={activeListType || undefined}
+          customWordList={derivedCustomList}
+          customListType={derivedListType}
           onRecordMistake={recordMistake}
           onSaveWord={saveWord}
         />
       )}
-      {activeModule === LearningModuleType.READING && (
+      {currentModule === LearningModuleType.READING && (
         <ReadingModule
           course={{ instituteId: selectedInstitute, level: selectedLevel, textbookUnit: 0 }}
           instituteName={institutes.find(i => i.id === selectedInstitute)?.name || 'Korean'}
@@ -93,7 +129,7 @@ const ModulePage: React.FC = () => {
           levelContexts={currentLevelContexts}
         />
       )}
-      {activeModule === LearningModuleType.LISTENING && (
+      {currentModule === LearningModuleType.LISTENING && (
         <ListeningModule
           course={{ instituteId: selectedInstitute, level: selectedLevel, textbookUnit: 0 }}
           instituteName={institutes.find(i => i.id === selectedInstitute)?.name || 'Korean'}
@@ -103,7 +139,7 @@ const ModulePage: React.FC = () => {
           levelContexts={currentLevelContexts}
         />
       )}
-      {activeModule === LearningModuleType.GRAMMAR && (
+      {currentModule === LearningModuleType.GRAMMAR && (
         <GrammarModule
           course={{ instituteId: selectedInstitute, level: selectedLevel, textbookUnit: 0 }}
           instituteName={institutes.find(i => i.id === selectedInstitute)?.name || 'Korean'}

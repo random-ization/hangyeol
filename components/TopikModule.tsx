@@ -6,6 +6,8 @@ import {
   RotateCcw, Eye, ChevronRight, ChevronLeft, Volume2
 } from 'lucide-react';
 import { getLabels } from '../utils/i18n';
+import { useAnnotation } from '../hooks/useAnnotation';
+import AnnotationMenu from './AnnotationMenu';
 
 interface TopikModuleProps {
   exams: TopikExam[];
@@ -33,10 +35,9 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
   const [currentReviewAttempt, setCurrentReviewAttempt] = useState<ExamAttempt | null>(null);
 
   // Annotation State
-  const [selectionRange, setSelectionRange] = useState<{ start: number; end: number; text: string; contextKey: string } | null>(null);
-  const [showAnnotationMenu, setShowAnnotationMenu] = useState(false);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
-  const [noteInput, setNoteInput] = useState('');
+  const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
+  const [editNoteInput, setEditNoteInput] = useState('');
+  const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null);
 
   const labels = getLabels(language);
   const questionRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -44,20 +45,96 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
   const readingExams = exams.filter(e => e.type === 'READING');
   const listeningExams = exams.filter(e => e.type === 'LISTENING');
   const examContextPrefix = currentExam ? `TOPIK-${currentExam.id}` : '';
-  const sidebarAnnotations = annotations.filter(a => a.contextKey.startsWith(examContextPrefix) && a.note?.trim());
+
+  // New Hook Usage
+  // Note: internal contextKey handling needs to be dynamic based on what we select?
+  // Actually, TOPIK module has many contexts potentially? 
+  // No, the user implementation previously saved based on `selectionRange.contextKey`.
+  // Wait, `useAnnotation` is bound to a SINGLE contextKey.
+  // The TOPIK exam might need separation per question or just "Exam wide"?
+  // Previous code: `contextKey` was dynamic in `handleTextSelection`.
+  // Wait, previously `handleTextSelection` TOOK `contextKey` as arg.
+  // The `useAnnotation` hook is designed for a single context.
+  // HACK: Pass a generic 'TOPIK-EXAM-ID' prefix as context, but filters will handle specific items?
+  // Or, since we render passing "contextKey" to `handleTextSelection`, maybe we need multiple hooks? No that's bad.
+  // Modification: We can use the hook with a "Base" context, or we can manaully manage the context key in the selection flow.
+  // The `useAnnotation` hook allows `handleTextSelection` to just grab selection.
+  // The `contextKey` prop in hook is used for FILTERING and for SAVING new ones.
+  // In `TopikModule`, we want to probably save per exam?
+  // Let's check how `handleTextSelection` was called before: `handleTextSelection(\`TOPIK-${currentExam.id}-Q${q.id}\`)`
+  // So it was saving per question!
+  // `useAnnotation` takes `contextKey` as a fixed string. 
+  // This is a mismatch. `useAnnotation` assumes the whole page is one context (like one Reading Unit).
+  // Options:
+  // 1. Change `useAnnotation` to allow dynamic keys.
+  // 2. Instantiate `useAnnotation` with the "Exam ID" and just use ONE long context for the whole exam (simplest).
+  //    But then `renderHighlightedText` needs to know which annotations apply to which text?
+  //    Actually `renderHighlightedText` filters by global `currentAnnotations` in the previous modules? No, `currentAnnotations` is filtered by context in the render body.
+  //    If we use ONE context key `TOPIK-${currentExam.id}`, then ALL highlightable text in the exam belongs to that context. 
+  //    This is actually BETTER because user notes are per-exam attempt usually? Or per question.
+  //    If questions are re-used in other lists, per-question ID is better.
+  //    Let's assume we want to preserve per-question context...
+  //    BUT the sidebar handles them all together?
+  //    If I switch to just `TOPIK-${currentExam.id}`, then all notes are on the exam sheet. This mimics a real paper exam where you write anywhere.
+  //    I will stick with `TOPIK-${currentExam.id}` as the unified context for this module. This simplifies things greatly.
+
+  const contextKey = currentExam ? `TOPIK-${currentExam.id}-REVIEW` : '';
+  // NOTE: Added -REVIEW suffix for now to validly track review session annotations, or just `TOPIK-${currentExam.id}` if we want persistent?
+  // User probably wants persistent notes on the Exam itself. Let's use `TOPIK-${currentExam.id}`.
+
+  const {
+    contentRef, // We might not use this single ref for the whole page? 
+    // Actually `useAnnotation` attaches listeners via `handleTextSelection`.
+    // We can just pass `handleTextSelection` to the `onMouseUp` of our text blocks.
+    handleTextSelection: originalHandleTextSelection,
+    saveAnnotation,
+    deleteAnnotation,
+    cancelAnnotation,
+    showAnnotationMenu,
+    menuPosition,
+    selectedColor,
+    setSelectedColor,
+    currentSelectionRange
+  } = useAnnotation(contextKey, annotations, onSaveAnnotation);
+
+  const handleTextSelection = (e: React.MouseEvent) => {
+    if (view !== 'REVIEW') return; // Only in Review
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      setActiveAnnotationId(null);
+      setEditingAnnotationId(null);
+    }
+    originalHandleTextSelection(e);
+  };
+
+  // Filter annotations
+  const currentAnnotations = annotations
+    .filter(a => a.contextKey === contextKey && a.startOffset !== undefined)
+    .sort((a, b) => (a.startOffset || 0) - (b.startOffset || 0));
+
+  const sidebarAnnotations = currentAnnotations; // Alias
+
+  const handleDeleteAnnotation = (id: string) => {
+    const ann = currentAnnotations.find(a => a.id === id);
+    if (ann) onSaveAnnotation({ ...ann, color: null, note: '' });
+  };
+
+  const handleUpdateNote = (id: string) => {
+    const ann = currentAnnotations.find(a => a.id === id);
+    if (ann) onSaveAnnotation({ ...ann, note: editNoteInput });
+    setEditingAnnotationId(null);
+    setActiveAnnotationId(null);
+  };
 
   // --- 分组逻辑 (核心：实现 PDF 样式的关键) ---
-  // 将扁平的题目列表转换为 [题目组] 列表，以便渲染 "左文章-右题目" 布局
   const questionGroups = useMemo(() => {
     if (!currentExam) return [];
     const groups: TopikQuestion[][] = [];
     let i = 0;
-    const questions = [...currentExam.questions].sort((a, b) => (a.id || 0) - (b.id || 0)); // Ensure sorted by ID/Number
+    const questions = [...currentExam.questions].sort((a, b) => (a.id || 0) - (b.id || 0));
 
     while (i < questions.length) {
       const q = questions[i];
-      // 如果题目有 groupCount 属性，或者根据 instruction 判断需要分组
-      // 这里假设数据中 groupCount 是准确的，或者默认为 1
       const count = q.groupCount && q.groupCount > 1 ? q.groupCount : 1;
       groups.push(questions.slice(i, i + count));
       i += count;
@@ -112,37 +189,91 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
     if (view === 'REVIEW') return;
     setUserAnswers(prev => ({ ...prev, [qId]: optIdx }));
   };
+  const renderHighlightedText = (text: string, itemContextKey: string) => {
+    if (!text) return null;
+    // Filter Anns for this item
+    const itemAnns = annotations.filter(a => a.contextKey === itemContextKey);
 
-  // --- Annotation Handlers (Highlighting) ---
-  const handleTextSelection = (contextKey: string) => {
-    if (view !== 'REVIEW') return;
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed) return;
+    const charMap: { annotation?: Annotation }[] = new Array(text.length).fill({});
+    itemAnns.forEach(ann => {
+      if (!ann.text) return;
+      const searchStr = ann.text;
+      let startIndex = 0;
+      let index;
+      // Simple string matching for all occurrences
+      while ((index = text.indexOf(searchStr, startIndex)) > -1) {
+        for (let i = index; i < index + searchStr.length; i++) {
+          charMap[i] = { annotation: ann };
+        }
+        startIndex = index + 1;
+      }
+    });
 
-    const range = selection.getRangeAt(0);
-    const text = range.toString();
-    const rect = range.getBoundingClientRect();
+    // ... Render logic (copied from ReadingModule but adapted classNames) ...
+    // I will include this logic in the replacement content.
 
-    setSelectionRange({ start: 0, end: 0, text, contextKey });
-    setMenuPosition({ top: rect.top + window.scrollY - 40, left: rect.left + rect.width / 2 });
-    setShowAnnotationMenu(true);
-  };
+    const result = [];
+    let i = 0;
+    while (i < text.length) {
+      const currentAnn = charMap[i].annotation;
+      let j = i + 1;
+      while (j < text.length) {
+        const nextAnn = charMap[j].annotation;
+        if (nextAnn !== currentAnn) break;
+        j++;
+      }
 
-  const saveHighlight = (color: Annotation['color']) => {
-    if (!selectionRange) return;
-    const newAnn: Annotation = {
-      id: Date.now().toString(),
-      contextKey: selectionRange.contextKey,
-      text: selectionRange.text,
-      color, note: noteInput, timestamp: Date.now()
-    };
-    onSaveAnnotation(newAnn);
-    setShowAnnotationMenu(false);
-    setNoteInput('');
-    window.getSelection()?.removeAllRanges();
+      const segment = text.slice(i, j);
+      let className = 'relative rounded px-0 py-0.5 box-decoration-clone transition-all ';
+
+      if (currentAnn) {
+        const isActive = activeAnnotationId === currentAnn.id || editingAnnotationId === currentAnn.id;
+        const colorMap: any = {
+          'yellow': { border: 'border-yellow-400', bg: 'bg-yellow-200', hover: 'hover:bg-yellow-100' },
+          'green': { border: 'border-green-400', bg: 'bg-green-200', hover: 'hover:bg-green-100' },
+          'blue': { border: 'border-blue-400', bg: 'bg-blue-200', hover: 'hover:bg-blue-100' },
+          'pink': { border: 'border-pink-400', bg: 'bg-pink-200', hover: 'hover:bg-pink-100' },
+        };
+        const colors = colorMap[currentAnn.color || 'yellow'] || colorMap['yellow'];
+        className += `${colors.border} border-b-2 cursor-pointer `;
+        if (isActive) className += `${colors.bg} `;
+        else className += `${colors.hover} `;
+      }
+
+      if (currentAnn) {
+        result.push(
+          <span
+            key={i}
+            id={`annotation-${currentAnn.id}`}
+            className={className}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              if (currentAnn.id) {
+                setActiveAnnotationId(currentAnn.id);
+                // Scroll sidebar
+                const el = document.getElementById(`sidebar-card-${currentAnn.id}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }}
+          >
+            {segment}
+            {currentAnn.note && <span className="absolute -top-1.5 -right-1 w-2 h-2 bg-red-400 rounded-full border border-white"></span>}
+          </span>
+        );
+      } else {
+        result.push(<span key={i}>{segment}</span>);
+      }
+      i = j;
+    }
+    return result;
   };
 
   const getCircleNumber = (num: number) => ['①', '②', '③', '④'][num] || `${num + 1}`;
+
+  // ... (Previous logic for PDF renderers will need this `renderHighlightedText`)
+
+  // --- Renderers (PDF Style) ---
 
   // --- Renderers (PDF Style) ---
 
@@ -157,15 +288,15 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
       );
     }
 
-    const passageKey = `Q${q.id}-PASSAGE`;
-    const boxKey = `Q${q.id}-BOX`;
-
     // 新闻标题 (Reading Q25-27)
     if (q.layout === 'NEWS_HEADLINE' && q.passage) {
       return (
-        <div className="mb-6 border-2 border-slate-900 p-6 bg-white shadow-[4px_4px_0px_#000]">
-          <h3 className={`${FONT_SERIF} font-bold text-xl text-slate-900 leading-snug tracking-tight text-center`}>
-            {q.passage}
+        <div
+          className="mb-6 border-2 border-slate-900 p-6 bg-white shadow-[4px_4px_0px_#000]"
+          onMouseUp={handleTextSelection}
+        >
+          <h3 className={`${FONT_SERIF} font-bold text-xl text-slate-900 leading-snug tracking-tight text-center select-text`}>
+            {renderHighlightedText(q.passage, contextKey)}
           </h3>
         </div>
       );
@@ -177,8 +308,11 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
         <div className="space-y-6 mb-6">
           {/* Main Passage if exists */}
           {q.passage && (
-            <div className={`${FONT_SERIF} text-[17px] leading-[1.8] text-justify whitespace-pre-wrap text-slate-800`}>
-              {q.passage}
+            <div
+              className={`${FONT_SERIF} text-[17px] leading-[1.8] text-justify whitespace-pre-wrap text-slate-800 select-text`}
+              onMouseUp={handleTextSelection}
+            >
+              {renderHighlightedText(q.passage, contextKey)}
             </div>
           )}
 
@@ -187,8 +321,11 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
             <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white px-3 text-sm font-bold text-slate-900 border border-slate-200">
               &lt;보 기&gt;
             </span>
-            <div className={`${FONT_SERIF} text-[16px] leading-[1.8] text-slate-800 whitespace-pre-wrap text-justify`}>
-              {q.contextBox || (q.layout === 'INSERT_BOX' ? q.passage : '')}
+            <div
+              className={`${FONT_SERIF} text-[16px] leading-[1.8] text-slate-800 whitespace-pre-wrap text-justify select-text`}
+              onMouseUp={handleTextSelection}
+            >
+              {renderHighlightedText(q.contextBox || (q.layout === 'INSERT_BOX' ? q.passage : '') || '', contextKey)}
             </div>
           </div>
         </div>
@@ -199,8 +336,11 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
     if (q.passage) {
       return (
         <div className="mb-6 border border-slate-300 p-5 bg-white shadow-sm h-full">
-          <div className={`${FONT_SERIF} text-[17px] leading-[1.8] text-justify whitespace-pre-wrap text-slate-800`}>
-            {q.passage}
+          <div
+            className={`${FONT_SERIF} text-[17px] leading-[1.8] text-justify whitespace-pre-wrap text-slate-800 select-text`}
+            onMouseUp={handleTextSelection}
+          >
+            {renderHighlightedText(q.passage, contextKey)}
           </div>
         </div>
       );
@@ -221,9 +361,20 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
           <div className="flex-1">
             {showPassage && renderPassage(q)}
             {q.question && (
-              <div className={`${FONT_SANS} text-[17px] font-bold text-slate-900 leading-snug mb-3`}>
-                {/* 简单的填空处理 */}
-                <span dangerouslySetInnerHTML={{ __html: q.question.replace(/\(\s*\)/g, '( &nbsp;&nbsp;&nbsp;&nbsp; )') }} />
+              <div
+                className={`${FONT_SANS} text-[17px] font-bold text-slate-900 leading-snug mb-3 select-text`}
+                onMouseUp={handleTextSelection}
+              >
+                {/* For question text, simpler render to avoid breaking split(regex) if html exists? 
+                    Actually renderHighlightedText returns ReactNodes. 
+                    If q.question has HTML like parens replacement... 
+                    Original: dangerouslySetInnerHTML with replace.
+                    If we highlight, we might break HTML.
+                    Compromise: Text Matching might fail on HTML entities.
+                    But TOPIK module questions are usually simple text with ( ).
+                    I'll apply highlight.
+                */}
+                {renderHighlightedText(q.question.replace(/\(\s*\)/g, '(      )'), contextKey)}
               </div>
             )}
           </div>
@@ -240,8 +391,8 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
                   onClick={() => handleAnswer(q.id, idx)}
                   disabled={isReview}
                   className={`relative border-2 rounded-lg p-2 transition-all hover:bg-slate-50 ${myAnswer === idx
-                      ? 'border-indigo-600 ring-2 ring-indigo-100 bg-indigo-50'
-                      : 'border-slate-200 hover:border-slate-400'
+                    ? 'border-indigo-600 ring-2 ring-indigo-100 bg-indigo-50'
+                    : 'border-slate-200 hover:border-slate-400'
                     }`}
                 >
                   <span className={`absolute top-2 left-2 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${myAnswer === idx ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
@@ -282,7 +433,12 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
                       disabled={isReview}
                     />
                     <span className={`text-[15px] font-sans ${myAnswer === idx ? 'font-bold text-slate-900' : 'text-slate-500'}`}>{getCircleNumber(idx)}</span>
-                    <span className={`text-[16px] leading-snug ${myAnswer === idx ? 'text-slate-900 font-medium' : 'text-slate-700'}`}>{opt}</span>
+                    <span
+                      className={`text-[16px] leading-snug ${myAnswer === idx ? 'text-slate-900 font-medium' : 'text-slate-700'} select-text`}
+                      onMouseUp={handleTextSelection}
+                    >
+                      {renderHighlightedText(opt, contextKey)}
+                    </span>
                     {isReview && idx === q.correctAnswer && <Check className="w-4 h-4 text-green-600 ml-auto shrink-0" />}
                     {isReview && myAnswer === idx && myAnswer !== q.correctAnswer && <X className="w-4 h-4 text-red-600 ml-auto shrink-0" />}
                   </label>
@@ -371,7 +527,7 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
   // --- VIEW: EXAM PAPER ---
   if ((view === 'EXAM' || view === 'REVIEW') && currentExam) {
     return (
-      <div className="flex flex-col h-screen bg-slate-200">
+      <div className="flex flex-col h-screen bg-slate-200 overflow-hidden">
         {/* Header */}
         <div className="bg-slate-800 text-white h-14 flex items-center justify-between px-6 shadow-md z-20 shrink-0">
           <div className="flex items-center gap-4">
@@ -397,48 +553,138 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
           </div>
         </div>
 
-        {/* Main Paper Area */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center p-4 md:p-8 relative bg-slate-200">
+        {/* Highlight Wrapper */}
+        <div className="flex-1 flex min-h-0 relative">
 
-          {/* The Paper Sheet */}
-          <div className={`bg-white w-full ${PAPER_MAX_WIDTH} shadow-2xl min-h-screen relative flex flex-col mb-20`}>
+          {/* Main Paper Area */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden flex justify-center p-4 md:p-8 relative bg-slate-200"
+          // Add ref here if we wanted to scope global selection, but we rely on rendering logic now
+          >
 
-            {/* Paper Header (Logo area) */}
-            <div className="h-20 border-b-2 border-black flex justify-between items-end px-8 pb-3 mb-8 mx-8 mt-8">
-              <span className="font-bold text-2xl text-slate-900 font-serif">TOPIK Ⅱ {currentExam.type === 'READING' ? '읽기 (Reading)' : '듣기 (Listening)'}</span>
-              <span className="font-mono text-slate-500 font-medium">제 {currentExam.round} 회</span>
-            </div>
+            {/* The Paper Sheet */}
+            <div className={`bg-white w-full ${PAPER_MAX_WIDTH} shadow-2xl min-h-screen relative flex flex-col mb-20`}>
 
-            {/* Content */}
-            <div className={`flex-1 px-8 md:px-12 pb-12 ${view === 'EXAM' ? 'select-none' : ''}`}>
-              {questionGroups.map((group, idx) => (
-                <React.Fragment key={idx}>
-                  {renderGroup(group)}
-                </React.Fragment>
-              ))}
-            </div>
-
-            {/* Footer */}
-            <div className="h-16 border-t border-slate-200 flex flex-col items-center justify-center text-slate-400 font-mono text-xs mt-auto bg-slate-50">
-              <div className="mb-1">한국어능력시험 (TOPIK)</div>
-              <div>- End of Page -</div>
-            </div>
-
-            {/* Annotation Menu (Review) */}
-            {showAnnotationMenu && view === 'REVIEW' && (
-              <div className="fixed bg-white shadow-xl border border-slate-200 rounded-lg p-2 flex gap-2 z-50 animate-in zoom-in-95" style={{ top: menuPosition?.top, left: menuPosition?.left }}>
-                <button onClick={() => saveHighlight('yellow')} className="w-6 h-6 bg-yellow-200 rounded-full border hover:scale-110" />
-                <button onClick={() => saveHighlight('green')} className="w-6 h-6 bg-green-200 rounded-full border hover:scale-110" />
-                <button onClick={() => setShowAnnotationMenu(false)} className="ml-2 text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+              {/* Paper Header (Logo area) */}
+              <div className="h-20 border-b-2 border-black flex justify-between items-end px-8 pb-3 mb-8 mx-8 mt-8">
+                <span className="font-bold text-2xl text-slate-900 font-serif">TOPIK Ⅱ {currentExam.type === 'READING' ? '읽기 (Reading)' : '듣기 (Listening)'}</span>
+                <span className="font-mono text-slate-500 font-medium">제 {currentExam.round} 회</span>
               </div>
-            )}
+
+              {/* Content */}
+              <div className={`flex-1 px-8 md:px-12 pb-12 ${view === 'EXAM' ? 'select-none' : ''}`}>
+                {questionGroups.map((group, idx) => (
+                  <React.Fragment key={idx}>
+                    {renderGroup(group)}
+                  </React.Fragment>
+                ))}
+              </div>
+
+              {/* Footer */}
+              <div className="h-16 border-t border-slate-200 flex flex-col items-center justify-center text-slate-400 font-mono text-xs mt-auto bg-slate-50">
+                <div className="mb-1">한국어능력시험 (TOPIK)</div>
+                <div>- End of Page -</div>
+              </div>
+
+            </div>
           </div>
+
+          {/* Sidebar - Review Mode Only */}
+          {view === 'REVIEW' && (
+            <div className="w-80 bg-slate-50 border-l border-slate-200 flex flex-col min-h-0 z-10 shrink-0">
+              <div className="p-4 border-b border-slate-200 bg-white">
+                <h4 className="font-bold text-slate-700 flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-indigo-500" />
+                  {labels.annotate}
+                </h4>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {sidebarAnnotations.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 text-sm italic">
+                    Select text on the paper to add notes.
+                  </div>
+                ) : (
+                  sidebarAnnotations.map(ann => {
+                    const isEditing = editingAnnotationId === ann.id;
+                    const isActive = activeAnnotationId === ann.id;
+
+                    if (isEditing) {
+                      return (
+                        <div
+                          key={ann.id}
+                          id={`sidebar-card-${ann.id}`}
+                          className="bg-white p-3 rounded-lg border-2 border-indigo-500 shadow-md scroll-mt-20"
+                        >
+                          <div className="text-xs font-bold mb-2 text-slate-500">Editing note</div>
+                          <textarea
+                            value={editNoteInput}
+                            onChange={(e) => setEditNoteInput(e.target.value)}
+                            className="w-full border border-slate-200 rounded-lg p-2 text-sm resize-none focus:ring-2 focus:ring-indigo-200 outline-none mb-2"
+                            rows={3}
+                            autoFocus
+                          />
+                          <div className="flex justify-end gap-2">
+                            <button onClick={() => setEditingAnnotationId(null)} className="px-3 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded">Cancel</button>
+                            <button onClick={() => handleUpdateNote(ann.id)} className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-1"><Check className="w-3 h-3" /> Save</button>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div
+                        key={ann.id}
+                        id={`sidebar-card-${ann.id}`}
+                        className={`group p-3 rounded-lg border transition-all cursor-pointer relative scroll-mt-20
+                                        ${isActive ? 'bg-indigo-50 border-indigo-300 shadow-md' : 'bg-white border-slate-100 hover:border-indigo-200 hover:shadow-sm'}`}
+                        onClick={() => {
+                          setActiveAnnotationId(ann.id);
+                          setEditingAnnotationId(ann.id);
+                          setEditNoteInput(ann.note || '');
+                          // Scroll to text? Not easily possible without id map.
+                        }}
+                      >
+                        <div className={`text-xs font-bold mb-1 px-1.5 py-0.5 rounded w-fit bg-${ann.color === 'yellow' ? 'yellow-100 text-yellow-800' : ann.color === 'green' ? 'green-100 text-green-800' : ann.color === 'blue' ? 'blue-100 text-blue-800' : 'pink-100 text-pink-800'}`}>
+                          {ann.text.substring(0, 20)}...
+                        </div>
+                        {ann.note ? <p className="text-sm text-slate-700">{ann.note}</p> : <p className="text-xs text-slate-400 italic">Click to add note...</p>}
+                        <button onClick={(e) => { e.stopPropagation(); handleDeleteAnnotation(ann.id); }} className="absolute top-2 right-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
         </div>
 
         {/* Audio Bar */}
         {view === 'EXAM' && currentExam.type === 'LISTENING' && currentExam.audioUrl && (
           <AudioBar url={currentExam.audioUrl} />
         )}
+
+        <AnnotationMenu
+          visible={showAnnotationMenu}
+          position={menuPosition}
+          selectionText={currentSelectionRange?.text}
+          onAddNote={() => {
+            const id = saveAnnotation(undefined, undefined, true);
+            if (id) {
+              setEditingAnnotationId(id);
+              setEditNoteInput('');
+              setTimeout(() => {
+                const el = document.getElementById(`sidebar-card-${id}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }, 100);
+            }
+          }}
+          selectedColor={selectedColor}
+          setSelectedColor={setSelectedColor}
+          onClose={cancelAnnotation}
+          onDelete={deleteAnnotation}
+          labels={labels}
+        />
       </div>
     );
   }

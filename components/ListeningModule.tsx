@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { generateReadingPassage } from '../services/geminiService';
 import { CourseSelection, ReadingContent, Language, TextbookContent, Annotation } from '../types';
 import { Play, Pause, RotateCcw, Volume2, ChevronRight, Music, MessageSquare, Trash2, Check } from 'lucide-react';
@@ -23,7 +24,21 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
   language,
   levelContexts,
 }) => {
-  const [activeUnit, setActiveUnit] = useState<number | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeUnit = searchParams.get('unit') ? parseInt(searchParams.get('unit')!, 10) : null;
+
+  const setActiveUnit = (unit: number | null) => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      if (unit) {
+        newParams.set('unit', unit.toString());
+      } else {
+        newParams.delete('unit');
+      }
+      return newParams;
+    });
+  };
+
   const [passage, setPassage] = useState<ReadingContent | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,7 +58,7 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
 
   const {
     contentRef,
-    handleTextSelection,
+    handleTextSelection: originalHandleTextSelection,
     saveAnnotation,
     deleteAnnotation,
     cancelAnnotation,
@@ -53,6 +68,15 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
     setSelectedColor,
     currentSelectionRange
   } = useAnnotation(contextKey, annotations, onSaveAnnotation);
+
+  const handleTextSelection = (e: React.MouseEvent) => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      setActiveAnnotationId(null);
+      setEditingAnnotationId(null);
+    }
+    originalHandleTextSelection(e);
+  };
 
   const labels = getLabels(language);
   const content = activeUnit ? levelContexts[activeUnit] : undefined;
@@ -132,6 +156,7 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
       onSaveAnnotation({ ...ann, note: editNoteInput });
     }
     setEditingAnnotationId(null);
+    setActiveAnnotationId(null);
   };
 
   const renderHighlightedText = (fullText: string) => {
@@ -166,11 +191,11 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
         // STYLE LOGIC UPDATE (Listening Module):
         const isActive = activeAnnotationId === currentAnn.id || editingAnnotationId === currentAnn.id;
 
-        const colorMap: { [key: string]: { border: string, bg: string } } = {
-          'yellow': { border: 'border-yellow-400', bg: 'bg-yellow-200/50' },
-          'green': { border: 'border-green-400', bg: 'bg-green-200/50' },
-          'blue': { border: 'border-blue-400', bg: 'bg-blue-200/50' },
-          'pink': { border: 'border-pink-400', bg: 'bg-pink-200/50' },
+        const colorMap: { [key: string]: { border: string, bg: string, hover: string } } = {
+          'yellow': { border: 'border-yellow-400', bg: 'bg-yellow-200', hover: 'hover:bg-yellow-100' },
+          'green': { border: 'border-green-400', bg: 'bg-green-200', hover: 'hover:bg-green-100' },
+          'blue': { border: 'border-blue-400', bg: 'bg-blue-200', hover: 'hover:bg-blue-100' },
+          'pink': { border: 'border-pink-400', bg: 'bg-pink-200', hover: 'hover:bg-pink-100' },
         };
         const colors = colorMap[currentAnn.color || 'yellow'] || colorMap['yellow'];
 
@@ -178,7 +203,7 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
         if (isActive) {
           className += `${colors.bg} `;
         } else {
-          className += `hover:bg-opacity-50 hover:${colors.bg.split('/')[0]} `;
+          className += `${colors.hover} `;
         }
       }
 
@@ -190,6 +215,7 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
             className={className}
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault();
               setActiveAnnotationId(currentAnn.id);
               const el = document.getElementById(`sidebar-card-${currentAnn.id}`);
               if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });

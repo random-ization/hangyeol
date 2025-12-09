@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { generateReadingPassage } from '../services/geminiService';
 import { CourseSelection, ReadingContent, Language, TextbookContent, Annotation } from '../types';
 import { X, ChevronRight, MessageSquare, Trash2, Check } from 'lucide-react';
@@ -27,7 +28,21 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
   language,
   levelContexts,
 }) => {
-  const [activeUnit, setActiveUnit] = useState<number | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeUnit = searchParams.get('unit') ? parseInt(searchParams.get('unit')!, 10) : null;
+
+  const setActiveUnit = (unit: number | null) => {
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      if (unit) {
+        newParams.set('unit', unit.toString());
+      } else {
+        newParams.delete('unit');
+      }
+      return newParams;
+    });
+  };
+
   const [passage, setPassage] = useState<ReadingContent | null>(null);
   const [loading, setLoading] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
@@ -49,7 +64,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
 
   const {
     contentRef,
-    handleTextSelection,
+    handleTextSelection: originalHandleTextSelection,
     saveAnnotation,
     deleteAnnotation,
     cancelAnnotation,
@@ -59,6 +74,18 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
     setSelectedColor,
     currentSelectionRange
   } = useAnnotation(contextKey, annotations, onSaveAnnotation);
+
+  const handleTextSelection = (e: React.MouseEvent) => {
+    // Clear active ID on click unless stopped by child
+    // BUT, handleTextSelection from hook manages selection logic.
+    // We can wrap it.
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      setActiveAnnotationId(null);
+      setEditingAnnotationId(null);
+    }
+    originalHandleTextSelection(e);
+  };
 
   // Filter Annotations: Only show those with valid offsets
   const currentAnnotations = annotations
@@ -111,6 +138,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
       onSaveAnnotation({ ...ann, note: editNoteInput });
     }
     setEditingAnnotationId(null);
+    setActiveAnnotationId(null); // Clear active highlight on save
   };
 
   // Sentence parsing logic for Hover Sync
@@ -176,12 +204,12 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
         // Active (Clicked/Edited): Background Highlight
         const isActive = activeAnnotationId === currentAnn.id || editingAnnotationId === currentAnn.id;
 
-        // Define colors map specifically for this
-        const colorMap: { [key: string]: { border: string, bg: string } } = {
-          'yellow': { border: 'border-yellow-400', bg: 'bg-yellow-200/50' },
-          'green': { border: 'border-green-400', bg: 'bg-green-200/50' },
-          'blue': { border: 'border-blue-400', bg: 'bg-blue-200/50' },
-          'pink': { border: 'border-pink-400', bg: 'bg-pink-200/50' },
+        // Use simpler classes to ensure they work without JIT issues or specificity conflicts
+        const colorMap: { [key: string]: { border: string, bg: string, hover: string } } = {
+          'yellow': { border: 'border-yellow-400', bg: 'bg-yellow-200', hover: 'hover:bg-yellow-100' },
+          'green': { border: 'border-green-400', bg: 'bg-green-200', hover: 'hover:bg-green-100' },
+          'blue': { border: 'border-blue-400', bg: 'bg-blue-200', hover: 'hover:bg-blue-100' },
+          'pink': { border: 'border-pink-400', bg: 'bg-pink-200', hover: 'hover:bg-pink-100' },
         };
         const colors = colorMap[currentAnn.color || 'yellow'] || colorMap['yellow'];
 
@@ -189,7 +217,8 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
         if (isActive) {
           className += `${colors.bg} `;
         } else {
-          className += `hover:bg-opacity-50 hover:${colors.bg.split('/')[0]} `; // Subtle hover hint
+          // Add a subtle hover effect that doesn't rely on 'bg-opacity' if that was the issue
+          className += `${colors.hover} `;
         }
       }
 
@@ -208,6 +237,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
             className={className}
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault(); // Prevent text toggle issues
               setActiveAnnotationId(currentAnn.id);
               // Also scroll sidebar
               const el = document.getElementById(`sidebar-card-${currentAnn.id}`);
@@ -234,9 +264,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
 
   // ... (TOC and Loading) ... //
 
-  // Keeping the return same until Sidebar
   if (!activeUnit) {
-    // (Keep TOC)
     const availableUnits = Object.keys(levelContexts)
       .map(Number)
       .sort((a, b) => a - b);
@@ -244,9 +272,6 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
 
     return (
       <div className="max-w-4xl mx-auto">
-        {/* TOC Items */}
-        {/* Reuse existing rendering logic via "unchanged" assumption or just overwrite if small */}
-        {/* Since I am replacing the top half, I should just handle the TOC return correctly */}
         <h2 className="text-2xl font-bold text-slate-800 mb-6">
           {labels.toc} - {labels.reading}
         </h2>
@@ -308,7 +333,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
   }
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col max-w-6xl mx-auto w-full relative">
+    <div className="h-[calc(100vh-140px)] flex flex-col max-w-[1600px] mx-auto w-full relative">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center">
           <button
@@ -345,7 +370,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
               {/* Korean Text - Always Visible */}
               <div
                 ref={contentRef}
-                className={`transition-all duration-300 ${showTranslation ? 'w-1/2' : 'w-full max-w-3xl mx-auto'}`}
+                className={`transition-all duration-300 ${showTranslation ? 'w-1/2' : 'w-full max-w-5xl mx-auto'}`}
                 onMouseUp={handleTextSelection}
               >
                 <div className="text-lg leading-loose text-slate-800 font-serif whitespace-pre-line select-text">

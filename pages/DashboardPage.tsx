@@ -44,16 +44,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ canAccessContent, onShowU
           setLevel(0);
         }}
         onOpenVocabBook={() => {
-          setActiveCustomList(user.savedWords);
-          setActiveListType('SAVED');
-          setActiveModule(LearningModuleType.VOCABULARY);
-          navigate('/module');
+          navigate('/dashboard/vocabulary?list=saved');
         }}
         onOpenMistakeBook={() => {
-          setActiveCustomList(user.mistakes);
-          setActiveListType('MISTAKES');
-          setActiveModule(LearningModuleType.VOCABULARY);
-          navigate('/module');
+          navigate('/dashboard/vocabulary?list=mistakes');
         }}
         onClearMistakes={clearMistakes}
         onStartModule={mod => {
@@ -66,8 +60,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ canAccessContent, onShowU
             return;
           }
 
-          setActiveModule(mod);
-          navigate('/module');
+          navigate(`/dashboard/${mod.toLowerCase()}`);
         }}
       />
     );

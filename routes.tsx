@@ -62,7 +62,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({ canAccessContent, onShowUp
               />
             }
           />
-          <Route path="/module" element={<ModulePage />} />
+          <Route path="/dashboard/:moduleParam" element={<ModulePage />} />
           <Route
             path="/topik"
             element={

@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { generateReadingPassage } from '../services/geminiService';
 import { CourseSelection, ReadingContent, Language, TextbookContent, Annotation } from '../types';
-import { X, ChevronRight, MessageSquare, Trash2, Check } from 'lucide-react';
+import {
+  ChevronRight, MessageSquare, Trash2, Check, ArrowLeft,
+  BookOpen, Type, Languages, Highlighter
+} from 'lucide-react';
 import { getLabels } from '../utils/i18n';
 import { useAnnotation } from '../hooks/useAnnotation';
 import AnnotationMenu from './AnnotationMenu';
-import { getPreviewFromContent } from '../utils/textUtils';
 
 interface ReadingModuleProps {
   course: CourseSelection;
@@ -47,6 +49,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
   const [passage, setPassage] = useState<ReadingContent | null>(null);
   const [loading, setLoading] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
+  const [fontSize, setFontSize] = useState<'sm' | 'base' | 'lg'>('base');
 
   // Translation Hover State
   const [hoveredSentenceIndex, setHoveredSentenceIndex] = useState<number | null>(null);
@@ -60,7 +63,6 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
   // Sidebar Edit State
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
   const [editNoteInput, setEditNoteInput] = useState('');
-  // Active state for highlighting (User Request: Underline default, Highlight on active)
   const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null);
 
   const {
@@ -77,9 +79,6 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
   } = useAnnotation(contextKey, annotations, onSaveAnnotation);
 
   const handleTextSelection = (e: React.MouseEvent) => {
-    // Clear active ID on click unless stopped by child
-    // BUT, handleTextSelection from hook manages selection logic.
-    // We can wrap it.
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed) {
       setActiveAnnotationId(null);
@@ -88,19 +87,16 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
     originalHandleTextSelection(e);
   };
 
-  // Filter Annotations: Only show those with valid offsets
   const currentAnnotations = annotations
     .filter(
       a => a.contextKey === contextKey && a.startOffset !== undefined && a.endOffset !== undefined
     )
     .sort((a, b) => (a.startOffset || 0) - (b.startOffset || 0));
 
-  // Sidebar Logic: Show annotations with notes OR the one being edited
   const sidebarAnnotations = currentAnnotations.filter(a =>
     (a.note && a.note.trim().length > 0) || a.id === editingAnnotationId
   );
 
-  // Load reading when active unit changes
   useEffect(() => {
     const fetchContent = async () => {
       if (!activeUnit) return;
@@ -131,7 +127,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
   const handleDeleteAnnotation = (id: string) => {
     const ann = currentAnnotations.find(a => a.id === id);
     if (ann) {
-      onSaveAnnotation({ ...ann, color: null, note: '' }); // Treat as delete
+      onSaveAnnotation({ ...ann, color: null, note: '' });
     }
   };
 
@@ -141,10 +137,9 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
       onSaveAnnotation({ ...ann, note: editNoteInput });
     }
     setEditingAnnotationId(null);
-    setActiveAnnotationId(null); // Clear active highlight on save
+    setActiveAnnotationId(null);
   };
 
-  // Sentence parsing logic for Hover Sync
   const koreanSentenceRanges = useMemo(() => {
     if (!passage?.koreanText) return [];
     const ranges: { start: number; end: number }[] = [];
@@ -161,7 +156,6 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
     return passage.englishTranslation.match(/[^.!?\n]+[.!?\n]*/g) || [passage.englishTranslation];
   }, [passage]);
 
-  // Render text with highlights AND hover sync
   const renderHighlightedText = (fullText: string) => {
     if (!fullText) return null;
 
@@ -202,8 +196,6 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
       let className = 'relative rounded px-0 py-0.5 box-decoration-clone transition-all ';
 
       if (currentAnn) {
-        // STYLE LOGIC UPDATE:
-        // Use background highlight (highlighter style)
         const isActive = activeAnnotationId === currentAnn.id || editingAnnotationId === currentAnn.id;
 
         const colorMap: { [key: string]: { bg: string, activeBg: string } } = {
@@ -222,11 +214,8 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
         }
       }
 
-      if (isHovered && !currentAnn) { // Only show sentence hover if not an annotation (or mix them?)
-        // If annotation is present, maybe we don't underline sentence to avoid conflict?
-        // Or we just add separate style.
-        // Let's keep sentence hover subtle.
-        className += 'bg-indigo-50/30 ';
+      if (isHovered && !currentAnn) {
+        className += 'bg-indigo-50/50 ring-1 ring-indigo-100 ';
       }
 
       if (currentAnn) {
@@ -237,16 +226,15 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
             className={className}
             onClick={(e) => {
               e.stopPropagation();
-              e.preventDefault(); // Prevent text toggle issues
+              e.preventDefault();
               setActiveAnnotationId(currentAnn.id);
-              // Also scroll sidebar
               const el = document.getElementById(`sidebar-card-${currentAnn.id}`);
               if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }}
           >
             {segmentText}
             {currentAnn.note && (
-              <span className="absolute -top-1.5 -right-1 w-2 h-2 bg-red-400 rounded-full border border-white"></span>
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full border border-white shadow-sm"></span>
             )}
           </span>
         );
@@ -262,8 +250,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
     return result;
   };
 
-  // ... (TOC and Loading) ... //
-
+  // --- 1. TOC View (Table of Contents) ---
   if (!activeUnit) {
     const availableUnits = Object.keys(levelContexts)
       .map(Number)
@@ -271,46 +258,59 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
     const unitsWithReading = availableUnits.filter(u => !!levelContexts[u]?.readingText);
 
     return (
-      <div className="max-w-4xl mx-auto">
-        <h2 className="text-2xl font-bold text-slate-800 mb-6">
-          {labels.toc} - {labels.reading}
-        </h2>
+      <div className="max-w-4xl mx-auto py-8">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="p-3 bg-blue-50 rounded-xl text-blue-600">
+            <BookOpen className="w-8 h-8" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">{labels.reading}</h2>
+            <p className="text-slate-500">{labels.toc}</p>
+          </div>
+        </div>
+
         {unitsWithReading.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl border border-slate-200 text-slate-500">
-            {labels.noReading}
+          <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 border-dashed">
+            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+              <BookOpen className="w-8 h-8" />
+            </div>
+            <p className="text-slate-500 font-medium">{labels.noReadings}</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid gap-4">
             {unitsWithReading.map(u => {
               const c = levelContexts[u];
-              const title = getPreviewFromContent(c.readingText, 50) || `Unit ${u}`;
+              const title = c.readingText
+                ? c.readingText.substring(0, 60) + (c.readingText.length > 60 ? '...' : '')
+                : `Unit ${u}`;
               return (
                 <button
                   key={u}
                   onClick={() => setActiveUnit(u)}
-                  className="w-full bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all text-left flex justify-between items-center group"
+                  className="group relative w-full bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all text-left flex justify-between items-center overflow-hidden"
                 >
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 mr-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                      <span className="font-serif font-bold text-lg">가</span>
+                  <div className="absolute inset-y-0 left-0 w-1 bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="flex items-center gap-5">
+                    <div className="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-mono font-bold text-lg group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                      {u}
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-1">
-                        {labels.unit} {u}
-                      </div>
-                      <h3 className="text-lg font-bold text-slate-800 font-serif">
+                      <h3 className="text-lg font-bold text-slate-800 group-hover:text-indigo-700 transition-colors font-serif">
                         {title}
                       </h3>
-                      {course.level <= 2 && (
-                        <div className="flex gap-2 mt-2">
-                          <span className="inline-flex items-center text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                            Beginner
-                          </span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-3 mt-1.5">
+                        <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                          Unit {u}
+                        </span>
+                        {course.level <= 2 && (
+                          <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">Beginner</span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-indigo-500" />
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:translate-x-1">
+                    <ChevronRight className="w-5 h-5" />
+                  </div>
                 </button>
               );
             })}
@@ -320,195 +320,203 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
     );
   }
 
-  // Reading View
+  // --- 2. Loading View ---
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-        <p className="text-slate-500">{labels.loading}</p>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center">
+        <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+        <p className="text-slate-500 font-medium animate-pulse">{labels.loadingReading}</p>
       </div>
     );
   }
 
+  // --- 3. Reading View (Modernized) ---
+  const textSizeClass = fontSize === 'sm' ? 'text-base' : fontSize === 'lg' ? 'text-xl' : 'text-lg';
+  const lineHeightClass = fontSize === 'sm' ? 'leading-relaxed' : fontSize === 'lg' ? 'leading-loose' : 'leading-loose';
+
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col max-w-[1600px] mx-auto w-full relative">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center">
+    <div className="h-[calc(100vh-100px)] flex flex-col w-full max-w-[1800px] mx-auto relative bg-slate-50">
+
+      {/* Top Bar: Navigation & Controls */}
+      <div className="flex items-center justify-between py-4 px-6 bg-white border-b border-slate-200 shrink-0 sticky top-0 z-20 shadow-sm">
+        <div className="flex items-center gap-4">
           <button
             onClick={() => setActiveUnit(null)}
-            className="text-sm text-slate-500 hover:text-indigo-600 font-medium flex items-center"
+            className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold transition-colors px-3 py-1.5 hover:bg-slate-50 rounded-lg"
           >
-            ← {labels.backToList}
+            <ArrowLeft className="w-4 h-4" /> {labels.backToList}
           </button>
-          <div className="mx-4 h-4 w-px bg-slate-300"></div>
-          <span className="text-sm font-bold text-slate-700">
-            {labels.unit} {activeUnit}
-          </span>
+          <div className="h-6 w-px bg-slate-200"></div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{labels.unit} {activeUnit}</span>
+            <h1 className="text-lg font-bold text-slate-800 truncate max-w-md">{passage?.title || labels.readingPassage}</h1>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Font Size Toggle */}
+          <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 mr-2">
+            <button onClick={() => setFontSize('sm')} className={`p-1.5 rounded ${fontSize === 'sm' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}><Type className="w-3 h-3" /></button>
+            <button onClick={() => setFontSize('base')} className={`p-1.5 rounded ${fontSize === 'base' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}><Type className="w-4 h-4" /></button>
+            <button onClick={() => setFontSize('lg')} className={`p-1.5 rounded ${fontSize === 'lg' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}><Type className="w-5 h-5" /></button>
+          </div>
+
+          <button
+            onClick={() => setShowTranslation(!showTranslation)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${showTranslation
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+          >
+            <Languages className="w-4 h-4" />
+            {showTranslation ? labels.hideTrans : labels.showTrans}
+          </button>
         </div>
       </div>
 
-      <div className="flex gap-6 h-full min-h-0">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Main Content Area */}
-        <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col min-h-0">
-          <div className="border-b border-slate-100 p-4 flex justify-between items-center bg-slate-50/50 rounded-t-xl">
-            <h3 className="font-bold text-slate-800">{passage?.title || labels.readingPassage || 'Reading Passage'}</h3>
-            <button
-              onClick={() => setShowTranslation(!showTranslation)}
-              className={`text-sm px-3 py-1.5 rounded-lg border transition-all ${showTranslation
-                ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
-                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
+        <div className="flex-1 overflow-y-auto p-6 md:p-10 relative">
+          <div className={`flex gap-10 h-full transition-all duration-500 ${showTranslation ? 'max-w-full' : 'max-w-4xl mx-auto'}`}>
+
+            {/* Korean Text - Always Visible */}
+            <div
+              ref={contentRef}
+              className={`flex-1 min-w-0 bg-white rounded-2xl shadow-sm border border-slate-100 p-8 md:p-12 ${selectedColor ? `selection-${selectedColor}` : ''}`}
+              onMouseUp={handleTextSelection}
             >
-              {showTranslation ? labels.hideTrans : labels.showTrans}
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-8 relative">
-            <div className="flex gap-8 h-full">
-              {/* Korean Text - Always Visible */}
-              <div
-                ref={contentRef}
-                className={`transition-all duration-300 ${showTranslation ? 'w-1/2' : 'w-full max-w-5xl mx-auto'} ${selectedColor ? `selection-${selectedColor}` : ''}`}
-                onMouseUp={handleTextSelection}
-              >
-                <div className="text-lg leading-loose text-slate-800 font-serif whitespace-pre-line select-text">
-                  {passage && renderHighlightedText(passage.koreanText)}
-                </div>
+              <div className={`${textSizeClass} ${lineHeightClass} text-slate-800 font-serif whitespace-pre-line select-text`}>
+                {passage && renderHighlightedText(passage.koreanText)}
               </div>
-
-              {/* Translation - Conditionally Visible */}
-              {showTranslation && (
-                <div className="w-1/2 border-l border-slate-100 pl-8 overflow-y-auto">
-                  {translationSentences.map((sentence, idx) => {
-                    const isHovered = hoveredSentenceIndex === idx;
-                    return (
-                      <p
-                        key={idx}
-                        className={`mb-4 text-slate-600 leading-relaxed transition-colors duration-200 cursor-pointer p-2 rounded ${isHovered ? 'bg-indigo-50 text-indigo-900' : 'hover:bg-slate-50'
-                          }`}
-                        onMouseEnter={() => setHoveredSentenceIndex(idx)}
-                        onMouseLeave={() => setHoveredSentenceIndex(null)}
-                      >
-                        {sentence}
-                      </p>
-                    );
-                  })}
-                </div>
-              )}
             </div>
+
+            {/* Translation - Conditionally Visible */}
+            {showTranslation && (
+              <div className="flex-1 min-w-0 bg-slate-50 rounded-2xl border border-slate-200/60 p-8 md:p-12 overflow-y-auto">
+                <div className="sticky top-0 bg-slate-50 pb-4 border-b border-slate-200 mb-6 z-10 flex items-center gap-2 text-slate-400 font-bold text-sm uppercase tracking-widest">
+                  <Languages className="w-4 h-4" /> Translation
+                </div>
+                {translationSentences.map((sentence, idx) => {
+                  const isHovered = hoveredSentenceIndex === idx;
+                  return (
+                    <p
+                      key={idx}
+                      className={`mb-6 text-slate-600 ${lineHeightClass} text-base transition-all duration-200 cursor-pointer p-3 rounded-xl border border-transparent ${isHovered ? 'bg-indigo-50 border-indigo-100 text-indigo-900 shadow-sm' : 'hover:bg-slate-100'
+                        }`}
+                      onMouseEnter={() => setHoveredSentenceIndex(idx)}
+                      onMouseLeave={() => setHoveredSentenceIndex(null)}
+                    >
+                      {sentence}
+                    </p>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Sidebar - Annotations & Vocabulary */}
-        <div className="w-80 flex flex-col gap-4 min-h-0">
-          {/* Annotations List */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col min-h-0">
-            <div className="p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-xl">
-              <h4 className="font-bold text-slate-700 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-indigo-500" />
-                {labels.annotate}
-              </h4>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {sidebarAnnotations.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-sm italic">
-                  {labels.noNotes || 'No notes yet'}
-                </div>
-              ) : (
-                sidebarAnnotations.map(ann => {
-                  const isEditing = editingAnnotationId === ann.id;
-                  const isActive = activeAnnotationId === ann.id;
+        {/* Right Sidebar - Annotations */}
+        <div className="w-80 bg-white border-l border-slate-200 flex flex-col shrink-0 z-10 shadow-lg">
+          <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <h4 className="font-bold text-slate-700 flex items-center gap-2">
+              <Highlighter className="w-4 h-4 text-indigo-500" />
+              {labels.annotate}
+            </h4>
+            <span className="text-xs font-bold bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">
+              {currentAnnotations.length}
+            </span>
+          </div>
 
-                  if (isEditing) {
-                    return (
-                      <div
-                        key={ann.id}
-                        id={`sidebar-card-${ann.id}`}
-                        className="bg-white p-3 rounded-lg border-2 border-indigo-500 shadow-md scroll-mt-20"
-                      >
-                        <div className="text-xs font-bold mb-2 text-slate-500">
-                          {labels.editingNote || 'Editing note'}: "{ann.text.substring(0, 15)}..."
-                        </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/30">
+            {sidebarAnnotations.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center px-6">
+                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3 text-slate-300">
+                  <MessageSquare className="w-6 h-6" />
+                </div>
+                <p className="text-sm font-medium text-slate-500 mb-1">暂无笔记</p>
+                <p className="text-xs text-slate-400">在文中选中文字即可添加高亮或笔记。</p>
+              </div>
+            ) : (
+              sidebarAnnotations.map(ann => {
+                const isEditing = editingAnnotationId === ann.id;
+                const isActive = activeAnnotationId === ann.id;
+
+                return (
+                  <div
+                    key={ann.id}
+                    id={`sidebar-card-${ann.id}`}
+                    className={`group p-4 rounded-xl border transition-all cursor-pointer relative scroll-mt-24
+                      ${isActive || isEditing
+                        ? 'bg-white border-indigo-500 shadow-md ring-1 ring-indigo-500/20'
+                        : 'bg-white border-slate-200 hover:border-indigo-300 hover:shadow-sm'
+                      }`}
+                    onClick={() => {
+                      if (!isEditing) {
+                        setActiveAnnotationId(ann.id);
+                        setEditingAnnotationId(ann.id);
+                        setEditNoteInput(ann.note || '');
+                        const el = document.getElementById(`annotation-${ann.id}`);
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    }}
+                  >
+                    <div className="flex items-start gap-2 mb-2">
+                      <div className={`w-1.5 h-1.5 mt-1.5 rounded-full shrink-0 ${{
+                        'yellow': 'bg-yellow-400', 'green': 'bg-green-400', 'blue': 'bg-blue-400', 'pink': 'bg-pink-400'
+                      }[ann.color || 'yellow'] || 'bg-yellow-400'}`}></div>
+                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider line-clamp-1 flex-1">
+                        {ann.text}
+                      </div>
+                    </div>
+
+                    {isEditing ? (
+                      <div className="mt-2 animate-in fade-in zoom-in-95 duration-200">
                         <textarea
                           value={editNoteInput}
                           onChange={(e) => setEditNoteInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault();
-                              handleUpdateNote(ann.id);
-                            }
-                          }}
-                          className="w-full border border-slate-200 rounded-lg p-2 text-sm resize-none focus:ring-2 focus:ring-indigo-200 outline-none mb-2"
+                          className="w-full border border-slate-200 rounded-lg p-3 text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none mb-3 bg-slate-50"
                           rows={3}
                           autoFocus
+                          placeholder="输入笔记内容..."
+                          onClick={(e) => e.stopPropagation()}
                         />
                         <div className="flex justify-end gap-2">
                           <button
-                            onClick={() => setEditingAnnotationId(null)}
-                            className="px-3 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded"
+                            onClick={(e) => { e.stopPropagation(); setEditingAnnotationId(null); }}
+                            className="px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
                           >
                             {labels.cancel}
                           </button>
                           <button
-                            onClick={() => handleUpdateNote(ann.id)}
-                            className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-1"
+                            onClick={(e) => { e.stopPropagation(); handleUpdateNote(ann.id); }}
+                            className="px-3 py-1.5 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-1.5 transition-colors shadow-sm"
                           >
                             <Check className="w-3 h-3" /> {labels.save}
                           </button>
                         </div>
                       </div>
-                    );
-                  }
-
-                  return (
-                    <div
-                      key={ann.id}
-                      id={`sidebar-card-${ann.id}`}
-                      className={`group p-3 rounded-lg border transition-all cursor-pointer relative scroll-mt-20
-                        ${isActive
-                          ? 'bg-indigo-50 border-indigo-300 shadow-md'
-                          : 'bg-slate-50 border-slate-100 hover:border-indigo-200 hover:shadow-sm'
-                        }`}
-                      onClick={() => {
-                        // Activate highlight
-                        setActiveAnnotationId(ann.id);
-                        // Enter edit mode
-                        setEditingAnnotationId(ann.id);
-                        setEditNoteInput(ann.note || '');
-
-                        // Scroll to text?
-                        const el = document.getElementById(`annotation-${ann.id}`);
-                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }}
-                    >
-                      <div className={`text-xs font-bold mb-1 px-1.5 py-0.5 rounded w-fit ${{
-                        'yellow': 'bg-yellow-100 text-yellow-800',
-                        'green': 'bg-green-100 text-green-800',
-                        'blue': 'bg-blue-100 text-blue-800',
-                        'pink': 'bg-pink-100 text-pink-800',
-                      }[ann.color || 'yellow'] || 'bg-yellow-100 text-yellow-800'}`}>
-                        {ann.text.substring(0, 20)}...
-                      </div>
-                      {ann.note ? (
-                        <p className="text-sm text-slate-700">{ann.note}</p>
-                      ) : (
-                        <p className="text-xs text-slate-400 italic">{labels.clickToAddNote || 'Click to add note...'}</p>
-                      )}
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteAnnotation(ann.id);
-                        }}
-                        className="absolute top-2 right-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+                    ) : (
+                      <>
+                        {ann.note ? (
+                          <p className="text-sm text-slate-800 leading-relaxed pl-3.5 border-l-2 border-slate-100">{ann.note}</p>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic pl-3.5">{labels.clickToAddNote}</p>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm('Delete this note?')) handleDeleteAnnotation(ann.id);
+                          }}
+                          className="absolute top-3 right-3 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
@@ -518,27 +526,20 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
         position={menuPosition}
         selectionText={currentSelectionRange?.text}
         onAddNote={() => {
-          // Quick save and enter edit mode
-          const id = saveAnnotation(undefined, undefined, true); // Use current/default color, empty note, and close menu
+          const id = saveAnnotation(undefined, undefined, true);
           if (id) {
             setEditingAnnotationId(id);
             setEditNoteInput('');
-            // Use setTimeout to allow render to happen before scrolling
             setTimeout(() => {
               const el = document.getElementById(`sidebar-card-${id}`);
               if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 100);
           }
         }}
-        onHighlight={(color) => {
-          saveAnnotation(color, undefined, true);
-        }}
+        onHighlight={(color) => saveAnnotation(color, undefined, true)}
         selectedColor={selectedColor}
         setSelectedColor={setSelectedColor}
-        onSaveWord={(text) => {
-          onSaveWord(text, '');
-          cancelAnnotation();
-        }}
+        onSaveWord={(text) => { onSaveWord(text, ''); cancelAnnotation(); }}
         onClose={cancelAnnotation}
         onDelete={deleteAnnotation}
         labels={labels}

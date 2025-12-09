@@ -1,15 +1,17 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { TopikExam, Language, Annotation } from '../../types';
-import { Clock, Trophy, RotateCcw, ArrowLeft, CheckCircle, Eye, MessageSquare, Trash2, X, Check } from 'lucide-react';
+import {
+  Clock, Trophy, RotateCcw, ArrowLeft, CheckCircle,
+  Eye, MessageSquare, Trash2, Check, AlertTriangle,
+  PlayCircle, FileText, BarChart3, ArrowRight, Headphones
+} from 'lucide-react';
 import { getLabels } from '../../utils/i18n';
 import { QuestionRenderer } from './QuestionRenderer';
 import AnnotationMenu from '../AnnotationMenu';
 
-// PDF 仿真样式常量
 const PAPER_MAX_WIDTH = "max-w-[900px]";
 const FONT_SERIF = "font-serif";
 
-// TOPIK Reading 结构定义
 const TOPIK_READING_STRUCTURE = [
   { range: [1, 2], instruction: "※ [1~2] (    )에 들어갈 가장 알맞은 것을 고르십시오. (각 2점)" },
   { range: [3, 4], instruction: "※ [3～4] 다음 밑줄 친 부분과 의미가 비슷한 것을 고르십시오. (각 2점)" },
@@ -35,7 +37,7 @@ const TOPIK_LISTENING_STRUCTURE = [
   { range: [21, 50], instruction: "※ [21～50] 다음을 듣고 물음에 답하십시오. (각 2점)" },
 ];
 
-// Exam Cover View - PDF 风格封面
+// === 1. Modern Exam Cover View ===
 interface ExamCoverViewProps {
   exam: TopikExam;
   language: Language;
@@ -49,89 +51,100 @@ export const ExamCoverView: React.FC<ExamCoverViewProps> = React.memo(
     const labels = useMemo(() => getLabels(language), [language]);
 
     return (
-      <div className="min-h-screen bg-slate-200 py-10 flex justify-center overflow-y-auto px-4">
-        <div className={`bg-white w-full ${PAPER_MAX_WIDTH} shadow-2xl p-12 border border-slate-300 flex flex-col relative min-h-[900px]`}>
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden">
 
-          {/* 返回按钮 */}
-          <button
-            onClick={onBack}
-            className="absolute top-6 left-6 text-slate-500 hover:text-indigo-600 flex items-center gap-2 text-sm font-medium"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            {labels.back || 'Back'}
-          </button>
+        {/* Background Decor */}
+        <div className="absolute top-0 left-0 w-full h-96 bg-indigo-600 skew-y-3 origin-top-left -translate-y-20 z-0"></div>
+        <div className="absolute top-20 right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl z-0"></div>
 
-          {/* 封面主体 */}
-          <div className="flex-1 flex flex-col items-center justify-center text-center">
+        <div className="relative z-10 w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
 
-            {/* TOPIK 大标题 */}
-            <div className="border-b-4 border-double border-black pb-6 mb-8 w-full max-w-md">
-              <div className="text-sm text-slate-500 mb-2">한국어능력시험 II</div>
-              <h1 className={`text-6xl font-black ${FONT_SERIF} tracking-widest text-slate-900 mb-4`}>
-                TOPIK Ⅱ
-              </h1>
-              <div className="inline-block bg-slate-900 text-white text-2xl font-bold px-6 py-2 rounded-full">
-                {exam.type === 'READING' ? '읽기' : '듣기'}
+          {/* Left Panel: Info */}
+          <div className="md:w-2/5 bg-slate-900 text-white p-10 flex flex-col justify-between relative overflow-hidden">
+            <div className="relative z-10">
+              <button onClick={onBack} className="flex items-center text-slate-400 hover:text-white transition-colors mb-8 text-sm font-bold uppercase tracking-wider">
+                <ArrowLeft className="w-4 h-4 mr-2" /> {labels.back || 'Back'}
+              </button>
+
+              <div className="w-16 h-16 bg-indigo-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-indigo-500/30">
+                {exam.type === 'READING' ? <FileText className="w-8 h-8" /> : <Headphones className="w-8 h-8" />}
+              </div>
+
+              <h1 className="text-3xl font-bold mb-2 leading-tight">TOPIK II<br />{exam.type}</h1>
+              <p className="text-indigo-200 font-medium">第 {exam.round} 届真题模拟</p>
+            </div>
+
+            <div className="relative z-10 space-y-6">
+              <div>
+                <div className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">Total Time</div>
+                <div className="text-2xl font-mono">{exam.timeLimit} Min</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">Questions</div>
+                <div className="text-2xl font-mono">{exam.questions.length}</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-1">Full Score</div>
+                <div className="text-2xl font-mono">100</div>
               </div>
             </div>
 
-            {/* 考试信息 */}
-            <div className="grid grid-cols-2 gap-8 w-full max-w-sm text-left mb-8">
-              <div className="border-b-2 border-slate-300 pb-2">
-                <div className="text-sm text-slate-500 mb-1">회차</div>
-                <div className={`text-xl font-bold ${FONT_SERIF}`}>제 {exam.round || '?'} 회</div>
-              </div>
-              <div className="border-b-2 border-slate-300 pb-2">
-                <div className="text-sm text-slate-500 mb-1">시간</div>
-                <div className={`text-xl font-bold ${FONT_SERIF}`}>{exam.timeLimit} 분</div>
-              </div>
-              <div className="border-b-2 border-slate-300 pb-2">
-                <div className="text-sm text-slate-500 mb-1">문항수</div>
-                <div className={`text-xl font-bold ${FONT_SERIF}`}>{exam.questions.length} 문항</div>
-              </div>
-              <div className="border-b-2 border-slate-300 pb-2">
-                <div className="text-sm text-slate-500 mb-1">배점</div>
-                <div className={`text-xl font-bold ${FONT_SERIF}`}>100 점</div>
-              </div>
-            </div>
-
-            {/* 유의사항 */}
-            <div className="bg-slate-50 border-2 border-slate-200 p-6 w-full max-w-md text-left mb-8">
-              <h3 className="font-bold text-center mb-4 border-b border-slate-300 pb-2">
-                유 의 사 항 (Information)
-              </h3>
-              <ul className="text-sm space-y-3 list-disc pl-5 text-slate-700">
-                <li>
-                  시험 시작 지시가 있을 때까지 문제를 풀지 마십시오.
-                  <br />
-                  <span className="text-slate-400 text-xs">Do not start until instructed.</span>
-                </li>
-                <li>
-                  모든 문제의 정답은 하나입니다.
-                  <br />
-                  <span className="text-slate-400 text-xs">Each question has only one correct answer.</span>
-                </li>
-              </ul>
-            </div>
+            {/* Deco circles */}
+            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-600 rounded-full blur-2xl opacity-50"></div>
           </div>
 
-          {/* 시작 버튼 */}
-          <button
-            onClick={onStart}
-            className={`w-full py-5 bg-slate-900 text-white text-xl font-bold ${FONT_SERIF} hover:bg-slate-800 transition-colors shadow-xl tracking-widest`}
-          >
-            {hasAttempted
-              ? (language === 'zh' ? '重新考试 (RETAKE EXAM)' : '시험 다시 보기 (RETAKE EXAM)')
-              : (language === 'zh' ? '开始考试 (START EXAM)' : '시험 시작 (START EXAM)')
-            }
-          </button>
+          {/* Right Panel: Instructions */}
+          <div className="md:w-3/5 p-10 md:p-12 flex flex-col">
+            <h2 className="text-2xl font-bold text-slate-900 mb-6">考前须知</h2>
+
+            <div className="space-y-4 flex-1">
+              <div className="flex gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 text-slate-500 font-bold border border-slate-200">1</div>
+                <div>
+                  <h4 className="font-bold text-slate-800 text-sm">全真模拟环境</h4>
+                  <p className="text-xs text-slate-500 mt-1">考试期间请勿离开页面，计时器结束后将自动提交试卷。</p>
+                </div>
+              </div>
+              <div className="flex gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 text-slate-500 font-bold border border-slate-200">2</div>
+                <div>
+                  <h4 className="font-bold text-slate-800 text-sm">答案提交</h4>
+                  <p className="text-xs text-slate-500 mt-1">所有选择题均为单选。提交后即可查看分数和解析。</p>
+                </div>
+              </div>
+              {exam.type === 'LISTENING' && (
+                <div className="flex gap-4 p-4 rounded-xl bg-amber-50 border border-amber-100">
+                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 text-amber-500 font-bold border border-amber-200">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-sm">听力注意事项</h4>
+                    <p className="text-xs text-slate-500 mt-1">音频将自动播放且无法暂停。请检查您的扬声器设备。</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-8 pt-8 border-t border-slate-100">
+              <button
+                onClick={onStart}
+                className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 hover:-translate-y-1 flex items-center justify-center gap-2 group"
+              >
+                {hasAttempted ? '重新挑战' : '开始考试'}
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+              <p className="text-center text-xs text-slate-400 mt-4">
+                点击开始即代表您已做好准备
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 );
 
-// Exam Result View
+// === 2. Modern Result View ===
 interface ExamResultViewProps {
   exam: TopikExam;
   result: {
@@ -149,71 +162,90 @@ interface ExamResultViewProps {
 export const ExamResultView: React.FC<ExamResultViewProps> = React.memo(
   ({ exam, result, language, onReview, onTryAgain, onBackToList }) => {
     const labels = useMemo(() => getLabels(language), [language]);
-    const percentage = useMemo(
-      () => (result.score / result.totalScore) * 100,
-      [result.score, result.totalScore]
-    );
+    const percentage = Math.round((result.score / result.totalScore) * 100);
     const passed = percentage >= 60;
 
     return (
-      <div className="min-h-screen bg-slate-200 flex items-center justify-center p-4">
-        <div className="max-w-lg w-full bg-white rounded-xl shadow-2xl p-8 text-center border border-slate-200">
+      <div className="min-h-screen bg-slate-50 py-12 px-4 flex justify-center items-center font-sans">
+        <div className="w-full max-w-2xl bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
 
-          {/* 图标 */}
-          <div className={`w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center ${passed ? 'bg-emerald-100' : 'bg-amber-100'}`}>
-            <Trophy className={`w-12 h-12 ${passed ? 'text-emerald-600' : 'text-amber-600'}`} />
-          </div>
+          {/* Header / Score Banner */}
+          <div className={`p-8 text-center relative overflow-hidden ${passed ? 'bg-emerald-600' : 'bg-slate-800'}`}>
+            <div className="absolute inset-0 opacity-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-white rounded-full blur-3xl opacity-20"></div>
 
-          <h1 className={`text-3xl font-bold ${FONT_SERIF} text-slate-900 mb-2`}>
-            {passed ? '축하합니다!' : '시험 완료'}
-          </h1>
-          <p className="text-slate-500 mb-8">{exam.title}</p>
-
-          {/* 分数 */}
-          <div className={`p-6 rounded-xl mb-6 ${passed ? 'bg-emerald-50' : 'bg-slate-50'}`}>
-            <div className="text-sm text-slate-500 mb-2">Your Score</div>
-            <div className={`text-5xl font-black ${passed ? 'text-emerald-600' : 'text-slate-700'}`}>
-              {result.score}
-              <span className="text-xl text-slate-400 font-normal"> / {result.totalScore}</span>
-            </div>
-            <div className="text-sm text-slate-500 mt-2">
-              ({result.correctCount} / {result.totalQuestions} correct)
+            <div className="relative z-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/20 text-white text-xs font-bold mb-4 backdrop-blur-sm border border-white/20">
+                {exam.title}
+              </div>
+              <h1 className="text-3xl font-bold text-white mb-2">
+                {passed ? 'Congratulations! 🎉' : 'Keep Practicing! 💪'}
+              </h1>
+              <p className="text-white/80 text-sm">
+                {passed ? '您已达到通过标准' : '距离目标还有一段距离，加油！'}
+              </p>
             </div>
           </div>
 
-          {/* 操作按钮 */}
-          <div className="space-y-3">
+          {/* Score Stats */}
+          <div className="p-8 -mt-6">
+            <div className="bg-white rounded-2xl shadow-lg border border-slate-100 p-6 flex flex-col items-center">
+              <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">Your Score</div>
+              <div className="flex items-baseline gap-2 mb-6">
+                <span className={`text-6xl font-black ${passed ? 'text-emerald-600' : 'text-slate-800'}`}>{result.score}</span>
+                <span className="text-xl text-slate-400 font-bold">/ {result.totalScore}</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 w-full">
+                <div className="bg-slate-50 p-3 rounded-xl text-center border border-slate-100">
+                  <div className="text-2xl font-bold text-slate-800 mb-1">{percentage}%</div>
+                  <div className="text-xs font-bold text-slate-400 uppercase">Accuracy</div>
+                </div>
+                <div className="bg-emerald-50 p-3 rounded-xl text-center border border-emerald-100">
+                  <div className="text-2xl font-bold text-emerald-600 mb-1">{result.correctCount}</div>
+                  <div className="text-xs font-bold text-emerald-700/60 uppercase">Correct</div>
+                </div>
+                <div className="bg-red-50 p-3 rounded-xl text-center border border-red-100">
+                  <div className="text-2xl font-bold text-red-500 mb-1">{result.totalQuestions - result.correctCount}</div>
+                  <div className="text-xs font-bold text-red-700/60 uppercase">Incorrect</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="px-8 pb-8 space-y-3">
             <button
               onClick={onReview}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center justify-center gap-2"
+              className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-lg transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
             >
               <Eye className="w-5 h-5" />
-              {labels.reviewAnswers || 'Review Answers'}
+              查看详细解析
             </button>
 
-            <button
-              onClick={onTryAgain}
-              className="w-full py-3 bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg font-bold flex items-center justify-center gap-2"
-            >
-              <RotateCcw className="w-5 h-5" />
-              {labels.tryAgain || 'Try Again'}
-            </button>
-
-            <button
-              onClick={onBackToList}
-              className="w-full py-3 text-slate-500 hover:text-indigo-600 font-medium flex items-center justify-center gap-2"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              {labels.backToList || 'Back to List'}
-            </button>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={onTryAgain}
+                className="py-3 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
+              >
+                <RotateCcw className="w-4 h-4" /> 再次挑战
+              </button>
+              <button
+                onClick={onBackToList}
+                className="py-3 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl font-bold transition-colors"
+              >
+                返回列表
+              </button>
+            </div>
           </div>
+
         </div>
       </div>
     );
   }
 );
 
-// Exam Review View - PDF 样式复习页
+// === 3. Exam Review View - Full Paper Rendering ===
 interface ExamReviewViewProps {
   exam: TopikExam;
   userAnswers: Record<number, number>;
@@ -279,22 +311,12 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
     const [noteInput, setNoteInput] = useState('');
     const [selectedColor, setSelectedColor] = useState<'yellow' | 'green' | 'blue' | 'pink'>('yellow');
     const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null);
-
-    // Sidebar edit state (matching Reading/Listening modules)
     const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
     const [editNoteInput, setEditNoteInput] = useState('');
 
-    // Available highlight colors
-    const COLORS = [
-      { name: 'yellow', bgClass: 'bg-yellow-300', ringClass: 'ring-yellow-500' },
-      { name: 'green', bgClass: 'bg-green-300', ringClass: 'ring-green-500' },
-      { name: 'blue', bgClass: 'bg-blue-300', ringClass: 'ring-blue-500' },
-      { name: 'pink', bgClass: 'bg-pink-300', ringClass: 'ring-pink-500' },
-    ] as const;
-
     const examContextPrefix = `TOPIK-${exam.id}`;
 
-    // All annotations for this exam (for rendering highlights)
+    // All annotations for this exam
     const currentAnnotations = useMemo(
       () => (annotations || []).filter(a => a.contextKey.startsWith(examContextPrefix)),
       [annotations, examContextPrefix]
@@ -318,13 +340,10 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
       const selectedText = selection.toString().trim();
       const contextKey = `${examContextPrefix}-Q${questionIndex}`;
 
-      // Robust positioning fallback using mouse event
       if ((rect.top === 0 && rect.bottom === 0) || (rect.width === 0 && rect.height === 0)) {
         if (e) {
-          console.log('Using mouse event fallback for menu position');
           setMenuPosition({ top: e.clientY + 10, left: e.clientX });
         } else {
-          // Absolute fallback if no event and no rect (shouldn't happen with updated calls)
           setMenuPosition({ top: window.innerHeight / 2, left: window.innerWidth / 2 });
         }
       } else {
@@ -335,7 +354,6 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
       setSelectionContextKey(contextKey);
       setShowAnnotationMenu(true);
 
-      // Check for existing annotation to pre-fill
       const existing = annotations.find(a =>
         a.contextKey === contextKey &&
         (a.text === selectedText || a.selectedText === selectedText)
@@ -351,11 +369,10 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
       }
     };
 
-    // Save annotation (for quick add via menu - creates annotation and enters edit mode)
+    // Save annotation
     const saveAnnotationQuick = (colorOverride?: string) => {
       if (!selectionText || !selectionContextKey) return null;
 
-      // Check if updating existing
       const existing = annotations.find(a =>
         a.contextKey === selectionContextKey &&
         (a.text === selectionText || a.selectedText === selectionText)
@@ -371,7 +388,6 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
       };
 
       onSaveAnnotation(annotation);
-
       setShowAnnotationMenu(false);
       window.getSelection()?.removeAllRanges();
 
@@ -388,17 +404,12 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
       setActiveAnnotationId(null);
     };
 
-    // Delete annotation (for sidebar)
+    // Delete annotation
     const handleDeleteAnnotation = (id: string) => {
       const ann = currentAnnotations.find(a => a.id === id);
       if (ann) {
-        onSaveAnnotation({ ...ann, color: null, note: '' }); // Treat as delete
+        onSaveAnnotation({ ...ann, color: null, note: '' });
       }
-    };
-
-    // Legacy delete function (for backward compatibility)
-    const deleteAnnotation = (annotationId: string) => {
-      onDeleteAnnotation(annotationId);
     };
 
     const tempAnnotation: Annotation | null = showAnnotationMenu && selectionText && selectionContextKey ? {
@@ -406,36 +417,39 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
       contextKey: selectionContextKey,
       text: selectionText,
       note: '',
-      color: selectedColor, // Preview current color
+      color: selectedColor,
       timestamp: Date.now()
     } : null;
 
     return (
-      <div className="min-h-screen bg-slate-200 flex flex-col">
-        {/* 顶部栏 */}
-        <div className="sticky top-0 z-30 bg-white border-b shadow-sm shrink-0">
-          <div className="max-w-[1200px] mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
+        {/* Review Header - Modernized */}
+        <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm shrink-0">
+          <div className="max-w-[1400px] mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button onClick={onBack} className="text-slate-500 hover:text-indigo-600">
+              <button onClick={onBack} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 text-slate-500 hover:text-indigo-600 transition-colors">
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <div>
-                <div className="font-bold text-slate-800">{exam.title}</div>
-                <div className="text-xs text-slate-500">복습 (Review)</div>
+                <h1 className="font-bold text-slate-800 text-lg">{exam.title}</h1>
+                <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                  <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded">Review Mode</span>
+                  <span>•</span>
+                  <span>第 {exam.round} 届</span>
+                </div>
               </div>
             </div>
-
           </div>
         </div>
 
-        {/* 主内容 */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 flex justify-center">
-          <div className={`bg-white w-full ${PAPER_MAX_WIDTH} shadow-2xl min-h-screen pb-16 relative border border-slate-300`}>
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 flex justify-center bg-slate-200/50">
+          {/* PDF Paper */}
+          <div className={`bg-white w-full ${PAPER_MAX_WIDTH} shadow-xl min-h-screen pb-16 relative border border-slate-200`}>
 
-            {/* 试卷头部 (Header) */}
+            {/* Paper Header (copied from ExamSession) */}
             <div className="p-8 md:p-12 pb-4 font-serif">
-
-              {/* Title Box - Black rounded rectangle */}
+              {/* Title Box */}
               <div className="bg-black text-white py-6 px-8 rounded-2xl mb-16 shadow-lg">
                 <div className="flex items-baseline justify-center gap-4 mb-2">
                   <span className="text-xl md:text-2xl font-bold">제{exam.round}회</span>
@@ -446,7 +460,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
                 </div>
               </div>
 
-              {/* TOPIK II (B) Section - with double lines */}
+              {/* TOPIK II Section */}
               <div className="flex justify-center mb-16">
                 <div className="text-center">
                   <div className="border-t-2 border-b-2 border-black py-4 px-16">
@@ -476,7 +490,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
               </div>
 
               <div className="text-center text-sm text-gray-500 mb-8 font-sans">
-                [Scroll down to start]
+                [Scroll down to review]
               </div>
             </div>
 
@@ -492,7 +506,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
               </div>
             </div>
 
-            {/* 题目区域 */}
+            {/* Questions (copied from ExamSession) */}
             <div className="px-8 md:px-12 select-none">
               {exam.questions.map((question, idx) => (
                 <div key={idx} ref={el => (questionRefs.current[idx] = el)}>
@@ -504,7 +518,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
                     </div>
                   )}
 
-                  {/* 题目 */}
+                  {/* Question */}
                   <div className="mb-12" onMouseUp={(e) => handleTextSelect(idx, e)}>
                     <QuestionRenderer
                       question={question}
@@ -513,7 +527,6 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
                       correctAnswer={question.correctAnswer}
                       language={language}
                       showCorrect={true}
-                      // Merge saved annotations with current temp annotation (if context matches)
                       annotations={
                         tempAnnotation && tempAnnotation.contextKey === `TOPIK-${exam.id}-Q${idx}`
                           ? [...annotations, tempAnnotation]
@@ -528,7 +541,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
               ))}
             </div>
 
-            {/* 试卷页脚 */}
+            {/* Paper Footer */}
             <div className="flex justify-center py-12">
               <div className="bg-gray-300 rounded-full px-4 py-1 font-bold text-gray-700">
                 End of Section
@@ -536,10 +549,10 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
             </div>
           </div>
 
-          {/* 笔记侧边栏 - 与 Reading/Listening 一致的样式 */}
-          <div className="w-80 shrink-0 hidden lg:block">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 sticky top-24 flex flex-col max-h-[calc(100vh-120px)]">
-              <div className="p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-xl">
+          {/* Sidebar - Annotations */}
+          <div className="w-80 shrink-0 hidden lg:block ml-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 sticky top-24 flex flex-col max-h-[calc(100vh-120px)] overflow-hidden">
+              <div className="p-4 border-b border-slate-100 bg-slate-50">
                 <h4 className="font-bold text-slate-700 flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-indigo-500" />
                   {labels.annotate || '笔记'}
@@ -601,7 +614,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
                         key={ann.id}
                         id={`sidebar-card-${ann.id}`}
                         className={`group p-3 rounded-lg border transition-all cursor-pointer relative scroll-mt-20
-                          ${isActive
+                              ${isActive
                             ? 'bg-indigo-50 border-indigo-300 shadow-md'
                             : 'bg-slate-50 border-slate-100 hover:border-indigo-200 hover:shadow-sm'
                           }`}
@@ -643,11 +656,9 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
           </div>
         </div>
 
-
-        {/* 左侧题目导航 */}
+        {/* Left Question Navigator */}
         <div className="fixed left-4 top-1/2 -translate-y-1/2 z-40 hidden lg:block">
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 p-3 flex flex-col items-center gap-2 max-h-[85vh] overflow-y-auto">
-            {/* 题目导航 */}
             <div className="grid grid-cols-5 gap-1">
               {exam.questions.map((q, idx) => {
                 const isCorrect = userAnswers[idx] === q.correctAnswer;
@@ -671,7 +682,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
           </div>
         </div>
 
-        {/* Annotation Menu - 与 Reading/Listening 一致 */}
+        {/* Annotation Menu */}
         <AnnotationMenu
           visible={showAnnotationMenu}
           position={menuPosition}

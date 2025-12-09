@@ -1,12 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { generateReadingPassage } from '../services/geminiService';
 import { CourseSelection, ReadingContent, Language, TextbookContent, Annotation } from '../types';
-import { Play, Pause, RotateCcw, Volume2, ChevronRight, Music, MessageSquare, Trash2, Check } from 'lucide-react';
+import {
+  Play, Pause, RotateCcw, Volume2, ChevronRight, Music,
+  MessageSquare, Trash2, Check, ArrowLeft, Languages, Highlighter,
+  SkipBack, SkipForward, Headphones
+} from 'lucide-react';
 import { getLabels } from '../utils/i18n';
 import { useAnnotation } from '../hooks/useAnnotation';
 import AnnotationMenu from './AnnotationMenu';
-import { getPreviewFromContent } from '../utils/textUtils';
 
 interface ListeningModuleProps {
   course: CourseSelection;
@@ -43,17 +46,19 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
   const [passage, setPassage] = useState<ReadingContent | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showScript, setShowScript] = useState(true); // Default to showing script
   const [showTranslation, setShowTranslation] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
 
-  // Refs
   const manualAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const labels = getLabels(language);
+  const content = activeUnit ? levelContexts[activeUnit] : undefined;
 
   const contextKey = activeUnit
     ? `${course.instituteId}-${course.level}-${activeUnit}-LISTENING`
     : '';
 
-  // Sidebar Edit State
   const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
   const [editNoteInput, setEditNoteInput] = useState('');
   const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null);
@@ -80,21 +85,20 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
     originalHandleTextSelection(e);
   };
 
-  const labels = getLabels(language);
-  const content = activeUnit ? levelContexts[activeUnit] : undefined;
-  const isManualAudio = !!content?.listeningAudioUrl;
-
-  // Filter annotations for rendering
-  const currentAnnotations = annotations
-    .filter(a => a.contextKey === contextKey && a.startOffset !== undefined && a.endOffset !== undefined)
-    .sort((a, b) => (a.startOffset || 0) - (b.startOffset || 0));
-
-  // Sidebar Logic: Show annotations with notes OR the one being edited
-  const sidebarAnnotations = currentAnnotations.filter(a =>
-    (a.note && a.note.trim().length > 0) || a.id === editingAnnotationId
+  const currentAnnotations = useMemo(() =>
+    annotations
+      .filter(a => a.contextKey === contextKey && a.startOffset !== undefined && a.endOffset !== undefined)
+      .sort((a, b) => (a.startOffset || 0) - (b.startOffset || 0)),
+    [annotations, contextKey]
   );
 
-  // Fetch Text Content when active unit changes
+  const sidebarAnnotations = useMemo(() =>
+    currentAnnotations.filter(a =>
+      (a.note && a.note.trim().length > 0) || a.id === editingAnnotationId
+    ),
+    [currentAnnotations, editingAnnotationId]
+  );
+
   useEffect(() => {
     const fetchContent = async () => {
       if (!activeUnit || !content) return;
@@ -127,9 +131,8 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
     fetchContent();
   }, [activeUnit, instituteName, course.level, language, content]);
 
-  // Audio Controls (Keep existing logic)
   const togglePlayback = () => {
-    if (isManualAudio && manualAudioRef.current) {
+    if (manualAudioRef.current) {
       if (isPlaying) {
         manualAudioRef.current.pause();
         setIsPlaying(false);
@@ -140,12 +143,16 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
     }
   };
 
-  const restartAudio = () => {
-    if (isManualAudio && manualAudioRef.current) {
-      manualAudioRef.current.currentTime = 0;
-      manualAudioRef.current.play();
-      setIsPlaying(true);
+  const skipTime = (seconds: number) => {
+    if (manualAudioRef.current) {
+      manualAudioRef.current.currentTime += seconds;
     }
+  };
+
+  const changeSpeed = (rate: number) => {
+    if (manualAudioRef.current) manualAudioRef.current.playbackRate = rate;
+    setPlaybackRate(rate);
+    setShowSpeedMenu(false);
   };
 
   const handleDeleteAnnotation = (id: string) => {
@@ -193,7 +200,6 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
       let className = 'relative rounded px-0 py-0.5 box-decoration-clone transition-all ';
 
       if (currentAnn) {
-        // STYLE LOGIC UPDATE (Listening Module):
         const isActive = activeAnnotationId === currentAnn.id || editingAnnotationId === currentAnn.id;
 
         const colorMap: { [key: string]: { bg: string, activeBg: string } } = {
@@ -228,7 +234,7 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
           >
             {segmentText}
             {currentAnn.note && (
-              <span className="absolute -top-1.5 -right-1 w-2 h-2 bg-red-400 rounded-full border border-white"></span>
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full border border-white shadow-sm"></span>
             )}
           </span>
         );
@@ -240,9 +246,8 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
     return result;
   };
 
-  // Table of Contents View
+  // --- 1. TOC View ---
   if (!activeUnit) {
-    // (Keep TOC Logic Identical)
     const availableUnits = Object.keys(levelContexts)
       .map(Number)
       .sort((a, b) => a - b);
@@ -252,43 +257,61 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
     });
 
     return (
-      <div className="max-w-4xl mx-auto">
-        <h2 className="text-2xl font-bold text-slate-800 mb-6">
-          {labels.toc} - {labels.listening}
-        </h2>
+      <div className="max-w-4xl mx-auto py-8">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="p-3 bg-violet-50 rounded-xl text-violet-600">
+            <Headphones className="w-8 h-8" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">{labels.listening}</h2>
+            <p className="text-slate-500">{labels.toc}</p>
+          </div>
+        </div>
+
         {unitsWithAudio.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl border border-slate-200 text-slate-500">
-            {labels.noListening}
+          <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 border-dashed">
+            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+              <Headphones className="w-8 h-8" />
+            </div>
+            <p className="text-slate-500 font-medium">{labels.noListening}</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid gap-4">
             {unitsWithAudio.map(u => {
               const c = levelContexts[u];
-              const title = getPreviewFromContent(c.listeningScript, 50) || `Track ${u}`;
+              const title = c.listeningScript
+                ? c.listeningScript.substring(0, 60) + (c.listeningScript.length > 60 ? '...' : '')
+                : `Track ${u}`;
               return (
                 <button
                   key={u}
                   onClick={() => setActiveUnit(u)}
-                  className="w-full bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all text-left flex justify-between items-center group"
+                  className="group relative w-full bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-violet-200 transition-all text-left flex justify-between items-center overflow-hidden"
                 >
-                  <div className="flex items-center">
-                    {/* ... Copy previous internal logic ... */}
-                    <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 mr-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                      <Volume2 className="w-6 h-6" />
+                  <div className="absolute inset-y-0 left-0 w-1 bg-violet-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="flex items-center gap-5">
+                    <div className="w-10 h-10 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center font-mono font-bold text-lg group-hover:bg-violet-100 group-hover:text-violet-700 transition-colors">
+                      <Volume2 className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-1">
-                        {labels.unit} {u}
-                      </div>
-                      <h3 className="text-lg font-bold text-slate-800">{title}</h3>
-                      {c.listeningAudioUrl && (
-                        <span className="inline-flex items-center text-xs text-emerald-600 mt-1 font-medium bg-emerald-50 px-2 py-0.5 rounded-full">
-                          <Music className="w-3 h-3 mr-1" /> {labels.originalAudio}
+                      <h3 className="text-lg font-bold text-slate-800 group-hover:text-violet-700 transition-colors font-serif">
+                        {title}
+                      </h3>
+                      <div className="flex items-center gap-3 mt-1.5">
+                        <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                          Unit {u}
                         </span>
-                      )}
+                        {c.listeningAudioUrl && (
+                          <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 flex items-center gap-1">
+                            <Music className="w-3 h-3" /> {labels.originalAudio}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-indigo-500" />
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 group-hover:bg-violet-600 group-hover:text-white transition-all transform group-hover:translate-x-1">
+                    <ChevronRight className="w-5 h-5" />
+                  </div>
                 </button>
               );
             })}
@@ -298,103 +321,87 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
     );
   }
 
-  // Listening View
+  // --- 2. Loading View ---
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-        <p className="text-slate-500">{labels.loading}</p>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center">
+        <div className="w-16 h-16 border-4 border-violet-100 border-t-violet-600 rounded-full animate-spin mb-4"></div>
+        <p className="text-slate-500 font-medium animate-pulse">{labels.preparingListening}</p>
       </div>
     );
   }
 
-  // UPDATED LAYOUT WITH SIDEBAR
+  // --- 3. Listening Player View ---
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col max-w-6xl mx-auto w-full">
-      <div className="mb-4 flex items-center">
-        <button
-          onClick={() => setActiveUnit(null)}
-          className="text-sm text-slate-500 hover:text-indigo-600 font-medium flex items-center"
-        >
-          ← {labels.backToList}
+    <div className="h-[calc(100vh-100px)] flex flex-col w-full max-w-[1800px] mx-auto relative bg-slate-50">
+
+      {/* Top Navigation */}
+      <div className="flex items-center justify-between py-4 px-6 bg-white border-b border-slate-200 shrink-0 sticky top-0 z-20 shadow-sm">
+        <div className="flex items-center gap-4">
+          <button onClick={() => setActiveUnit(null)} className="flex items-center gap-2 text-slate-500 hover:text-violet-600 font-bold transition-colors px-3 py-1.5 hover:bg-slate-50 rounded-lg">
+            <ArrowLeft className="w-4 h-4" /> {labels.backToList}
+          </button>
+          <div className="h-6 w-px bg-slate-200"></div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{labels.unit} {activeUnit}</span>
+            <h1 className="text-lg font-bold text-slate-800 truncate max-w-md">{passage?.title || labels.listeningExercise}</h1>
+          </div>
+        </div>
+
+        <button onClick={() => setShowTranslation(!showTranslation)} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${showTranslation ? 'bg-violet-600 text-white shadow-md shadow-violet-200' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+          <Languages className="w-4 h-4" /> {showTranslation ? labels.hideTrans : labels.showTrans}
         </button>
-        <div className="mx-4 h-4 w-px bg-slate-300"></div>
-        <span className="text-sm font-bold text-slate-700">
-          {labels.unit} {activeUnit}
-        </span>
       </div>
 
-      <div className="flex gap-6 h-full min-h-0">
-        {/* Main Content Area */}
-        <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col min-h-0">
-          {/* Header with title and controls */}
-          <div className="border-b border-slate-100 p-4 flex justify-between items-center bg-slate-50/50 rounded-t-xl">
-            <h3 className="font-bold text-slate-800">{passage?.title || labels.listeningPractice || 'Listening Practice'}</h3>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowTranslation(!showTranslation)}
-                className={`text-sm px-3 py-1.5 rounded-lg border transition-all ${showTranslation
-                  ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
-                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-              >
-                {showTranslation ? labels.hideTrans : labels.showTrans}
+      {/* Main Layout */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+
+        <div className="flex-1 flex flex-col min-h-0 relative">
+          {/* Audio Player Bar */}
+          <div className="bg-white border-b border-slate-200 p-4 shadow-sm z-10 flex items-center justify-center gap-6">
+            <audio ref={manualAudioRef} src={content?.listeningAudioUrl || ''} onEnded={() => setIsPlaying(false)} onPause={() => setIsPlaying(false)} onPlay={() => setIsPlaying(true)} />
+
+            <button onClick={() => skipTime(-5)} className="p-2 text-slate-400 hover:text-violet-600 rounded-full hover:bg-violet-50 transition-colors" title="-5s">
+              <SkipBack className="w-6 h-6" />
+            </button>
+
+            <button onClick={togglePlayback} className={`w-14 h-14 flex items-center justify-center rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 ${isPlaying ? 'bg-violet-600 text-white shadow-violet-200' : 'bg-white text-violet-600 border-2 border-violet-100'}`}>
+              {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-1" />}
+            </button>
+
+            <button onClick={() => skipTime(5)} className="p-2 text-slate-400 hover:text-violet-600 rounded-full hover:bg-violet-50 transition-colors" title="+5s">
+              <SkipForward className="w-6 h-6" />
+            </button>
+
+            <div className="relative ml-4">
+              <button onClick={() => setShowSpeedMenu(!showSpeedMenu)} className="flex items-center gap-1 text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg hover:bg-slate-200 transition-colors">
+                <span className="w-10 text-center">{playbackRate}x</span>
               </button>
+              {showSpeedMenu && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-lg shadow-xl border border-slate-100 py-1 flex flex-col min-w-[80px] z-50">
+                  {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map(rate => (
+                    <button key={rate} onClick={() => changeSpeed(rate)} className={`px-4 py-2 text-sm text-center hover:bg-violet-50 transition-colors ${playbackRate === rate ? 'text-violet-600 font-bold bg-violet-50' : 'text-slate-600'}`}>{rate}x</button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Audio Player */}
-          {content?.listeningAudioUrl && (
-            <audio
-              ref={manualAudioRef}
-              src={content.listeningAudioUrl}
-              onEnded={() => setIsPlaying(false)}
-              onPause={() => setIsPlaying(false)}
-              onPlay={() => setIsPlaying(true)}
-            />
-          )}
-
-          <div className="flex items-center justify-center space-x-6 py-6 border-b border-slate-100 bg-gradient-to-b from-slate-50 to-white">
-            <button
-              onClick={restartAudio}
-              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all"
-            >
-              <RotateCcw className="w-5 h-5" />
-            </button>
-
-            <button
-              onClick={togglePlayback}
-              className={`w-16 h-16 flex items-center justify-center rounded-full shadow-lg transition-all scale-100 hover:scale-105 active:scale-95 ${isPlaying ? 'bg-indigo-600 text-white shadow-indigo-200' : 'bg-white text-indigo-600 border-2 border-indigo-100'
-                }`}
-            >
-              {isPlaying ? (
-                <Pause className="w-6 h-6 fill-current" />
-              ) : (
-                <Play className="w-6 h-6 fill-current ml-0.5" />
-              )}
-            </button>
-
-            <div className="w-10"></div>
-          </div>
-
-          {/* Text Content - Same layout as ReadingModule */}
-          <div className="flex-1 overflow-y-auto p-8 relative">
-            <div className="flex gap-8 h-full">
-              {/* Korean Text - Always Visible */}
-              <div
-                ref={contentRef}
-                className={`transition-all duration-300 ${showTranslation ? 'w-1/2' : 'w-full max-w-5xl mx-auto'} ${selectedColor ? `selection-${selectedColor}` : ''}`}
-                onMouseUp={handleTextSelection}
-              >
+          {/* Script Content */}
+          <div className="flex-1 overflow-y-auto p-6 md:p-10">
+            <div className={`flex gap-10 transition-all duration-500 ${showTranslation ? 'max-w-full' : 'max-w-4xl mx-auto'}`}>
+              <div ref={contentRef} className="flex-1 min-w-0 bg-white rounded-2xl shadow-sm border border-slate-100 p-8 md:p-12" onMouseUp={handleTextSelection}>
                 <div className="text-lg leading-loose text-slate-800 font-serif whitespace-pre-line select-text">
                   {passage && renderHighlightedText(passage.koreanText)}
                 </div>
               </div>
 
-              {/* Translation - Conditionally Visible */}
               {showTranslation && passage?.englishTranslation && (
-                <div className="w-1/2 border-l border-slate-100 pl-8 overflow-y-auto">
-                  <div className="text-slate-600 leading-relaxed whitespace-pre-line">
+                <div className="flex-1 min-w-0 bg-slate-50 rounded-2xl border border-slate-200/60 p-8 md:p-12 overflow-y-auto">
+                  <div className="sticky top-0 bg-slate-50 pb-4 border-b border-slate-200 mb-6 z-10 flex items-center gap-2 text-slate-400 font-bold text-sm uppercase tracking-widest">
+                    <Languages className="w-4 h-4" /> Translation
+                  </div>
+                  <div className="text-base leading-loose text-slate-600 whitespace-pre-line">
                     {passage.englishTranslation}
                   </div>
                 </div>
@@ -403,113 +410,111 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
           </div>
         </div>
 
-        {/* Sidebar - Annotations */}
-        <div className="w-80 flex flex-col gap-4 min-h-0">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col min-h-0">
-            <div className="p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-xl">
-              <h4 className="font-bold text-slate-700 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-indigo-500" />
-                {labels.annotate}
-              </h4>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {sidebarAnnotations.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-sm italic">
-                  {labels.noNotes || 'No notes yet'}
-                </div>
-              ) : (
-                sidebarAnnotations.map(ann => {
-                  const isEditing = editingAnnotationId === ann.id;
-                  const isActive = activeAnnotationId === ann.id;
+        {/* Sidebar */}
+        <div className="w-80 bg-white border-l border-slate-200 flex flex-col shrink-0 z-10 shadow-lg">
+          <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <h4 className="font-bold text-slate-700 flex items-center gap-2">
+              <Highlighter className="w-4 h-4 text-violet-500" />
+              {labels.annotate}
+            </h4>
+            <span className="text-xs font-bold bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full">
+              {currentAnnotations.length}
+            </span>
+          </div>
 
-                  if (isEditing) {
-                    return (
-                      <div
-                        key={ann.id}
-                        id={`sidebar-card-${ann.id}`}
-                        className="bg-white p-3 rounded-lg border-2 border-indigo-500 shadow-md scroll-mt-20"
-                      >
-                        <div className="text-xs font-bold mb-2 text-slate-500">
-                          {labels.editingNote || 'Editing note'}
-                        </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/30">
+            {sidebarAnnotations.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 text-center px-6">
+                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3 text-slate-300">
+                  <MessageSquare className="w-6 h-6" />
+                </div>
+                <p className="text-sm font-medium text-slate-500 mb-1">暂无笔记</p>
+                <p className="text-xs text-slate-400">在文中选中文字即可添加高亮或笔记。</p>
+              </div>
+            ) : (
+              sidebarAnnotations.map(ann => {
+                const isEditing = editingAnnotationId === ann.id;
+                const isActive = activeAnnotationId === ann.id;
+
+                return (
+                  <div
+                    key={ann.id}
+                    id={`sidebar-card-${ann.id}`}
+                    className={`group p-4 rounded-xl border transition-all cursor-pointer relative scroll-mt-24
+                      ${isActive || isEditing
+                        ? 'bg-white border-violet-500 shadow-md ring-1 ring-violet-500/20'
+                        : 'bg-white border-slate-200 hover:border-violet-300 hover:shadow-sm'
+                      }`}
+                    onClick={() => {
+                      if (!isEditing) {
+                        setActiveAnnotationId(ann.id);
+                        setEditingAnnotationId(ann.id);
+                        setEditNoteInput(ann.note || '');
+                        const el = document.getElementById(`annotation-${ann.id}`);
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    }}
+                  >
+                    <div className="flex items-start gap-2 mb-2">
+                      <div className={`w-1.5 h-1.5 mt-1.5 rounded-full shrink-0 ${{
+                        'yellow': 'bg-yellow-400', 'green': 'bg-green-400', 'blue': 'bg-blue-400', 'pink': 'bg-pink-400'
+                      }[ann.color || 'yellow'] || 'bg-yellow-400'}`}></div>
+                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider line-clamp-1 flex-1">
+                        {ann.text}
+                      </div>
+                    </div>
+
+                    {isEditing ? (
+                      <div className="mt-2 animate-in fade-in zoom-in-95 duration-200">
                         <textarea
                           value={editNoteInput}
                           onChange={(e) => setEditNoteInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault();
-                              handleUpdateNote(ann.id);
-                            }
-                          }}
-                          className="w-full border border-slate-200 rounded-lg p-2 text-sm resize-none focus:ring-2 focus:ring-indigo-200 outline-none mb-2"
+                          className="w-full border border-slate-200 rounded-lg p-3 text-sm resize-none focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none mb-3 bg-slate-50"
                           rows={3}
                           autoFocus
+                          placeholder="输入笔记内容..."
+                          onClick={(e) => e.stopPropagation()}
                         />
                         <div className="flex justify-end gap-2">
                           <button
-                            onClick={() => setEditingAnnotationId(null)}
-                            className="px-3 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded"
+                            onClick={(e) => { e.stopPropagation(); setEditingAnnotationId(null); }}
+                            className="px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
                           >
                             {labels.cancel}
                           </button>
                           <button
-                            onClick={() => handleUpdateNote(ann.id)}
-                            className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-1"
+                            onClick={(e) => { e.stopPropagation(); handleUpdateNote(ann.id); }}
+                            className="px-3 py-1.5 text-xs font-bold bg-violet-600 text-white rounded-lg hover:bg-violet-700 flex items-center gap-1.5 transition-colors shadow-sm"
                           >
                             <Check className="w-3 h-3" /> {labels.save}
                           </button>
                         </div>
                       </div>
-                    );
-                  }
-                  return (
-                    <div
-                      key={ann.id}
-                      id={`sidebar-card-${ann.id}`}
-                      className={`group p-3 rounded-lg border transition-all cursor-pointer relative scroll-mt-20
-                                ${isActive
-                          ? 'bg-indigo-50 border-indigo-300 shadow-md'
-                          : 'bg-slate-50 border-slate-100 hover:border-indigo-200 hover:shadow-sm'
-                        }`}
-                      onClick={() => {
-                        setActiveAnnotationId(ann.id);
-                        setEditingAnnotationId(ann.id);
-                        setEditNoteInput(ann.note || '');
-
-                        // Scroll to text?
-                        const el = document.getElementById(`annotation-${ann.id}`);
-                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                      }}
-                    >
-                      <div className={`text-xs font-bold mb-1 px-1.5 py-0.5 rounded w-fit ${{
-                        'yellow': 'bg-yellow-100 text-yellow-800',
-                        'green': 'bg-green-100 text-green-800',
-                        'blue': 'bg-blue-100 text-blue-800',
-                        'pink': 'bg-pink-100 text-pink-800',
-                      }[ann.color || 'yellow'] || 'bg-yellow-100 text-yellow-800'}`}>
-                        {ann.text.substring(0, 20)}...
-                      </div>
-                      {ann.note ? (
-                        <p className="text-sm text-slate-700">{ann.note}</p>
-                      ) : (
-                        <p className="text-xs text-slate-400 italic">{labels.clickToAddNote || 'Click to add note...'}</p>
-                      )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteAnnotation(ann.id);
-                        }}
-                        className="absolute top-2 right-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+                    ) : (
+                      <>
+                        {ann.note ? (
+                          <p className="text-sm text-slate-800 leading-relaxed pl-3.5 border-l-2 border-slate-100">{ann.note}</p>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic pl-3.5">{labels.clickToAddNote}</p>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm('Delete this note?')) handleDeleteAnnotation(ann.id);
+                          }}
+                          className="absolute top-3 right-3 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
+
       </div>
 
       <AnnotationMenu
@@ -527,12 +532,9 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
             }, 100);
           }
         }}
-        onHighlight={(color) => {
-          saveAnnotation(color, undefined, true);
-        }}
+        onHighlight={(color) => saveAnnotation(color, undefined, true)}
         selectedColor={selectedColor}
         setSelectedColor={setSelectedColor}
-        // Save word usually not needed in listening but why not support it?
         onClose={cancelAnnotation}
         onDelete={deleteAnnotation}
         labels={labels}

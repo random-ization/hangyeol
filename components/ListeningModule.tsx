@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { generateReadingPassage } from '../services/geminiService';
 import { CourseSelection, ReadingContent, Language, TextbookContent, Annotation } from '../types';
-import { Play, Pause, RotateCcw, Volume2, Highlighter, X, ChevronRight, Music } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2, ChevronRight, Music } from 'lucide-react';
 import { getLabels } from '../utils/i18n';
+import { useAnnotation } from '../hooks/useAnnotation';
+import AnnotationMenu from './AnnotationMenu';
 
 interface ListeningModuleProps {
   course: CourseSelection;
@@ -27,22 +29,36 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
   const [loading, setLoading] = useState(false);
   const [showScript, setShowScript] = useState(false);
 
-  // Annotation State
-  const [selectedSentenceIndex, setSelectedSentenceIndex] = useState<number | null>(null);
-  const [showAnnotationMenu, setShowAnnotationMenu] = useState(false);
-  const [noteInput, setNoteInput] = useState('');
+  // Refs
+  const manualAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const contextKey = activeUnit
     ? `${course.instituteId}-${course.level}-${activeUnit}-LISTENING`
     : '';
-  const currentAnnotations = annotations.filter(a => a.contextKey === contextKey);
 
-  // Refs
-  const manualAudioRef = useRef<HTMLAudioElement | null>(null);
+  const {
+    contentRef,
+    handleTextSelection,
+    saveAnnotation,
+    cancelAnnotation,
+    showAnnotationMenu,
+    menuPosition,
+    noteInput,
+    setNoteInput,
+    selectedColor,
+    setSelectedColor,
+    currentSelectionRange
+  } = useAnnotation(contextKey, annotations, onSaveAnnotation);
 
   const labels = getLabels(language);
   const content = activeUnit ? levelContexts[activeUnit] : undefined;
   const isManualAudio = !!content?.listeningAudioUrl;
+
+  // Filter annotations for rendering
+  const currentAnnotations = annotations
+    .filter(a => a.contextKey === contextKey && a.startOffset !== undefined && a.endOffset !== undefined)
+    .sort((a, b) => (a.startOffset || 0) - (b.startOffset || 0));
+
 
   // Fetch Text Content when active unit changes
   useEffect(() => {
@@ -78,15 +94,13 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
 
   // Audio Controls
   const togglePlayback = () => {
-    if (isManualAudio) {
-      if (manualAudioRef.current) {
-        if (isPlaying) {
-          manualAudioRef.current.pause();
-          setIsPlaying(false);
-        } else {
-          manualAudioRef.current.play();
-          setIsPlaying(true);
-        }
+    if (isManualAudio && manualAudioRef.current) {
+      if (isPlaying) {
+        manualAudioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        manualAudioRef.current.play();
+        setIsPlaying(true);
       }
     }
   };
@@ -99,12 +113,61 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
     }
   };
 
+  const renderHighlightedText = (fullText: string) => {
+    if (!fullText) return null;
+
+    const charMap: { annotation?: Annotation }[] = new Array(fullText.length).fill({});
+    currentAnnotations.forEach(ann => {
+      if (ann.startOffset === undefined || ann.endOffset === undefined) return;
+      for (let i = ann.startOffset; i < ann.endOffset; i++) {
+        if (i < fullText.length) {
+          charMap[i] = { annotation: ann };
+        }
+      }
+    });
+
+    const result = [];
+    let i = 0;
+    while (i < fullText.length) {
+      const currentAnn = charMap[i].annotation;
+      let j = i + 1;
+
+      while (j < fullText.length) {
+        const nextAnn = charMap[j].annotation;
+        if (nextAnn !== currentAnn) break;
+        j++;
+      }
+
+      const segmentText = fullText.slice(i, j);
+      let className = 'relative rounded px-0 py-0.5 box-decoration-clone transition-all ';
+
+      if (currentAnn) {
+        const colorClass = currentAnn.color ? `highlight-${currentAnn.color}` : 'bg-slate-200';
+        className += `${colorClass} cursor-pointer hover:brightness-95 `;
+      }
+
+      if (currentAnn) {
+        result.push(
+          <span key={i} id={`annotation-${currentAnn.id}`} className={className}>
+            {segmentText}
+            {currentAnn.note && (
+              <span className="absolute -top-1.5 -right-1 w-2 h-2 bg-red-400 rounded-full border border-white"></span>
+            )}
+          </span>
+        );
+      } else {
+        result.push(<span key={i}>{segmentText}</span>);
+      }
+      i = j;
+    }
+    return result;
+  };
+
   // Table of Contents View
   if (!activeUnit) {
     const availableUnits = Object.keys(levelContexts)
       .map(Number)
       .sort((a, b) => a - b);
-    // Filter units that have listening script or audio
     const unitsWithAudio = availableUnits.filter(u => {
       const c = levelContexts[u];
       return !!c?.listeningScript || !!c?.listeningAudioUrl;
@@ -148,9 +211,7 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
                       )}
                     </div>
                   </div>
-                  <div className="p-2 rounded-full bg-slate-50 text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Play className="w-5 h-5 fill-current" />
-                  </div>
+                  <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-indigo-500" />
                 </button>
               );
             })}
@@ -160,72 +221,21 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
     );
   }
 
+  // Listening View
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-        <p className="text-slate-500">{labels.preparingListening}</p>
+        <p className="text-slate-500">{labels.loading}</p>
       </div>
     );
   }
 
-  // Helper for transcript sentence parsing
-  const getTranscriptSentences = () => {
-    const text = content?.listeningScript || passage?.koreanText || '';
-    return text.match(/[^.!?\n]+[.!?\n]+/g) || [text];
-  };
-  const sentences = getTranscriptSentences();
-
-  const handleSentenceClick = (idx: number) => {
-    setSelectedSentenceIndex(idx);
-    setShowAnnotationMenu(true);
-    const existing = currentAnnotations.find(a => a.sentenceIndex === idx);
-    if (existing && existing.note) setNoteInput(existing.note);
-    else setNoteInput('');
-  };
-
-  const saveHighlight = (color: Annotation['color']) => {
-    if (selectedSentenceIndex === null) return;
-
-    const existing = currentAnnotations.find(a => a.sentenceIndex === selectedSentenceIndex);
-    const newAnnotation: Annotation = {
-      id: existing?.id || Date.now().toString(),
-      contextKey,
-      sentenceIndex: selectedSentenceIndex,
-      text: sentences[selectedSentenceIndex],
-      color: color,
-      note: existing?.note || '',
-      timestamp: Date.now(),
-    };
-    onSaveAnnotation(newAnnotation);
-    setShowAnnotationMenu(false);
-  };
-
-  const saveNote = () => {
-    if (selectedSentenceIndex === null) return;
-    const existing = currentAnnotations.find(a => a.sentenceIndex === selectedSentenceIndex);
-    const newAnnotation: Annotation = {
-      id: existing?.id || Date.now().toString(),
-      contextKey,
-      sentenceIndex: selectedSentenceIndex,
-      text: sentences[selectedSentenceIndex],
-      color: existing?.color || null,
-      note: noteInput,
-      timestamp: Date.now(),
-    };
-    onSaveAnnotation(newAnnotation);
-    setShowAnnotationMenu(false);
-  };
-
   return (
-    <div className="max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="mb-6 flex items-center">
+    <div className="h-[calc(100vh-140px)] flex flex-col max-w-4xl mx-auto w-full">
+      <div className="mb-4 flex items-center">
         <button
-          onClick={() => {
-            setActiveUnit(null);
-            if (isPlaying && manualAudioRef.current) manualAudioRef.current.pause();
-          }}
+          onClick={() => setActiveUnit(null)}
           className="text-sm text-slate-500 hover:text-indigo-600 font-medium flex items-center"
         >
           ← {labels.backToList}
@@ -236,153 +246,74 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
         </span>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-xl p-8 border border-slate-100 relative">
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600">
-            <Volume2 className="w-10 h-10" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">
-            {passage?.title || labels.listeningExercise}
-          </h2>
-          <p className="text-slate-500">{labels.listenCarefully}</p>
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 flex flex-col items-center transition-all">
+        {content?.listeningAudioUrl && (
+          <audio
+            ref={manualAudioRef}
+            src={content.listeningAudioUrl}
+            onEnded={() => setIsPlaying(false)}
+            onPause={() => setIsPlaying(false)}
+            onPlay={() => setIsPlaying(true)}
+          />
+        )}
 
-          {isManualAudio && (
-            <audio
-              ref={manualAudioRef}
-              src={content!.listeningAudioUrl!}
-              onEnded={() => setIsPlaying(false)}
-              className="hidden"
-            />
-          )}
-        </div>
-
-        <div className="flex justify-center items-center space-x-6 mb-10">
+        <div className="flex items-center justify-center space-x-8 mb-8">
           <button
             onClick={restartAudio}
-            className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors"
-            disabled={!isManualAudio}
+            className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all"
           >
             <RotateCcw className="w-6 h-6" />
           </button>
 
-          {isPlaying ? (
-            <button
-              onClick={togglePlayback}
-              className="w-16 h-16 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-200 transition-all transform hover:scale-105"
-            >
-              <Pause className="w-8 h-8 fill-current" />
-            </button>
-          ) : (
-            <button
-              onClick={togglePlayback}
-              disabled={!isManualAudio}
-              className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all transform hover:scale-105 ${
-                !isManualAudio
-                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                  : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'
+          <button
+            onClick={togglePlayback}
+            className={`w-20 h-20 flex items-center justify-center rounded-full shadow-lg transition-all scale-100 hover:scale-105 active:scale-95 ${isPlaying ? 'bg-indigo-600 text-white shadow-indigo-200' : 'bg-white text-indigo-600 border-2 border-indigo-100'
               }`}
-            >
+          >
+            {isPlaying ? (
+              <Pause className="w-8 h-8 fill-current" />
+            ) : (
               <Play className="w-8 h-8 fill-current ml-1" />
-            </button>
-          )}
+            )}
+          </button>
 
           <div className="w-12"></div>
         </div>
 
-        {!isManualAudio && (
-          <p className="text-center text-sm text-slate-400 mb-6 italic">{labels.noListening}</p>
-        )}
-
-        <div className="border-t border-slate-100 pt-6">
+        <div className="w-full">
           <button
             onClick={() => setShowScript(!showScript)}
-            className="w-full py-2 text-center text-indigo-600 font-medium hover:bg-indigo-50 rounded-lg transition-colors"
+            className="w-full py-3 px-4 flex items-center justify-center text-slate-600 font-medium bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors"
           >
             {showScript ? labels.hideScript : labels.viewScript}
           </button>
 
-          {showScript && (
+          {showScript && passage && (
             <div className="mt-4 p-4 bg-slate-50 rounded-xl animate-in slide-in-from-top-4 relative">
-              <div className="text-lg leading-relaxed text-slate-800 mb-4 whitespace-pre-line">
-                {sentences.map((sentence, idx) => {
-                  const annotation = currentAnnotations.find(a => a.sentenceIndex === idx);
-                  const highlightClass = annotation?.color ? `highlight-${annotation.color}` : '';
-                  const hasNote = !!annotation?.note;
-
-                  return (
-                    <span
-                      key={idx}
-                      onClick={() => handleSentenceClick(idx)}
-                      className={`cursor-pointer hover:bg-slate-100 rounded px-1 transition-colors relative ${highlightClass}`}
-                    >
-                      {sentence}{' '}
-                      {hasNote && (
-                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-400 rounded-full"></span>
-                      )}
-                    </span>
-                  );
-                })}
+              <div
+                ref={contentRef}
+                className="text-lg leading-relaxed text-slate-800 whitespace-pre-line select-text font-serif"
+                onMouseUp={handleTextSelection}
+              >
+                {renderHighlightedText(passage.koreanText)}
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Annotation Menu Popover (Same as Reading) */}
-      {showAnnotationMenu && selectedSentenceIndex !== null && (
-        <div className="absolute top-20 right-10 z-20 bg-white shadow-xl border border-slate-200 rounded-xl p-4 w-72 animate-in zoom-in-95 duration-200">
-          <div className="flex justify-between items-center mb-3">
-            <h4 className="font-bold text-slate-700 text-sm">{labels.annotate}</h4>
-            <button
-              onClick={() => setShowAnnotationMenu(false)}
-              className="text-slate-400 hover:text-slate-600"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="flex space-x-2 mb-4">
-            <button
-              onClick={() => saveHighlight('yellow')}
-              className="w-6 h-6 rounded-full bg-[#fef08a] border border-slate-200 hover:scale-110 transition-transform"
-            ></button>
-            <button
-              onClick={() => saveHighlight('green')}
-              className="w-6 h-6 rounded-full bg-[#bbf7d0] border border-slate-200 hover:scale-110 transition-transform"
-            ></button>
-            <button
-              onClick={() => saveHighlight('blue')}
-              className="w-6 h-6 rounded-full bg-[#bfdbfe] border border-slate-200 hover:scale-110 transition-transform"
-            ></button>
-            <button
-              onClick={() => saveHighlight('pink')}
-              className="w-6 h-6 rounded-full bg-[#fbcfe8] border border-slate-200 hover:scale-110 transition-transform"
-            ></button>
-            <button
-              onClick={() => saveHighlight(null)}
-              className="w-6 h-6 rounded-full bg-white border border-slate-200 flex items-center justify-center text-xs text-slate-400 hover:text-red-500"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="mb-2">
-            <textarea
-              value={noteInput}
-              onChange={e => setNoteInput(e.target.value)}
-              className="w-full text-sm p-2 border border-slate-200 rounded-lg resize-none focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
-              rows={3}
-              placeholder={labels.addNote}
-            />
-          </div>
-          <button
-            onClick={saveNote}
-            className="w-full py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700"
-          >
-            {labels.save}
-          </button>
-        </div>
-      )}
+      <AnnotationMenu
+        visible={showAnnotationMenu}
+        position={menuPosition}
+        selectionText={currentSelectionRange?.text}
+        noteInput={noteInput}
+        setNoteInput={setNoteInput}
+        selectedColor={selectedColor}
+        setSelectedColor={setSelectedColor}
+        onSave={saveAnnotation}
+        onCancel={cancelAnnotation}
+        labels={labels}
+      />
     </div>
   );
 };

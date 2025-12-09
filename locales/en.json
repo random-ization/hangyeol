@@ -178,6 +178,10 @@
   "save": "Save",
   "showTrans": "Show Translation",
   "hideTrans": "Hide Translation",
+  "noNotes": "No notes yet",
+  "editingNote": "Editing note",
+  "clickToAddNote": "Click to add note...",
+  "readingPassage": "Reading Passage",
   "noListening": "No listening tracks available.",
   "preparingListening": "Preparing audio...",
   "listeningExercise": "Listening Exercise",
@@ -288,8 +292,6 @@
   "bulkSetFree": "Set first N units free",
   "bulkSetAllFree": "Set all free",
   "bulkSetAllPaid": "Set all paid",
-  "free": "Free",
-  "paid": "Paid",
   "subscriptionType": "Subscription Type",
   "annualMember": "Annual Member",
   "lifetimeMember": "Lifetime Member",
@@ -312,6 +314,5 @@
   "preview": "Preview",
   "markdownTip": "Formatting tips: Use # for headings (# H1, ## H2, ### H3), - or * for bullet lists, 1. for numbered lists, blank lines for paragraphs",
   "enterTitle": "Enter document title",
-  "enterContent": "Enter document content...",
-  "saved": "Saved successfully!"
+  "enterContent": "Enter document content..."
 }

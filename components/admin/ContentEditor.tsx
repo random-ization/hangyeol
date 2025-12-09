@@ -82,6 +82,10 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
   const [entryPlayingIndex, setEntryPlayingIndex] = useState<number | null>(null); // Restored
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // Title states for reading and listening
+  const [readingTitle, setReadingTitle] = useState('');
+  const [listeningTitle, setListeningTitle] = useState('');
+
   // ... (activeTab state and others remain)
 
   // Audio refs
@@ -202,6 +206,10 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
     const content = contentKey ? textbookContexts[contentKey] : null;
 
     if (content) {
+      // Load titles
+      setReadingTitle(content.readingTitle || '');
+      setListeningTitle(content.listeningTitle || '');
+
       // Try to parse as JSON array, fallback to single entry
       try {
         const readingData = content.readingText;
@@ -240,6 +248,8 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
       setListeningAudioUrl(content.listeningAudioUrl || null);
     } else {
       // Only reset when switching to a new empty unit
+      setReadingTitle('');
+      setListeningTitle('');
       setReadingEntries([{ text: '', translation: '' }]);
       setListeningEntries([{ text: '', translation: '' }]);
       setListeningAudioUrl(null);
@@ -375,12 +385,14 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
         const validEntries = readingEntries.filter(e => e.text.trim() || e.translation.trim());
         content.readingText = JSON.stringify(validEntries);
         content.readingTranslation = ''; // Not used when storing as JSON
+        content.readingTitle = readingTitle || `Level ${selectedLevel} Unit ${selectedUnit}`;
       } else if (activeTab === 'listening') {
         // Store as JSON array for multiple entries
         const validEntries = listeningEntries.filter(e => e.text.trim() || e.translation.trim());
         content.listeningScript = JSON.stringify(validEntries);
         content.listeningTranslation = ''; // Not used when storing as JSON
         content.listeningAudioUrl = listeningAudioUrl;
+        content.listeningTitle = listeningTitle || `Level ${selectedLevel} Unit ${selectedUnit}`;
       } else if (activeTab === 'grammar') {
         const parsed = parseInput(textInput);
         content.grammarList = JSON.stringify(parsed);
@@ -679,6 +691,26 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
             {/* Multi-entry layout for Reading/Listening */}
             {(activeTab === 'reading' || activeTab === 'listening') ? (
               <div className="space-y-4">
+                {/* Title Input */}
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <label className="block text-sm font-medium text-blue-800 mb-2">
+                    📝 {activeTab === 'reading' ? '阅读标题 (Reading Title)' : '听力标题 (Listening Title)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={activeTab === 'reading' ? readingTitle : listeningTitle}
+                    onChange={(e) => {
+                      if (activeTab === 'reading') {
+                        setReadingTitle(e.target.value);
+                      } else {
+                        setListeningTitle(e.target.value);
+                      }
+                    }}
+                    placeholder={`Level ${selectedLevel} Unit ${selectedUnit} - ${activeTab === 'reading' ? '阅读练习' : '听力练习'}`}
+                    className="w-full p-2.5 border border-blue-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white"
+                  />
+                </div>
+
                 {(activeTab === 'reading' ? readingEntries : listeningEntries).map((entry, index) => (
                   <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                     <div className="flex items-center justify-between mb-3">

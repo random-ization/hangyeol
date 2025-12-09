@@ -173,11 +173,15 @@
   "errorLoading": "加载失败。",
   "backToList": "返回列表",
   "annotate": "笔记",
-  "addNote": "添加笔记...",
+  "addNote": "添加笔记",
   "saveNote": "保存笔记",
   "save": "保存",
   "showTrans": "显示翻译",
   "hideTrans": "隐藏翻译",
+  "noNotes": "暂无笔记",
+  "editingNote": "编辑笔记",
+  "clickToAddNote": "点击添加笔记...",
+  "readingPassage": "阅读练习",
   "noListening": "暂无听力音频。",
   "preparingListening": "准备音频中...",
   "listeningExercise": "听力练习",
@@ -288,8 +292,6 @@
   "bulkSetFree": "设置前 N 课免费",
   "bulkSetAllFree": "全部设为免费",
   "bulkSetAllPaid": "全部设为付费",
-  "free": "免费",
-  "paid": "付费",
   "subscriptionType": "订阅类型",
   "annualMember": "年度会员",
   "lifetimeMember": "终身会员",
@@ -312,6 +314,5 @@
   "preview": "预览",
   "markdownTip": "格式提示：使用 # 表示标题（# H1，## H2，### H3），- 或 * 表示列表，1. 表示编号列表，空行表示段落",
   "enterTitle": "输入文档标题",
-  "enterContent": "输入文档内容...",
-  "saved": "保存成功！"
+  "enterContent": "输入文档内容..."
 }

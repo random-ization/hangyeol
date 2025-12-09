@@ -94,8 +94,10 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
     )
     .sort((a, b) => (a.startOffset || 0) - (b.startOffset || 0));
 
-  // Sidebar Logic
-  const sidebarAnnotations = currentAnnotations.filter(a => a.note && a.note.trim().length > 0);
+  // Sidebar Logic: Show annotations with notes OR the one being edited
+  const sidebarAnnotations = currentAnnotations.filter(a =>
+    (a.note && a.note.trim().length > 0) || a.id === editingAnnotationId
+  );
 
   // Load reading when active unit changes
   useEffect(() => {
@@ -350,7 +352,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
         {/* Main Content Area */}
         <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col min-h-0">
           <div className="border-b border-slate-100 p-4 flex justify-between items-center bg-slate-50/50 rounded-t-xl">
-            <h3 className="font-bold text-slate-800">Reading Passage</h3>
+            <h3 className="font-bold text-slate-800">{passage?.title || labels.readingPassage || 'Reading Passage'}</h3>
             <button
               onClick={() => setShowTranslation(!showTranslation)}
               className={`text-sm px-3 py-1.5 rounded-lg border transition-all ${showTranslation
@@ -411,7 +413,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {sidebarAnnotations.length === 0 ? (
                 <div className="text-center py-8 text-slate-400 text-sm italic">
-                  No notes yet
+                  {labels.noNotes || 'No notes yet'}
                 </div>
               ) : (
                 sidebarAnnotations.map(ann => {
@@ -426,7 +428,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
                         className="bg-white p-3 rounded-lg border-2 border-indigo-500 shadow-md scroll-mt-20"
                       >
                         <div className="text-xs font-bold mb-2 text-slate-500">
-                          Editing note for "{ann.text.substring(0, 15)}..."
+                          {labels.editingNote || 'Editing note'}: "{ann.text.substring(0, 15)}..."
                         </div>
                         <textarea
                           value={editNoteInput}
@@ -446,13 +448,13 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
                             onClick={() => setEditingAnnotationId(null)}
                             className="px-3 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded"
                           >
-                            Cancel
+                            {labels.cancel}
                           </button>
                           <button
                             onClick={() => handleUpdateNote(ann.id)}
                             className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-1"
                           >
-                            <Check className="w-3 h-3" /> Save
+                            <Check className="w-3 h-3" /> {labels.save}
                           </button>
                         </div>
                       </div>
@@ -491,7 +493,7 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
                       {ann.note ? (
                         <p className="text-sm text-slate-700">{ann.note}</p>
                       ) : (
-                        <p className="text-xs text-slate-400 italic">Click to add note...</p>
+                        <p className="text-xs text-slate-400 italic">{labels.clickToAddNote || 'Click to add note...'}</p>
                       )}
 
                       <button

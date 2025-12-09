@@ -3,6 +3,7 @@ import { TopikExam, Language, Annotation } from '../../types';
 import { Clock, Trophy, RotateCcw, ArrowLeft, CheckCircle, Eye, MessageSquare, Trash2, X, Check } from 'lucide-react';
 import { getLabels } from '../../utils/i18n';
 import { QuestionRenderer } from './QuestionRenderer';
+import AnnotationMenu from '../AnnotationMenu';
 
 // PDF 仿真样式常量
 const PAPER_MAX_WIDTH = "max-w-[900px]";
@@ -279,6 +280,10 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
     const [selectedColor, setSelectedColor] = useState<'yellow' | 'green' | 'blue' | 'pink'>('yellow');
     const [activeAnnotationId, setActiveAnnotationId] = useState<string | null>(null);
 
+    // Sidebar edit state (matching Reading/Listening modules)
+    const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
+    const [editNoteInput, setEditNoteInput] = useState('');
+
     // Available highlight colors
     const COLORS = [
       { name: 'yellow', bgClass: 'bg-yellow-300', ringClass: 'ring-yellow-500' },
@@ -289,10 +294,18 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
 
     const examContextPrefix = `TOPIK-${exam.id}`;
 
-    // Sidebar annotations with notes
-    const sidebarAnnotations = useMemo(
-      () => (annotations || []).filter(a => a.contextKey.startsWith(examContextPrefix) && a.note && a.note.trim().length > 0),
+    // All annotations for this exam (for rendering highlights)
+    const currentAnnotations = useMemo(
+      () => (annotations || []).filter(a => a.contextKey.startsWith(examContextPrefix)),
       [annotations, examContextPrefix]
+    );
+
+    // Sidebar annotations: show those with notes OR the one being edited
+    const sidebarAnnotations = useMemo(
+      () => currentAnnotations.filter(a =>
+        (a.note && a.note.trim().length > 0) || a.id === editingAnnotationId
+      ),
+      [currentAnnotations, editingAnnotationId]
     );
 
     // Handle text selection for annotation
@@ -338,9 +351,9 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
       }
     };
 
-    // Save annotation
-    const saveAnnotation = async () => {
-      if (!selectionText || !noteInput.trim()) return;
+    // Save annotation (for quick add via menu - creates annotation and enters edit mode)
+    const saveAnnotationQuick = (colorOverride?: string) => {
+      if (!selectionText || !selectionContextKey) return null;
 
       // Check if updating existing
       const existing = annotations.find(a =>
@@ -352,91 +365,38 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
         id: existing ? existing.id : Date.now().toString(),
         contextKey: selectionContextKey,
         text: selectionText,
-        note: noteInput,
-        color: selectedColor,
+        note: existing?.note || '',
+        color: colorOverride || selectedColor,
         timestamp: existing ? existing.timestamp : Date.now(),
       };
 
-      try {
-        await onSaveAnnotation(annotation);
-      } catch (error) {
-        console.error('Failed to save annotation:', error);
-      }
+      onSaveAnnotation(annotation);
 
       setShowAnnotationMenu(false);
-      setNoteInput('');
-      setSelectionText('');
-      setActiveAnnotationId(null);
       window.getSelection()?.removeAllRanges();
+
+      return annotation.id;
     };
 
-    const handleEditAnnotation = (ann: Annotation) => {
-      setSelectionText(ann.text || ann.selectedText || '');
-      setSelectionContextKey(ann.contextKey);
-      setNoteInput(ann.note || '');
-      if (ann.color) setSelectedColor(ann.color as any);
-      setActiveAnnotationId(ann.id);
+    // Update note from sidebar edit
+    const handleUpdateNote = (id: string) => {
+      const ann = currentAnnotations.find(a => a.id === id);
+      if (ann) {
+        onSaveAnnotation({ ...ann, note: editNoteInput });
+      }
+      setEditingAnnotationId(null);
+      setActiveAnnotationId(null);
+    };
 
-      // Helper to position menu
-      const positionMenu = () => {
-        const el = document.querySelector(`[data-annotation-id="${ann.id}"]`);
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          setMenuPosition({ top: rect.bottom + 10, left: rect.left });
-          setShowAnnotationMenu(true);
-          // Scroll into view if needed
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-          // If precise highlight not found, try to locate the question container
-          const qIndexStr = ann.contextKey.split('-Q')[1];
-          if (qIndexStr) {
-            const qIdx = parseInt(qIndexStr);
-            const questionEl = questionRefs.current[qIdx];
-
-            if (questionEl) {
-              questionEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              const rect = questionEl.getBoundingClientRect();
-              // Position in the center of the question container as fallback
-              setMenuPosition({
-                top: rect.top + (rect.height / 2),
-                left: rect.left + (rect.width / 2)
-              });
-              setShowAnnotationMenu(true);
-            } else {
-              // Last resort: show in center of screen
-              const viewportWidth = window.innerWidth;
-              const viewportHeight = window.innerHeight;
-              setMenuPosition({
-                top: viewportHeight / 2,
-                left: viewportWidth / 2 - 144 // Half of menu width (approx 288px)
-              });
-              setShowAnnotationMenu(true);
-            }
-          }
-        }
-      };
-
-      // Try immediately
-      const el = document.querySelector(`[data-annotation-id="${ann.id}"]`);
-      if (el) {
-        positionMenu();
-      } else {
-        // If not found, maybe it's off screen or needs scroll?
-        // Let's scroll to question first then try to find it
-        const qIndexStr = ann.contextKey.split('-Q')[1];
-        if (qIndexStr) {
-          const qIdx = parseInt(qIndexStr);
-          questionRefs.current[qIdx]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-          // Wait for scroll/render?
-          setTimeout(positionMenu, 300);
-        } else {
-          positionMenu();
-        }
+    // Delete annotation (for sidebar)
+    const handleDeleteAnnotation = (id: string) => {
+      const ann = currentAnnotations.find(a => a.id === id);
+      if (ann) {
+        onSaveAnnotation({ ...ann, color: null, note: '' }); // Treat as delete
       }
     };
 
-    // Delete annotation
+    // Legacy delete function (for backward compatibility)
     const deleteAnnotation = (annotationId: string) => {
       onDeleteAnnotation(annotationId);
     };
@@ -465,16 +425,6 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm">
-                <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded font-bold">
-                  ✓ {stats.correct}
-                </span>
-                <span className="px-2 py-1 bg-red-100 text-red-700 rounded font-bold">
-                  ✗ {stats.wrong}
-                </span>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -483,42 +433,44 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
           <div className={`bg-white w-full ${PAPER_MAX_WIDTH} shadow-2xl min-h-screen pb-16 relative border border-slate-300`}>
 
             {/* 试卷头部 (Header) */}
-            <div className="p-8 md:p-12 pb-4">
-              <div className="flex justify-end mb-8">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-white text-[10px] font-bold">
-                    TOPIK
-                  </div>
-                  <div className="font-bold text-lg tracking-tighter">TOPIK</div>
+            <div className="p-8 md:p-12 pb-4 font-serif">
+
+              {/* Title Box - Black rounded rectangle */}
+              <div className="bg-black text-white py-6 px-8 rounded-2xl mb-16 shadow-lg">
+                <div className="flex items-baseline justify-center gap-4 mb-2">
+                  <span className="text-xl md:text-2xl font-bold">제{exam.round}회</span>
+                  <span className="text-3xl md:text-5xl font-bold tracking-wider">한 국 어 능 력 시 험</span>
+                </div>
+                <div className="text-center text-sm md:text-lg italic opacity-80">
+                  The {exam.round}th Test of Proficiency in Korean
                 </div>
               </div>
 
-              {/* Title Box */}
-              <div className="bg-black text-white text-center py-4 rounded-xl mb-12 shadow-lg font-serif">
-                <div className="text-xl md:text-3xl font-bold mb-1 tracking-widest">{exam.title}</div>
-                <div className="text-sm md:text-lg font-serif italic">제 {exam.round || '?'} 회 한국어능력시험</div>
-              </div>
-
-              {/* Section Info */}
-              <div className="flex justify-center mb-12">
-                <div className="border-t-2 border-b-2 border-black py-2 px-12 text-center flex items-center gap-4">
-                  <span className="text-2xl md:text-4xl font-bold">
-                    {exam.type === 'READING' ? '읽기' : '듣기'}
-                  </span>
-                  <span className="bg-black text-white rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center font-bold text-xl">
-                    II
-                  </span>
+              {/* TOPIK II (B) Section - with double lines */}
+              <div className="flex justify-center mb-16">
+                <div className="text-center">
+                  <div className="border-t-2 border-b-2 border-black py-4 px-16">
+                    <div className="flex items-center justify-center gap-4">
+                      <span className="text-3xl md:text-5xl font-bold tracking-widest">TOPIK</span>
+                      <span className="text-3xl md:text-5xl font-light">Ⅱ</span>
+                      <span className="border-2 border-black rounded-full w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-xl md:text-2xl font-bold">
+                        {exam.paperType || 'B'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Period Box */}
               <div className="flex justify-center mb-16">
-                <div className="flex border border-gray-400 shadow-sm w-64">
-                  <div className="w-1/3 bg-gray-200 py-2 text-center font-bold text-lg md:text-xl border-r border-gray-300">
-                    {exam.type === 'READING' ? '2교시' : '1교시'}
-                  </div>
-                  <div className="w-2/3 bg-gray-200 py-2 text-center font-bold text-lg md:text-xl">
-                    {exam.type === 'READING' ? '읽기' : '듣기'}
+                <div className="border-2 border-black w-80 md:w-96">
+                  <div className="flex">
+                    <div className="w-1/3 bg-gray-100 py-4 text-center font-bold text-2xl md:text-3xl border-r-2 border-black">
+                      {exam.type === 'READING' ? '2교시' : '1교시'}
+                    </div>
+                    <div className="w-2/3 bg-gray-100 py-4 text-center font-bold text-2xl md:text-3xl">
+                      {exam.type === 'READING' ? '읽기' : '듣기'}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -532,7 +484,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
             <div className="bg-white border-b border-black mx-8 md:mx-12 mb-8 pb-1">
               <div className="flex justify-between items-end">
                 <div className="font-bold text-sm text-gray-500">
-                  제{exam.round}회 한국어능력시험 II B형 {exam.type === 'READING' ? '2교시 (읽기)' : '1교시 (듣기)'}
+                  제{exam.round}회 한국어능력시험 II {exam.paperType || 'B'}형 {exam.type === 'READING' ? '2교시 (읽기)' : '1교시 (듣기)'}
                 </div>
                 <div className="font-bold bg-gray-200 px-4 py-1 rounded-full text-sm">
                   TOPIK Ⅱ {exam.type === 'READING' ? '읽기' : '듣기'} (1번 ~ {exam.questions.length}번)
@@ -584,144 +536,168 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
             </div>
           </div>
 
-          {/* 笔记侧边栏 */}
-          {sidebarAnnotations.length > 0 && (
-            <div className="w-72 shrink-0 space-y-4 hidden lg:block">
-              <div className="bg-white rounded-xl shadow-lg p-4 sticky top-24">
-                <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+          {/* 笔记侧边栏 - 与 Reading/Listening 一致的样式 */}
+          <div className="w-80 shrink-0 hidden lg:block">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 sticky top-24 flex flex-col max-h-[calc(100vh-120px)]">
+              <div className="p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-xl">
+                <h4 className="font-bold text-slate-700 flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-indigo-500" />
-                  我的笔记 ({sidebarAnnotations.length})
-                </h3>
-                <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-                  {sidebarAnnotations.map((ann) => (
-                    <div
-                      key={ann.id}
-                      className={`p-3 rounded-lg border transition-colors group relative ${activeAnnotationId === ann.id
-                        ? 'bg-yellow-100 border-yellow-400'
-                        : 'bg-yellow-50 border-slate-200 hover:border-yellow-300'
-                        }`}
-                      onMouseEnter={() => setActiveAnnotationId(ann.id)}
-                      onMouseLeave={() => setActiveAnnotationId(null)}
-                    >
-                      <div className="text-xs text-slate-500 mb-1 italic line-clamp-2">
-                        "{ann.text}"
-                      </div>
-                      <div className="text-sm text-slate-700 font-medium">{ann.note}</div>
-
-                      <div className="flex gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
-                        <button
-                          onClick={() => handleEditAnnotation(ann)}
-                          className="text-xs text-indigo-500 hover:text-indigo-600 flex items-center gap-1"
-                        >
-                          <MessageSquare className="w-3 h-3" /> 编辑
-                        </button>
-                        <button
-                          onClick={() => deleteAnnotation(ann.id)}
-                          className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1"
-                        >
-                          <Trash2 className="w-3 h-3" /> 删除
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                  {labels.annotate || '笔记'}
+                </h4>
               </div>
-            </div>
-          )}
-        </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {sidebarAnnotations.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 text-sm italic">
+                    {labels.noNotes || '暂无笔记'}
+                  </div>
+                ) : (
+                  sidebarAnnotations.map(ann => {
+                    const isEditing = editingAnnotationId === ann.id;
+                    const isActive = activeAnnotationId === ann.id;
 
-        {/* 题目导航 */}
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
-          <div className="bg-white/95 backdrop-blur-sm rounded-full shadow-xl border border-slate-200 px-4 py-2 flex items-center gap-1 overflow-x-auto max-w-[90vw]">
-            <span className="text-xs text-slate-500 font-bold mr-2 shrink-0">题目</span>
-            {exam.questions.map((q, idx) => {
-              const isCorrect = userAnswers[idx] === q.correctAnswer;
-              return (
-                <button
-                  key={idx}
-                  onClick={() => scrollToQuestion(idx)}
-                  className={`
-                    w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all shrink-0
-                    ${isCorrect
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-red-500 text-white'
+                    if (isEditing) {
+                      return (
+                        <div
+                          key={ann.id}
+                          id={`sidebar-card-${ann.id}`}
+                          className="bg-white p-3 rounded-lg border-2 border-indigo-500 shadow-md scroll-mt-20"
+                        >
+                          <div className="text-xs font-bold mb-2 text-slate-500">
+                            {labels.editingNote || '编辑笔记'}: "{ann.text.substring(0, 15)}..."
+                          </div>
+                          <textarea
+                            value={editNoteInput}
+                            onChange={(e) => setEditNoteInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleUpdateNote(ann.id);
+                              }
+                            }}
+                            className="w-full border border-slate-200 rounded-lg p-2 text-sm resize-none focus:ring-2 focus:ring-indigo-200 outline-none mb-2"
+                            rows={3}
+                            autoFocus
+                          />
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => setEditingAnnotationId(null)}
+                              className="px-3 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded"
+                            >
+                              {labels.cancel || '取消'}
+                            </button>
+                            <button
+                              onClick={() => handleUpdateNote(ann.id)}
+                              className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-1"
+                            >
+                              <Check className="w-3 h-3" /> {labels.save || '保存'}
+                            </button>
+                          </div>
+                        </div>
+                      );
                     }
-                  `}
-                >
-                  {idx + 1}
-                </button>
-              );
-            })}
+
+                    return (
+                      <div
+                        key={ann.id}
+                        id={`sidebar-card-${ann.id}`}
+                        className={`group p-3 rounded-lg border transition-all cursor-pointer relative scroll-mt-20
+                          ${isActive
+                            ? 'bg-indigo-50 border-indigo-300 shadow-md'
+                            : 'bg-slate-50 border-slate-100 hover:border-indigo-200 hover:shadow-sm'
+                          }`}
+                        onClick={() => {
+                          setActiveAnnotationId(ann.id);
+                          setEditingAnnotationId(ann.id);
+                          setEditNoteInput(ann.note || '');
+                        }}
+                      >
+                        <div className={`text-xs font-bold mb-1 px-1.5 py-0.5 rounded w-fit ${{
+                          'yellow': 'bg-yellow-100 text-yellow-800',
+                          'green': 'bg-green-100 text-green-800',
+                          'blue': 'bg-blue-100 text-blue-800',
+                          'pink': 'bg-pink-100 text-pink-800',
+                        }[ann.color || 'yellow'] || 'bg-yellow-100 text-yellow-800'}`}>
+                          {ann.text.substring(0, 20)}...
+                        </div>
+                        {ann.note ? (
+                          <p className="text-sm text-slate-700">{ann.note}</p>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic">{labels.clickToAddNote || '点击添加笔记...'}</p>
+                        )}
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteAnnotation(ann.id);
+                          }}
+                          className="absolute top-2 right-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Annotation Popup Menu */}
-        {showAnnotationMenu && menuPosition && (
-          <div
-            className="fixed z-50 bg-white border border-slate-200 shadow-xl rounded-xl p-4 w-72 animate-in zoom-in-95"
-            style={{ top: menuPosition.top, left: menuPosition.left }}
-          >
-            <div className="flex justify-between items-center mb-3">
-              <h4 className="font-bold text-slate-700 text-sm">添加笔记</h4>
-              <button
-                onClick={() => {
-                  setShowAnnotationMenu(false);
-                  setActiveAnnotationId(null);
-                  window.getSelection()?.removeAllRanges();
-                }}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="text-xs text-slate-500 mb-3 italic border-l-2 border-yellow-400 pl-2 line-clamp-2">
-              "{selectionText}"
-            </div>
-            <textarea
-              value={noteInput}
-              onChange={(e) => setNoteInput(e.target.value)}
-              className="w-full border border-slate-200 rounded-lg p-2 text-sm resize-none focus:ring-2 focus:ring-indigo-500 outline-none mb-3"
-              rows={3}
-              placeholder="写下你的笔记..."
-              autoFocus
-            />
-            {/* Color Picker */}
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs text-slate-500">高亮颜色:</span>
-              <div className="flex gap-1">
-                {COLORS.map((color) => (
+
+        {/* 左侧题目导航 */}
+        <div className="fixed left-4 top-1/2 -translate-y-1/2 z-40 hidden lg:block">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 p-3 flex flex-col items-center gap-2 max-h-[85vh] overflow-y-auto">
+            {/* 题目导航 */}
+            <div className="grid grid-cols-5 gap-1">
+              {exam.questions.map((q, idx) => {
+                const isCorrect = userAnswers[idx] === q.correctAnswer;
+                return (
                   <button
-                    key={color.name}
-                    onClick={() => setSelectedColor(color.name)}
-                    className={`w-6 h-6 rounded-full ${color.bgClass} transition-all ${selectedColor === color.name ? `ring-2 ${color.ringClass} ring-offset-1` : 'hover:scale-110'
-                      }`}
-                    title={color.name}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setShowAnnotationMenu(false);
-                  setActiveAnnotationId(null);
-                  window.getSelection()?.removeAllRanges();
-                }}
-                className="px-3 py-1.5 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600"
-              >
-                取消
-              </button>
-              <button
-                onClick={saveAnnotation}
-                disabled={!noteInput.trim()}
-                className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-1"
-              >
-                <Check className="w-3 h-3" />
-                保存
-              </button>
+                    key={idx}
+                    onClick={() => scrollToQuestion(idx)}
+                    className={`
+                      w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all
+                      ${isCorrect
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-red-500 text-white'
+                      }
+                    `}
+                  >
+                    {idx + 1}
+                  </button>
+                );
+              })}
             </div>
           </div>
-        )}
+        </div>
+
+        {/* Annotation Menu - 与 Reading/Listening 一致 */}
+        <AnnotationMenu
+          visible={showAnnotationMenu}
+          position={menuPosition}
+          selectionText={selectionText}
+          onAddNote={() => {
+            const id = saveAnnotationQuick();
+            if (id) {
+              setEditingAnnotationId(id);
+              setEditNoteInput('');
+              setTimeout(() => {
+                const el = document.getElementById(`sidebar-card-${id}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }, 100);
+            }
+          }}
+          onHighlight={(color) => {
+            saveAnnotationQuick(color);
+          }}
+          selectedColor={selectedColor}
+          setSelectedColor={setSelectedColor}
+          onClose={() => {
+            setShowAnnotationMenu(false);
+            window.getSelection()?.removeAllRanges();
+          }}
+          labels={labels}
+        />
       </div>
     );
   }

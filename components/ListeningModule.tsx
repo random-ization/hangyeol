@@ -42,7 +42,8 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
   const [passage, setPassage] = useState<ReadingContent | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showScript, setShowScript] = useState(false);
+  const [showScript, setShowScript] = useState(true); // Default to showing script
+  const [showTranslation, setShowTranslation] = useState(false);
 
   // Refs
   const manualAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -87,8 +88,10 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
     .filter(a => a.contextKey === contextKey && a.startOffset !== undefined && a.endOffset !== undefined)
     .sort((a, b) => (a.startOffset || 0) - (b.startOffset || 0));
 
-  // Sidebar Logic
-  const sidebarAnnotations = currentAnnotations.filter(a => a.note && a.note.trim().length > 0);
+  // Sidebar Logic: Show annotations with notes OR the one being edited
+  const sidebarAnnotations = currentAnnotations.filter(a =>
+    (a.note && a.note.trim().length > 0) || a.id === editingAnnotationId
+  );
 
   // Fetch Text Content when active unit changes
   useEffect(() => {
@@ -103,6 +106,7 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
           ...content,
           readingText: content.listeningScript || content.readingText || '',
           readingTranslation: content.listeningTranslation || content.readingTranslation || '',
+          readingTitle: content.listeningTitle || '',
         };
 
         const data = await generateReadingPassage(
@@ -322,8 +326,25 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
       </div>
 
       <div className="flex gap-6 h-full min-h-0">
-        {/* Main Content (Audio + Script) */}
-        <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 p-8 flex flex-col items-center transition-all overflow-y-auto">
+        {/* Main Content Area */}
+        <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col min-h-0">
+          {/* Header with title and controls */}
+          <div className="border-b border-slate-100 p-4 flex justify-between items-center bg-slate-50/50 rounded-t-xl">
+            <h3 className="font-bold text-slate-800">{passage?.title || labels.listeningPractice || 'Listening Practice'}</h3>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowTranslation(!showTranslation)}
+                className={`text-sm px-3 py-1.5 rounded-lg border transition-all ${showTranslation
+                  ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+              >
+                {showTranslation ? labels.hideTrans : labels.showTrans}
+              </button>
+            </div>
+          </div>
+
+          {/* Audio Player */}
           {content?.listeningAudioUrl && (
             <audio
               ref={manualAudioRef}
@@ -334,48 +355,52 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
             />
           )}
 
-          <div className="flex items-center justify-center space-x-8 mb-8 flex-shrink-0 w-full">
+          <div className="flex items-center justify-center space-x-6 py-6 border-b border-slate-100 bg-gradient-to-b from-slate-50 to-white">
             <button
               onClick={restartAudio}
-              className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all"
+              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all"
             >
-              <RotateCcw className="w-6 h-6" />
+              <RotateCcw className="w-5 h-5" />
             </button>
 
             <button
               onClick={togglePlayback}
-              className={`w-20 h-20 flex items-center justify-center rounded-full shadow-lg transition-all scale-100 hover:scale-105 active:scale-95 ${isPlaying ? 'bg-indigo-600 text-white shadow-indigo-200' : 'bg-white text-indigo-600 border-2 border-indigo-100'
+              className={`w-16 h-16 flex items-center justify-center rounded-full shadow-lg transition-all scale-100 hover:scale-105 active:scale-95 ${isPlaying ? 'bg-indigo-600 text-white shadow-indigo-200' : 'bg-white text-indigo-600 border-2 border-indigo-100'
                 }`}
             >
               {isPlaying ? (
-                <Pause className="w-8 h-8 fill-current" />
+                <Pause className="w-6 h-6 fill-current" />
               ) : (
-                <Play className="w-8 h-8 fill-current ml-1" />
+                <Play className="w-6 h-6 fill-current ml-0.5" />
               )}
             </button>
 
-            <div className="w-12"></div>
+            <div className="w-10"></div>
           </div>
 
-          <div className="w-full flex-1 min-h-0 flex flex-col">
-            <button
-              onClick={() => setShowScript(!showScript)}
-              className="w-full py-3 px-4 flex-shrink-0 flex items-center justify-center text-slate-600 font-medium bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              {showScript ? labels.hideScript : labels.viewScript}
-            </button>
-
-            {showScript && passage && (
-              <div className="mt-4 p-4 bg-slate-50 rounded-xl animate-in slide-in-from-top-4 relative overflow-y-auto flex-1">
-                <div
-                  ref={contentRef}
-                  className={`text-lg leading-relaxed text-slate-800 whitespace-pre-line select-text font-serif ${selectedColor ? `selection-${selectedColor}` : ''}`}
-                  onMouseUp={handleTextSelection}
-                >
-                  {renderHighlightedText(passage.koreanText)}
+          {/* Text Content - Same layout as ReadingModule */}
+          <div className="flex-1 overflow-y-auto p-8 relative">
+            <div className="flex gap-8 h-full">
+              {/* Korean Text - Always Visible */}
+              <div
+                ref={contentRef}
+                className={`transition-all duration-300 ${showTranslation ? 'w-1/2' : 'w-full max-w-5xl mx-auto'} ${selectedColor ? `selection-${selectedColor}` : ''}`}
+                onMouseUp={handleTextSelection}
+              >
+                <div className="text-lg leading-loose text-slate-800 font-serif whitespace-pre-line select-text">
+                  {passage && renderHighlightedText(passage.koreanText)}
                 </div>
               </div>
-            )}
+
+              {/* Translation - Conditionally Visible */}
+              {showTranslation && passage?.englishTranslation && (
+                <div className="w-1/2 border-l border-slate-100 pl-8 overflow-y-auto">
+                  <div className="text-slate-600 leading-relaxed whitespace-pre-line">
+                    {passage.englishTranslation}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -391,7 +416,7 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {sidebarAnnotations.length === 0 ? (
                 <div className="text-center py-8 text-slate-400 text-sm italic">
-                  No notes yet
+                  {labels.noNotes || 'No notes yet'}
                 </div>
               ) : (
                 sidebarAnnotations.map(ann => {
@@ -406,7 +431,7 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
                         className="bg-white p-3 rounded-lg border-2 border-indigo-500 shadow-md scroll-mt-20"
                       >
                         <div className="text-xs font-bold mb-2 text-slate-500">
-                          Editing note
+                          {labels.editingNote || 'Editing note'}
                         </div>
                         <textarea
                           value={editNoteInput}
@@ -426,13 +451,13 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
                             onClick={() => setEditingAnnotationId(null)}
                             className="px-3 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded"
                           >
-                            Cancel
+                            {labels.cancel}
                           </button>
                           <button
                             onClick={() => handleUpdateNote(ann.id)}
                             className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-1"
                           >
-                            <Check className="w-3 h-3" /> Save
+                            <Check className="w-3 h-3" /> {labels.save}
                           </button>
                         </div>
                       </div>
@@ -468,7 +493,7 @@ const ListeningModule: React.FC<ListeningModuleProps> = ({
                       {ann.note ? (
                         <p className="text-sm text-slate-700">{ann.note}</p>
                       ) : (
-                        <p className="text-xs text-slate-400 italic">Click to add note...</p>
+                        <p className="text-xs text-slate-400 italic">{labels.clickToAddNote || 'Click to add note...'}</p>
                       )}
                       <button
                         onClick={(e) => {

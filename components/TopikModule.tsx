@@ -601,7 +601,7 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {sidebarAnnotations.length === 0 ? (
                   <div className="text-center py-8 text-slate-400 text-sm italic">
-                    Select text on the paper to add notes.
+                    {labels.clickToAddNote || 'Select text on the paper to add notes.'}
                   </div>
                 ) : (
                   sidebarAnnotations.map(ann => {
@@ -615,7 +615,7 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
                           id={`sidebar-card-${ann.id}`}
                           className="bg-white p-3 rounded-lg border-2 border-indigo-500 shadow-md scroll-mt-20"
                         >
-                          <div className="text-xs font-bold mb-2 text-slate-500">Editing note</div>
+                          <div className="text-xs font-bold mb-2 text-slate-500">{labels.editingNote || 'Editing note'}</div>
                           <textarea
                             value={editNoteInput}
                             onChange={(e) => setEditNoteInput(e.target.value)}
@@ -630,8 +630,8 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
                             autoFocus
                           />
                           <div className="flex justify-end gap-2">
-                            <button onClick={() => setEditingAnnotationId(null)} className="px-3 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded">Cancel</button>
-                            <button onClick={() => handleUpdateNote(ann.id)} className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-1"><Check className="w-3 h-3" /> Save</button>
+                            <button onClick={() => setEditingAnnotationId(null)} className="px-3 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded">{labels.cancel}</button>
+                            <button onClick={() => handleUpdateNote(ann.id)} className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center gap-1"><Check className="w-3 h-3" /> {labels.save}</button>
                           </div>
                         </div>
                       );
@@ -657,7 +657,7 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
                         }[ann.color || 'yellow'] || 'bg-yellow-100 text-yellow-800'}`}>
                           {ann.text.substring(0, 20)}...
                         </div>
-                        {ann.note ? <p className="text-sm text-slate-700">{ann.note}</p> : <p className="text-xs text-slate-400 italic">Click to add note...</p>}
+                        {ann.note ? <p className="text-sm text-slate-700">{ann.note}</p> : <p className="text-xs text-slate-400 italic">{labels.clickToAddNote || 'Click to add note...'}</p>}
                         <button onClick={(e) => { e.stopPropagation(); handleDeleteAnnotation(ann.id); }} className="absolute top-2 right-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -744,21 +744,21 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Reading */}
           <div className="space-y-4">
-            <h3 className="text-xl font-bold text-slate-700 border-b pb-2">Reading</h3>
+            <h3 className="text-xl font-bold text-slate-700 border-b pb-2">{labels.reading}</h3>
             {readingExams.map(exam => (
               <div key={exam.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-                <div className="flex justify-between mb-2"><h4 className="font-bold text-lg">{exam.title}</h4><span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Round {exam.round}</span></div>
-                <button onClick={() => startExam(exam)} className="w-full mt-2 py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-700">Start Exam</button>
+                <div className="flex justify-between mb-2"><h4 className="font-bold text-lg">{exam.title}</h4><span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">{labels.round} {exam.round}</span></div>
+                <button onClick={() => startExam(exam)} className="w-full mt-2 py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-700">{labels.startExam}</button>
               </div>
             ))}
           </div>
           {/* Listening */}
           <div className="space-y-4">
-            <h3 className="text-xl font-bold text-slate-700 border-b pb-2">Listening</h3>
+            <h3 className="text-xl font-bold text-slate-700 border-b pb-2">{labels.listening}</h3>
             {listeningExams.map(exam => (
               <div key={exam.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-                <div className="flex justify-between mb-2"><h4 className="font-bold text-lg">{exam.title}</h4><span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">Round {exam.round}</span></div>
-                <button onClick={() => startExam(exam)} className="w-full mt-2 py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-700">Start Exam</button>
+                <div className="flex justify-between mb-2"><h4 className="font-bold text-lg">{exam.title}</h4><span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">{labels.round} {exam.round}</span></div>
+                <button onClick={() => startExam(exam)} className="w-full mt-2 py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-700">{labels.startExam}</button>
               </div>
             ))}
           </div>
@@ -772,11 +772,11 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
     <div className="flex items-center justify-center h-screen bg-slate-100">
       <div className="bg-white p-12 rounded-2xl shadow-xl text-center">
         <Trophy className="w-20 h-20 text-yellow-500 mx-auto mb-6" />
-        <h2 className="text-3xl font-bold mb-2">Exam Completed!</h2>
+        <h2 className="text-3xl font-bold mb-2">{labels.examCompleted || 'Exam Completed!'}</h2>
         {currentReviewAttempt && <div className="text-xl text-indigo-600 font-bold mb-8">Score: {currentReviewAttempt.score} / {currentReviewAttempt.maxScore}</div>}
         <div className="flex gap-4 justify-center">
-          <button onClick={() => setView('REVIEW')} className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-bold">Review Answers</button>
-          <button onClick={() => setView('LIST')} className="px-6 py-3 bg-slate-200 text-slate-700 rounded-lg font-bold">Back to List</button>
+          <button onClick={() => setView('REVIEW')} className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-bold">{labels.examReview}</button>
+          <button onClick={() => setView('LIST')} className="px-6 py-3 bg-slate-200 text-slate-700 rounded-lg font-bold">{labels.backToList}</button>
         </div>
       </div>
     </div>

@@ -125,29 +125,12 @@ export const ExamSession: React.FC<ExamSessionProps> = React.memo(
       <div className="min-h-screen bg-slate-200 flex flex-col">
         {/* 顶部工具栏 */}
         <div className="sticky top-0 z-30 bg-slate-800 text-white shadow-lg shrink-0">
-          <div className="max-w-[1200px] mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="max-w-[1200px] mx-auto px-4 py-3 flex items-center justify-center">
             <div className="flex items-center gap-4">
               <span className="font-bold text-lg tracking-wide">{exam.title}</span>
               <span className="text-xs bg-slate-700 px-2 py-1 rounded">
                 제 {exam.round || '?'} 회
               </span>
-            </div>
-
-            <div className={`text-xl font-mono font-bold flex items-center ${timeLeft < 300 ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
-              <Clock className="w-5 h-5 mr-2" />
-              {formatTime(timeLeft)}
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-slate-300">
-                {answeredCount} / {exam.questions.length}
-              </span>
-              <button
-                onClick={onSubmit}
-                className="px-5 py-2 bg-white text-slate-900 rounded font-bold text-sm hover:bg-indigo-50 transition-colors"
-              >
-                제출 (Submit)
-              </button>
             </div>
           </div>
         </div>
@@ -158,42 +141,44 @@ export const ExamSession: React.FC<ExamSessionProps> = React.memo(
           <div className={`bg-white w-full ${PAPER_MAX_WIDTH} shadow-2xl min-h-screen pb-16 relative border border-slate-300`}>
 
             {/* 试卷头部 (Header) */}
-            <div className="p-8 md:p-12 pb-4">
-              <div className="flex justify-end mb-8">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center text-white text-[10px] font-bold">
-                    TOPIK
-                  </div>
-                  <div className="font-bold text-lg tracking-tighter">TOPIK</div>
+            <div className="p-8 md:p-12 pb-4 font-serif">
+
+              {/* Title Box - Black rounded rectangle */}
+              <div className="bg-black text-white py-6 px-8 rounded-2xl mb-16 shadow-lg">
+                <div className="flex items-baseline justify-center gap-4 mb-2">
+                  <span className="text-xl md:text-2xl font-bold">제{exam.round}회</span>
+                  <span className="text-3xl md:text-5xl font-bold tracking-wider">한 국 어 능 력 시 험</span>
+                </div>
+                <div className="text-center text-sm md:text-lg italic opacity-80">
+                  The {exam.round}th Test of Proficiency in Korean
                 </div>
               </div>
 
-              {/* Title Box */}
-              <div className="bg-black text-white text-center py-4 rounded-xl mb-12 shadow-lg font-serif">
-                <div className="text-xl md:text-3xl font-bold mb-1 tracking-widest">{exam.title}</div>
-                <div className="text-sm md:text-lg font-serif italic">제 {exam.round || '?'} 회 한국어능력시험</div>
-              </div>
-
-              {/* Section Info */}
-              <div className="flex justify-center mb-12">
-                <div className="border-t-2 border-b-2 border-black py-2 px-12 text-center flex items-center gap-4">
-                  <span className="text-2xl md:text-4xl font-bold">
-                    {exam.type === 'READING' ? '읽기' : '듣기'}
-                  </span>
-                  <span className="bg-black text-white rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center font-bold text-xl">
-                    II
-                  </span>
+              {/* TOPIK II (B) Section - with double lines */}
+              <div className="flex justify-center mb-16">
+                <div className="text-center">
+                  <div className="border-t-2 border-b-2 border-black py-4 px-16">
+                    <div className="flex items-center justify-center gap-4">
+                      <span className="text-3xl md:text-5xl font-bold tracking-widest">TOPIK</span>
+                      <span className="text-3xl md:text-5xl font-light">Ⅱ</span>
+                      <span className="border-2 border-black rounded-full w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-xl md:text-2xl font-bold">
+                        {exam.paperType || 'B'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Period Box */}
               <div className="flex justify-center mb-16">
-                <div className="flex border border-gray-400 shadow-sm w-64">
-                  <div className="w-1/3 bg-gray-200 py-2 text-center font-bold text-lg md:text-xl border-r border-gray-300">
-                    {exam.type === 'READING' ? '2교시' : '1교시'}
-                  </div>
-                  <div className="w-2/3 bg-gray-200 py-2 text-center font-bold text-lg md:text-xl">
-                    {exam.type === 'READING' ? '읽기' : '듣기'}
+                <div className="border-2 border-black w-80 md:w-96">
+                  <div className="flex">
+                    <div className="w-1/3 bg-gray-100 py-4 text-center font-bold text-2xl md:text-3xl border-r-2 border-black">
+                      {exam.type === 'READING' ? '2교시' : '1교시'}
+                    </div>
+                    <div className="w-2/3 bg-gray-100 py-4 text-center font-bold text-2xl md:text-3xl">
+                      {exam.type === 'READING' ? '읽기' : '듣기'}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -203,11 +188,11 @@ export const ExamSession: React.FC<ExamSessionProps> = React.memo(
               </div>
             </div>
 
-            {/* Page Header (Sticky-ish visuals) */}
+            {/* Page Header */}
             <div className="bg-white border-b border-black mx-8 md:mx-12 mb-8 pb-1">
               <div className="flex justify-between items-end">
                 <div className="font-bold text-sm text-gray-500">
-                  제{exam.round}회 한국어능력시험 II B형 {exam.type === 'READING' ? '2교시 (읽기)' : '1교시 (듣기)'}
+                  제{exam.round}회 한국어능력시험 II {exam.paperType || 'B'}형 {exam.type === 'READING' ? '2교시 (읽기)' : '1교시 (듣기)'}
                 </div>
                 <div className="font-bold bg-gray-200 px-4 py-1 rounded-full text-sm">
                   TOPIK Ⅱ {exam.type === 'READING' ? '읽기' : '듣기'} (1번 ~ {exam.questions.length}번)
@@ -253,25 +238,44 @@ export const ExamSession: React.FC<ExamSessionProps> = React.memo(
           </div>
         </div>
 
-        {/* 题目导航浮动栏 */}
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
-          <div className="bg-white/95 backdrop-blur-sm rounded-full shadow-xl border border-slate-200 px-4 py-2 flex items-center gap-1 overflow-x-auto max-w-[90vw]">
-            <span className="text-xs text-slate-500 font-bold mr-2 shrink-0">题目</span>
-            {exam.questions.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => scrollToQuestion(idx)}
-                className={`
-                  w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all shrink-0
-                  ${userAnswers[idx] !== undefined
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                  }
-                `}
-              >
-                {idx + 1}
-              </button>
-            ))}
+
+        {/* 左侧导航栏 */}
+        <div className="fixed left-4 top-1/2 -translate-y-1/2 z-40 hidden lg:block">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 p-3 flex flex-col items-center gap-3 max-h-[85vh] overflow-y-auto">
+            {/* 计时器 */}
+            <div className={`text-xl font-mono font-bold flex items-center ${timeLeft < 300 ? 'text-red-500' : 'text-emerald-600'}`}>
+              <Clock className="w-4 h-4 mr-1" />
+              {formatTime(timeLeft)}
+            </div>
+
+            {/* 提交按钮 */}
+            <button
+              onClick={onSubmit}
+              className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 transition-colors"
+            >
+              제출
+            </button>
+
+            <div className="border-t border-slate-200 w-full pt-2"></div>
+
+            {/* 题目导航 */}
+            <div className="grid grid-cols-5 gap-1">
+              {exam.questions.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => scrollToQuestion(idx)}
+                  className={`
+                    w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all
+                    ${userAnswers[idx] !== undefined
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    }
+                  `}
+                >
+                  {idx + 1}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

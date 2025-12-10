@@ -4,7 +4,9 @@
 
 type Nullable<T> = T | null;
 
-const API_URL = (import.meta as any).env?.VITE_API_URL || (window as any).__API_URL__ || '';
+// 本地开发时使用 /api 前缀（配合 Vite 代理），生产环境使用完整 URL
+const envApiUrl = (import.meta as any).env?.VITE_API_URL || (window as any).__API_URL__;
+const API_URL = envApiUrl ? envApiUrl : '/api';
 
 function getTokenFromStorage(): string | null {
   try {

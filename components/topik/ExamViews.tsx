@@ -270,7 +270,9 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
       let correct = 0;
       let wrong = 0;
       exam.questions.forEach((q, idx) => {
-        if (userAnswers[idx] === q.correctAnswer) {
+        const userAnswer = userAnswers[idx];
+        // 只有当用户作答且答对时才算正确
+        if (userAnswer !== undefined && userAnswer === q.correctAnswer) {
           correct++;
         } else {
           wrong++;
@@ -474,30 +476,18 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
               </div>
             </div>
 
-            {/* Drawing Mode Toggle */}
+            {/* Drawing Mode Toggle - Single Button */}
             <div className="flex items-center gap-3">
-              <div className="flex bg-slate-100 p-1 rounded-lg">
-                <button
-                  onClick={() => setIsDrawingMode(false)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${!isDrawingMode
-                    ? 'bg-white shadow-sm text-indigo-600'
-                    : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                >
-                  <Hand className="w-3.5 h-3.5" />
-                  答题
-                </button>
-                <button
-                  onClick={() => setIsDrawingMode(true)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${isDrawingMode
-                    ? 'bg-white shadow-sm text-amber-600'
-                    : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                  草稿
-                </button>
-              </div>
+              <button
+                onClick={() => setIsDrawingMode(!isDrawingMode)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all border ${isDrawingMode
+                    ? 'bg-amber-50 border-amber-200 text-amber-600'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                  }`}
+              >
+                <Pencil className="w-4 h-4" />
+                标记
+              </button>
 
               {/* Canvas Status Indicator */}
               {isDrawingMode && (
@@ -521,6 +511,34 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
                     </span>
                   )}
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* Question Navigator - Only show wrong answers in review mode */}
+          <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-2">
+            <div className="max-w-[1400px] mx-auto flex items-center gap-2 overflow-x-auto scrollbar-hide">
+              <span className="text-xs font-medium text-slate-400 shrink-0">
+                错题 ({stats.wrong}):
+              </span>
+              <div className="flex gap-1">
+                {exam.questions.map((q, idx) => {
+                  const isCorrect = userAnswers[idx] === q.correctAnswer;
+                  // Only show wrong answers in review mode
+                  if (isCorrect) return null;
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => scrollToQuestion(idx)}
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all hover:scale-110 shrink-0 bg-red-500 text-white"
+                    >
+                      {idx + 1}
+                    </button>
+                  );
+                })}
+              </div>
+              {stats.wrong === 0 && (
+                <span className="text-xs text-emerald-600 font-medium">🎉 全部正确！</span>
               )}
             </div>
           </div>
@@ -767,32 +785,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
           </div>
         </div>
 
-        {/* Left Question Navigator - Collapsible */}
-        <div className="fixed left-0 top-1/2 -translate-y-1/2 z-20 hidden lg:block">
-          <div className="bg-white/95 backdrop-blur-sm rounded-r-2xl shadow-xl border border-l-0 border-slate-200 p-2 flex flex-col items-center gap-1 max-h-[70vh] overflow-y-auto">
-            <div className="text-xs font-bold text-slate-400 mb-1 px-1">题号</div>
-            <div className="grid grid-cols-5 gap-0.5">
-              {exam.questions.map((q, idx) => {
-                const isCorrect = userAnswers[idx] === q.correctAnswer;
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => scrollToQuestion(idx)}
-                    className={`
-                      w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all hover:scale-110
-                      ${isCorrect
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-red-500 text-white'
-                      }
-                    `}
-                  >
-                    {idx + 1}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+
 
         {/* Annotation Menu */}
         <AnnotationMenu

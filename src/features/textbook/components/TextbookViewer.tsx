@@ -148,6 +148,7 @@ const TextbookViewer: React.FC<TextbookViewerProps> = ({
 
             if (currentAnn) {
                 const isActive = activeAnnotationId === currentAnn.id || hoveredAnnotationId === currentAnn.id;
+                const hasNote = !!(currentAnn.note && currentAnn.note.trim());
 
                 const colorMap: { [key: string]: { border: string; bg: string; activeBg: string } } = {
                     'yellow': { border: 'border-yellow-400', bg: 'bg-yellow-100', activeBg: 'bg-yellow-300' },
@@ -159,10 +160,13 @@ const TextbookViewer: React.FC<TextbookViewerProps> = ({
 
                 className += 'cursor-pointer ';
                 if (isActive) {
-                    className += `rounded-sm ${colors.activeBg} ring-2 ring-${currentAnn.color || 'yellow'}-400 `;
-                } else {
-                    // 默认：仅显示下划线
+                    className += `rounded-sm ${colors.activeBg} ring-2 ring-${currentAnn.color || 'yellow'}-500 transition-all `;
+                } else if (hasNote) {
+                    // Note: Standard Underline
                     className += `border-b-2 ${colors.border} hover:bg-opacity-50 hover:${colors.bg} `;
+                } else {
+                    // Highlight: Color block
+                    className += `rounded-sm ${colors.activeBg}/60 hover:${colors.activeBg} `;
                 }
 
                 result.push(

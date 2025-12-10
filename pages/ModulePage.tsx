@@ -72,6 +72,12 @@ const ModulePage: React.FC = () => {
     return contexts;
   }, [textbookContexts, selectedInstitute, selectedLevel]);
 
+  const currentCourse = useMemo(() => ({
+    instituteId: selectedInstitute || '',
+    level: selectedLevel || 1,
+    textbookUnit: 0
+  }), [selectedInstitute, selectedLevel]);
+
   if (!user) {
     return <Navigate to="/" replace />;
   }
@@ -107,7 +113,7 @@ const ModulePage: React.FC = () => {
       </button>
       {currentModule === LearningModuleType.VOCABULARY && (
         <VocabModule
-          course={{ instituteId: selectedInstitute, level: selectedLevel, textbookUnit: 0 }}
+          course={currentCourse}
           instituteName={institutes.find(i => i.id === selectedInstitute)?.name || 'Korean'}
           language={language}
           levelContexts={currentLevelContexts}
@@ -119,7 +125,7 @@ const ModulePage: React.FC = () => {
       )}
       {currentModule === LearningModuleType.READING && (
         <ReadingModule
-          course={{ instituteId: selectedInstitute, level: selectedLevel, textbookUnit: 0 }}
+          course={currentCourse}
           instituteName={institutes.find(i => i.id === selectedInstitute)?.name || 'Korean'}
           onSaveWord={saveWord}
           onSaveAnnotation={saveAnnotation}
@@ -131,7 +137,7 @@ const ModulePage: React.FC = () => {
       )}
       {currentModule === LearningModuleType.LISTENING && (
         <ListeningModule
-          course={{ instituteId: selectedInstitute, level: selectedLevel, textbookUnit: 0 }}
+          course={currentCourse}
           instituteName={institutes.find(i => i.id === selectedInstitute)?.name || 'Korean'}
           onSaveAnnotation={saveAnnotation}
           annotations={user.annotations}
@@ -141,7 +147,7 @@ const ModulePage: React.FC = () => {
       )}
       {currentModule === LearningModuleType.GRAMMAR && (
         <GrammarModule
-          course={{ instituteId: selectedInstitute, level: selectedLevel, textbookUnit: 0 }}
+          course={currentCourse}
           instituteName={institutes.find(i => i.id === selectedInstitute)?.name || 'Korean'}
           language={language}
           levelContexts={currentLevelContexts}

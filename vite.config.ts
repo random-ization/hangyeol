@@ -6,6 +6,14 @@ export default defineConfig({
   server: {
     port: 3000,
     host: '0.0.0.0',
+    // 本地开发代理：自动转发 /api 请求到后端服务器
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   preview: {
     port: 3000,

@@ -54,22 +54,36 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
     );
 
     // Helper for highlight styles
-    const getHighlightClass = (color: string = 'yellow', isActive: boolean) => {
+    // 高亮默认用色块背景，有笔记的用下划线区分
+    const getHighlightClass = (color: string = 'yellow', isActive: boolean, hasNote: boolean = false) => {
       const base = "box-decoration-clone cursor-pointer transition-all duration-200 px-0.5 rounded-sm ";
+
+      // 有笔记的标注：下划线样式 (Debug: 增强区分度 - 双下划线)
+      if (hasNote && !isActive) {
+        switch (color) {
+          case 'green': return base + 'bg-green-50/50 border-b-4 border-double border-green-500 hover:bg-green-100';
+          case 'blue': return base + 'bg-blue-50/50 border-b-4 border-double border-blue-500 hover:bg-blue-100';
+          case 'pink': return base + 'bg-pink-50/50 border-b-4 border-double border-pink-500 hover:bg-pink-100';
+          case 'yellow': default: return base + 'bg-yellow-50/50 border-b-4 border-double border-yellow-500 hover:bg-yellow-100';
+        }
+      }
+
+      // 激活状态：深色背景
       if (isActive) {
         switch (color) {
-          case 'green': return base + 'bg-green-300 text-green-900';
-          case 'blue': return base + 'bg-blue-300 text-blue-900';
-          case 'pink': return base + 'bg-pink-300 text-pink-900';
-          case 'yellow': default: return base + 'bg-yellow-300 text-yellow-900';
+          case 'green': return base + 'bg-green-400 text-green-900';
+          case 'blue': return base + 'bg-blue-400 text-blue-900';
+          case 'pink': return base + 'bg-pink-400 text-pink-900';
+          case 'yellow': default: return base + 'bg-yellow-400 text-yellow-900';
         }
-      } else {
-        switch (color) {
-          case 'green': return base + 'bg-transparent border-b-2 border-green-500 hover:bg-green-50';
-          case 'blue': return base + 'bg-transparent border-b-2 border-blue-500 hover:bg-blue-50';
-          case 'pink': return base + 'bg-transparent border-b-2 border-pink-500 hover:bg-pink-50';
-          case 'yellow': default: return base + 'bg-transparent border-b-2 border-yellow-500 hover:bg-yellow-50';
-        }
+      }
+
+      // 默认高亮（无笔记）：色块背景
+      switch (color) {
+        case 'green': return base + 'bg-green-300/60 hover:bg-green-400/60';
+        case 'blue': return base + 'bg-blue-300/60 hover:bg-blue-400/60';
+        case 'pink': return base + 'bg-pink-300/60 hover:bg-pink-400/60';
+        case 'yellow': default: return base + 'bg-yellow-300/60 hover:bg-yellow-400/60';
       }
     };
 
@@ -88,13 +102,14 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
           const annotatedText = annotation.text || annotation.selectedText;
           if (!annotatedText) return;
           const isActive = activeAnnotationId === annotation.id || (annotation.id === 'temp' && !activeAnnotationId);
-          const className = getHighlightClass(annotation.color || 'yellow', isActive);
+          const hasNote = !!(annotation.note && annotation.note.trim());
+          const className = getHighlightClass(annotation.color || 'yellow', isActive, hasNote);
           const regex = new RegExp(`(${annotatedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
           result = result.replace(regex, `<mark data-annotation-id="${annotation.id}" class="${className}">$1</mark>`);
         });
         return result;
       },
-      [questionAnnotations, activeAnnotationId]
+      [questionAnnotations, activeAnnotationId, getHighlightClass]
     );
 
     const getOptionStatus = useCallback(

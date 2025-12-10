@@ -1,13 +1,15 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState, useCallback } from 'react';
 import { TopikExam, Language, Annotation } from '../../types';
 import {
   Clock, Trophy, RotateCcw, ArrowLeft, CheckCircle,
   Eye, MessageSquare, Trash2, Check, AlertTriangle,
-  PlayCircle, FileText, BarChart3, ArrowRight, Headphones
+  PlayCircle, FileText, BarChart3, ArrowRight, Headphones, Pencil, Hand, Loader2
 } from 'lucide-react';
 import { getLabels } from '../../utils/i18n';
 import { QuestionRenderer } from './QuestionRenderer';
 import AnnotationMenu from '../AnnotationMenu';
+import CanvasLayer, { CanvasData, ToolType, CanvasToolbar } from '../../src/features/annotation/components/CanvasLayer';
+import { useCanvasAnnotation } from '../../src/features/annotation/hooks/useCanvasAnnotation';
 
 const PAPER_MAX_WIDTH = "max-w-[900px]";
 const FONT_SERIF = "font-serif";
@@ -314,6 +316,38 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
     const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null);
     const [editNoteInput, setEditNoteInput] = useState('');
 
+    // --- Canvas Drawing State ---
+    const [isDrawingMode, setIsDrawingMode] = useState(false);
+    const [canvasTool, setCanvasTool] = useState<ToolType>('pen');
+    const [canvasColor, setCanvasColor] = useState('#1e293b');
+    const paperContainerRef = useRef<HTMLDivElement>(null);
+
+    // Use persistent canvas annotation hook
+    const {
+      canvasData,
+      loading: canvasLoading,
+      saving: canvasSaving,
+      handleCanvasChange,
+    } = useCanvasAnnotation({
+      targetId: exam.id,
+      targetType: 'EXAM',
+      pageIndex: 0, // Whole exam review uses page 0
+      debounceMs: 1500,
+      autoSave: true,
+    });
+
+    // Canvas undo handler (modifies local then triggers change)
+    const handleCanvasUndo = useCallback(() => {
+      if (!canvasData || canvasData.lines.length === 0) return;
+      const newData = { lines: canvasData.lines.slice(0, -1), version: Date.now() };
+      handleCanvasChange(newData);
+    }, [canvasData, handleCanvasChange]);
+
+    // Canvas clear handler
+    const handleCanvasClear = useCallback(() => {
+      handleCanvasChange({ lines: [], version: Date.now() });
+    }, [handleCanvasChange]);
+
     const examContextPrefix = `TOPIK-${exam.id}`;
 
     // All annotations for this exam
@@ -383,7 +417,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
         contextKey: selectionContextKey,
         text: selectionText,
         note: existing?.note || '',
-        color: colorOverride || selectedColor,
+        color: (colorOverride || selectedColor) as 'yellow' | 'green' | 'blue' | 'pink',
         timestamp: existing ? existing.timestamp : Date.now(),
       };
 
@@ -439,13 +473,90 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
                 </div>
               </div>
             </div>
+
+            {/* Drawing Mode Toggle */}
+            <div className="flex items-center gap-3">
+              <div className="flex bg-slate-100 p-1 rounded-lg">
+                <button
+                  onClick={() => setIsDrawingMode(false)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${!isDrawingMode
+                    ? 'bg-white shadow-sm text-indigo-600'
+                    : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                >
+                  <Hand className="w-3.5 h-3.5" />
+                  答题
+                </button>
+                <button
+                  onClick={() => setIsDrawingMode(true)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${isDrawingMode
+                    ? 'bg-white shadow-sm text-amber-600'
+                    : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  草稿
+                </button>
+              </div>
+
+              {/* Canvas Status Indicator */}
+              {isDrawingMode && (
+                <div className="flex items-center gap-2 text-xs">
+                  {canvasLoading && (
+                    <span className="flex items-center gap-1 text-slate-400">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      加载中...
+                    </span>
+                  )}
+                  {canvasSaving && (
+                    <span className="flex items-center gap-1 text-amber-500">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      保存中...
+                    </span>
+                  )}
+                  {!canvasLoading && !canvasSaving && (
+                    <span className="text-emerald-500 flex items-center gap-1">
+                      <Check className="w-3 h-3" />
+                      已同步
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Main Content */}
         <div className="flex-1 overflow-y-auto p-4 md:p-8 flex justify-center bg-slate-200/50">
-          {/* PDF Paper */}
-          <div className={`bg-white w-full ${PAPER_MAX_WIDTH} shadow-xl min-h-screen pb-16 relative border border-slate-200`}>
+          {/* PDF Paper with Canvas Overlay */}
+          <div ref={paperContainerRef} className={`bg-white w-full ${PAPER_MAX_WIDTH} shadow-xl min-h-screen pb-16 relative border border-slate-200`}>
+
+            {/* Canvas Layer - Drawing Mode */}
+            {isDrawingMode && (
+              <div className="absolute inset-0 z-10" style={{ pointerEvents: 'auto' }}>
+                <CanvasLayer
+                  data={canvasData}
+                  onChange={handleCanvasChange}
+                  readOnly={false}
+                  tool={canvasTool}
+                  color={canvasColor}
+                />
+              </div>
+            )}
+
+            {/* Canvas Toolbar - Bottom Fixed when Drawing */}
+            {isDrawingMode && (
+              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+                <CanvasToolbar
+                  tool={canvasTool}
+                  onToolChange={setCanvasTool}
+                  color={canvasColor}
+                  onColorChange={setCanvasColor}
+                  onUndo={handleCanvasUndo}
+                  onClear={handleCanvasClear}
+                />
+              </div>
+            )}
 
             {/* Paper Header (copied from ExamSession) */}
             <div className="p-8 md:p-12 pb-4 font-serif">
@@ -509,7 +620,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
             {/* Questions (copied from ExamSession) */}
             <div className="px-8 md:px-12 select-none">
               {exam.questions.map((question, idx) => (
-                <div key={idx} ref={el => (questionRefs.current[idx] = el)}>
+                <div key={idx} ref={el => { questionRefs.current[idx] = el; }}>
 
                   {/* Instruction Bar */}
                   {shouldShowInstruction(idx) && (
@@ -656,10 +767,11 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
           </div>
         </div>
 
-        {/* Left Question Navigator */}
-        <div className="fixed left-4 top-1/2 -translate-y-1/2 z-40 hidden lg:block">
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 p-3 flex flex-col items-center gap-2 max-h-[85vh] overflow-y-auto">
-            <div className="grid grid-cols-5 gap-1">
+        {/* Left Question Navigator - Collapsible */}
+        <div className="fixed left-0 top-1/2 -translate-y-1/2 z-20 hidden lg:block">
+          <div className="bg-white/95 backdrop-blur-sm rounded-r-2xl shadow-xl border border-l-0 border-slate-200 p-2 flex flex-col items-center gap-1 max-h-[70vh] overflow-y-auto">
+            <div className="text-xs font-bold text-slate-400 mb-1 px-1">题号</div>
+            <div className="grid grid-cols-5 gap-0.5">
               {exam.questions.map((q, idx) => {
                 const isCorrect = userAnswers[idx] === q.correctAnswer;
                 return (
@@ -667,7 +779,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
                     key={idx}
                     onClick={() => scrollToQuestion(idx)}
                     className={`
-                      w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all
+                      w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all hover:scale-110
                       ${isCorrect
                         ? 'bg-emerald-500 text-white'
                         : 'bg-red-500 text-white'
@@ -702,7 +814,7 @@ export const ExamReviewView: React.FC<ExamReviewViewProps> = React.memo(
             saveAnnotationQuick(color);
           }}
           selectedColor={selectedColor}
-          setSelectedColor={setSelectedColor}
+          setSelectedColor={(val: string) => setSelectedColor(val as 'yellow' | 'green' | 'blue' | 'pink')}
           onClose={() => {
             setShowAnnotationMenu(false);
             window.getSelection()?.removeAllRanges();

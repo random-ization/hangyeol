@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../../services/api';
-import { useApi } from '../../../hooks/useApi';
 import { TopikExam, Language } from '../../../types';
 import ExamPaperViewer from './components/ExamPaperViewer';
 import { CanvasData } from '../annotation/components/CanvasLayer';
@@ -26,13 +25,9 @@ const ExamSessionContainer: React.FC<ExamSessionContainerProps> = ({
     const { examId } = useParams<{ examId: string }>();
     const navigate = useNavigate();
 
-    // 试卷数据
-    const { data: exam, loading: examLoading, execute: fetchExam } = useApi<TopikExam>(
-        async (id: string) => {
-            const exams = await api.getTopikExams();
-            return exams.find((e: TopikExam) => e.id === id) || null;
-        }
-    );
+    // 试卷数据 - 直接从 DataContext 获取
+    const [exam, setExam] = useState<TopikExam | null>(null);
+    const [examLoading, setExamLoading] = useState(true);
 
     // 当前题号
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -51,12 +46,29 @@ const ExamSessionContainer: React.FC<ExamSessionContainerProps> = ({
     // 考试计时（可选）
     const [elapsedTime, setElapsedTime] = useState(0);
 
-    // 获取试卷数据
+    // 获取试卷数据 - 只在 examId 变化时获取一次
     useEffect(() => {
-        if (examId) {
-            fetchExam(examId);
-        }
-    }, [examId, fetchExam]);
+        const fetchExam = async () => {
+            if (!examId) {
+                setExamLoading(false);
+                return;
+            }
+
+            setExamLoading(true);
+            try {
+                const exams = await api.getTopikExams();
+                const found = exams.find((e: TopikExam) => e.id === examId);
+                setExam(found || null);
+            } catch (error) {
+                console.error('Failed to fetch exam:', error);
+                setExam(null);
+            } finally {
+                setExamLoading(false);
+            }
+        };
+
+        fetchExam();
+    }, [examId]);
 
     // 获取当前题目的画板笔记
     const fetchCanvasAnnotation = useCallback(async () => {

@@ -1,7 +1,7 @@
 import React, { useMemo, useEffect } from 'react';
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import VocabModule from '../components/vocab';
-import ReadingModule from '../components/ReadingModule';
+import ReadingModule from '../src/features/textbook/LegacyReadingModule';
 import ListeningModule from '../components/ListeningModule';
 import GrammarModule from '../components/GrammarModule';
 import { useAuth } from '../contexts/AuthContext';

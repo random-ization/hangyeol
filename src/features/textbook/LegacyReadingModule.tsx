@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { generateReadingPassage } from '../services/geminiService';
-import { CourseSelection, ReadingContent, Language, TextbookContent, Annotation } from '../types';
+import { generateReadingPassage } from '../../../services/geminiService';
+import { CourseSelection, ReadingContent, Language, TextbookContent, Annotation } from '../../../types';
 import {
   ChevronRight, MessageSquare, Trash2, Check, ArrowLeft,
   BookOpen, Type, Languages, Highlighter
 } from 'lucide-react';
-import { getLabels } from '../utils/i18n';
-import { useAnnotation } from '../hooks/useAnnotation';
-import AnnotationMenu from './AnnotationMenu';
+import { getLabels } from '../../../utils/i18n';
+import { useAnnotation } from '../../../hooks/useAnnotation';
+import AnnotationMenu from '../../../components/AnnotationMenu';
 
 interface ReadingModuleProps {
   course: CourseSelection;

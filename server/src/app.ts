@@ -6,6 +6,7 @@ import userRoutes from './routes/user.routes';
 import adminRoutes from './routes/admin.routes';
 import uploadRoutes from './routes/upload.routes';
 import dailyPhraseRoutes from './routes/dailyPhrase.routes';
+import annotationRoutes from './routes/annotation.routes';
 
 const app = express();
 
@@ -27,6 +28,8 @@ app.use('/api/upload', uploadRoutes);
 console.log('[Server] /api/upload registered');
 app.use('/api/daily-phrase', dailyPhraseRoutes);
 console.log('[Server] /api/daily-phrase registered');
+app.use('/api/annotation', annotationRoutes);
+console.log('[Server] /api/annotation registered');
 
 // Health Check
 app.get('/health', (req, res) => {

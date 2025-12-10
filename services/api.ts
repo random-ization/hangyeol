@@ -190,6 +190,37 @@ export const api = {
       method: 'DELETE',
     }),
 
+  // --- Canvas Annotations (画板笔记) ---
+  getCanvasAnnotations: async (params: {
+    targetId: string;
+    targetType: 'TEXTBOOK' | 'EXAM';
+    pageIndex?: number;
+  }) => {
+    const query = new URLSearchParams({
+      targetId: params.targetId,
+      targetType: params.targetType,
+      ...(params.pageIndex !== undefined ? { pageIndex: String(params.pageIndex) } : {}),
+    });
+    return request<any[]>(`/annotation?${query}`);
+  },
+
+  saveCanvasAnnotation: async (annotation: {
+    targetId: string;
+    targetType: 'TEXTBOOK' | 'EXAM';
+    pageIndex: number;
+    data: any;
+    visibility?: string;
+  }) =>
+    request('/annotation', {
+      method: 'POST',
+      body: JSON.stringify(annotation),
+    }),
+
+  deleteCanvasAnnotation: async (id: string) =>
+    request(`/annotation/${id}`, {
+      method: 'DELETE',
+    }),
+
   logActivity: async (activityType: string, duration?: number, itemsStudied?: number, metadata?: any) =>
     request('/user/activity', {
       method: 'POST',

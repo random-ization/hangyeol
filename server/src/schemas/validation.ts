@@ -129,8 +129,21 @@ export const SaveTopikExamSchema = z.object({
       groupCount: z.number().int().optional().nullable(),
       contextBox: z.string().optional().nullable(),
 
-      options: z.array(z.string()),
-      optionImages: z.array(z.string()).optional().nullable(),
+      // ✅ 修复：options 预处理，将 null/undefined 转换为空字符串
+      options: z.preprocess(
+        (val) => {
+          if (!Array.isArray(val)) return ['', '', '', ''];
+          return val.map((opt: any) => (opt == null ? '' : String(opt)));
+        },
+        z.array(z.string())
+      ),
+      optionImages: z.preprocess(
+        (val) => {
+          if (!Array.isArray(val)) return null;
+          return val.map((opt: any) => (opt == null ? '' : String(opt)));
+        },
+        z.array(z.string()).optional().nullable()
+      ),
       correctAnswer: z.number().int().min(0),
       explanation: z.string().optional().nullable(),
       score: z.number().optional().default(2),

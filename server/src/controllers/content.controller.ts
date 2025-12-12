@@ -148,8 +148,9 @@ export const saveTopikExam = async (req: Request, res: Response) => {
       res.json(created);
     }
   } catch (e: any) {
-    console.error(e);
+    console.error('[saveTopikExam] Error:', e);
     if (e.name === 'ZodError') {
+      console.error('[saveTopikExam] Zod validation errors:', JSON.stringify(e.errors, null, 2));
       return res.status(400).json({ error: 'Invalid input', details: e.errors });
     }
     res.status(500).json({ error: 'Failed to save exam' });

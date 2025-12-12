@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Stage, Layer, Line } from 'react-konva';
 import Konva from 'konva';
 
@@ -63,12 +63,17 @@ const DEFAULT_OPACITY = {
 };
 
 /**
- * CanvasLayer - 通用画板组件
+ * CanvasLayer - 通用画板组件 (性能优化版)
  * 
  * 使用 react-konva 实现的透明画板，支持：
  * - 普通画笔 (Pen)
  * - 高亮笔 (Highlighter, 半透明粗线)
  * - 橡皮擦 (Eraser)
+ * 
+ * 性能优化：
+ * - 使用 ref 追踪绘制中的线条，避免频繁 setState
+ * - 使用 requestAnimationFrame 节流渲染
+ * - 直接操作 Konva 节点，绕过 React 渲染周期
  */
 const CanvasLayer: React.FC<CanvasLayerProps> = ({
     data,
@@ -84,10 +89,22 @@ const CanvasLayer: React.FC<CanvasLayerProps> = ({
     const containerRef = useRef<HTMLDivElement>(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-    // 画线状态
+    // 画线状态 - 使用 ref 避免频繁渲染
     const [lines, setLines] = useState<LineData[]>([]);
-    const [isDrawing, setIsDrawing] = useState(false);
+    const isDrawingRef = useRef(false);
+    const currentLineRef = useRef<LineData | null>(null);
+    const currentKonvaLineRef = useRef<Konva.Line | null>(null);
     const stageRef = useRef<Konva.Stage>(null);
+    const layerRef = useRef<Konva.Layer>(null);
+    const rafIdRef = useRef<number | null>(null);
+    const pendingPointsRef = useRef<number[]>([]);
+
+    // 缓存样式计算
+    const currentStyle = useMemo(() => ({
+        color: color || DEFAULT_COLORS[tool],
+        strokeWidth: strokeWidth || DEFAULT_STROKE_WIDTH[tool],
+        opacity: DEFAULT_OPACITY[tool],
+    }), [tool, color, strokeWidth]);
 
     // 初始化数据
     useEffect(() => {
@@ -117,17 +134,9 @@ const CanvasLayer: React.FC<CanvasLayerProps> = ({
         };
     }, []);
 
-    // 获取当前工具的样式
-    const getCurrentStyle = useCallback(() => {
-        return {
-            color: color || DEFAULT_COLORS[tool],
-            strokeWidth: strokeWidth || DEFAULT_STROKE_WIDTH[tool],
-            opacity: DEFAULT_OPACITY[tool],
-        };
-    }, [tool, color, strokeWidth]);
-
     // 生成唯一 ID
-    const generateId = () => `line-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const generateId = useCallback(() =>
+        `line-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, []);
 
     // 通知数据变化
     const notifyChange = useCallback((newLines: LineData[]) => {
@@ -138,55 +147,141 @@ const CanvasLayer: React.FC<CanvasLayerProps> = ({
         onChange?.(newData);
     }, [onChange]);
 
+    // 使用 RAF 批量更新 Konva 节点
+    const flushPendingPoints = useCallback(() => {
+        if (pendingPointsRef.current.length === 0) return;
+
+        if (currentKonvaLineRef.current && currentLineRef.current) {
+            // 直接更新 Konva 节点，绕过 React
+            const newPoints = [...currentLineRef.current.points, ...pendingPointsRef.current];
+            currentLineRef.current.points = newPoints;
+            currentKonvaLineRef.current.points(newPoints);
+            layerRef.current?.batchDraw();
+        }
+        pendingPointsRef.current = [];
+        rafIdRef.current = null;
+    }, []);
+
     // 鼠标按下 - 开始画线
-    const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    const handleMouseDown = useCallback((e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
         if (readOnly) return;
 
-        setIsDrawing(true);
         const pos = e.target.getStage()?.getPointerPosition();
         if (!pos) return;
 
-        const style = getCurrentStyle();
+        isDrawingRef.current = true;
+
         const newLine: LineData = {
             id: generateId(),
             tool,
             points: [pos.x, pos.y],
-            color: style.color,
-            strokeWidth: style.strokeWidth,
-            opacity: style.opacity,
+            color: currentStyle.color,
+            strokeWidth: currentStyle.strokeWidth,
+            opacity: currentStyle.opacity,
         };
 
-        setLines(prev => [...prev, newLine]);
-    };
+        currentLineRef.current = newLine;
 
-    // 鼠标移动 - 继续画线
-    const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-        if (!isDrawing || readOnly) return;
+        // 创建 Konva Line 节点并添加到 layer
+        if (layerRef.current) {
+            const konvaLine = new Konva.Line({
+                points: newLine.points,
+                stroke: newLine.color,
+                strokeWidth: newLine.strokeWidth,
+                opacity: newLine.opacity,
+                tension: 0.5,
+                lineCap: 'round',
+                lineJoin: 'round',
+                globalCompositeOperation: tool === 'eraser' ? 'destination-out' : 'source-over',
+            });
+            currentKonvaLineRef.current = konvaLine;
+            layerRef.current.add(konvaLine);
+            layerRef.current.batchDraw();
+        }
+    }, [readOnly, tool, currentStyle, generateId]);
+
+    // 鼠标移动 - 继续画线 (高性能版本)
+    const handleMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+        if (!isDrawingRef.current || readOnly) return;
 
         const stage = e.target.getStage();
         const pos = stage?.getPointerPosition();
-        if (!pos) return;
+        if (!pos || !currentLineRef.current) return;
 
-        setLines(prev => {
-            const lastLine = prev[prev.length - 1];
-            if (!lastLine) return prev;
+        // 将新点添加到待处理队列
+        pendingPointsRef.current.push(pos.x, pos.y);
 
-            const newPoints = [...lastLine.points, pos.x, pos.y];
-            const updated = prev.slice(0, -1);
-            updated.push({ ...lastLine, points: newPoints });
-            return updated;
-        });
-    };
+        // 使用 RAF 节流更新
+        if (rafIdRef.current === null) {
+            rafIdRef.current = requestAnimationFrame(flushPendingPoints);
+        }
+    }, [readOnly, flushPendingPoints]);
 
     // 鼠标抬起 - 结束画线
-    const handleMouseUp = () => {
-        if (!isDrawing) return;
-        setIsDrawing(false);
-        notifyChange(lines);
-    };
+    const handleMouseUp = useCallback(() => {
+        if (!isDrawingRef.current) return;
+
+        // 取消待处理的 RAF
+        if (rafIdRef.current !== null) {
+            cancelAnimationFrame(rafIdRef.current);
+            rafIdRef.current = null;
+        }
+
+        // 立即处理剩余的点
+        flushPendingPoints();
+
+        isDrawingRef.current = false;
+
+        if (currentLineRef.current) {
+            // 将完成的线条添加到 state
+            const completedLine = { ...currentLineRef.current };
+            setLines(prev => {
+                const newLines = [...prev, completedLine];
+                // 通知变化
+                notifyChange(newLines);
+                return newLines;
+            });
+
+            // 清除当前绘制状态（但保留 Konva 节点，它会被 React 重新渲染替代）
+            currentLineRef.current = null;
+            currentKonvaLineRef.current = null;
+        }
+    }, [flushPendingPoints, notifyChange]);
+
+    // 同步 lines 到 layer（当 lines 变化时，移除临时 Konva 节点）
+    useEffect(() => {
+        // 清理由直接操作创建的临时节点
+        // React-Konva 会自动渲染 lines 中的所有线条
+        if (layerRef.current && currentKonvaLineRef.current === null) {
+            // 移除所有不在 lines 中的临时节点
+            const layer = layerRef.current;
+            const children = layer.getChildren();
+            const lineIds = new Set(lines.map(l => l.id));
+
+            children.forEach(child => {
+                if (child instanceof Konva.Line) {
+                    const id = child.id();
+                    // 移除没有 id 或 id 不在 lines 中的临时节点
+                    if (!id || !lineIds.has(id)) {
+                        child.destroy();
+                    }
+                }
+            });
+        }
+    }, [lines]);
 
     // 清空画板
     const handleClear = useCallback(() => {
+        // 取消进行中的绘制
+        if (rafIdRef.current !== null) {
+            cancelAnimationFrame(rafIdRef.current);
+            rafIdRef.current = null;
+        }
+        isDrawingRef.current = false;
+        currentLineRef.current = null;
+        currentKonvaLineRef.current = null;
+        pendingPointsRef.current = [];
+
         setLines([]);
         notifyChange([]);
     }, [notifyChange]);
@@ -209,9 +304,13 @@ const CanvasLayer: React.FC<CanvasLayerProps> = ({
         onSave?.(canvasData);
     }, [lines, onSave]);
 
-    // 暴露方法给父组件
+    // 清理 RAF
     useEffect(() => {
-        // 可以通过 ref 暴露更多方法
+        return () => {
+            if (rafIdRef.current !== null) {
+                cancelAnimationFrame(rafIdRef.current);
+            }
+        };
     }, []);
 
     return (
@@ -238,10 +337,11 @@ const CanvasLayer: React.FC<CanvasLayerProps> = ({
                     cursor: readOnly ? 'default' : (tool === 'eraser' ? 'cell' : 'crosshair'),
                 }}
             >
-                <Layer>
+                <Layer ref={layerRef}>
                     {lines.map((line) => (
                         <Line
                             key={line.id}
+                            id={line.id}
                             points={line.points}
                             stroke={line.color}
                             strokeWidth={line.strokeWidth}
@@ -293,8 +393,8 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
                     onClick={() => onToolChange('pen')}
                     disabled={disabled}
                     className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${tool === 'pen'
-                            ? 'bg-white shadow-sm text-indigo-600'
-                            : 'text-slate-500 hover:text-slate-700'
+                        ? 'bg-white shadow-sm text-indigo-600'
+                        : 'text-slate-500 hover:text-slate-700'
                         }`}
                 >
                     ✏️ 画笔
@@ -303,8 +403,8 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
                     onClick={() => onToolChange('highlighter')}
                     disabled={disabled}
                     className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${tool === 'highlighter'
-                            ? 'bg-white shadow-sm text-yellow-600'
-                            : 'text-slate-500 hover:text-slate-700'
+                        ? 'bg-white shadow-sm text-yellow-600'
+                        : 'text-slate-500 hover:text-slate-700'
                         }`}
                 >
                     🖍️ 高亮
@@ -313,8 +413,8 @@ export const CanvasToolbar: React.FC<CanvasToolbarProps> = ({
                     onClick={() => onToolChange('eraser')}
                     disabled={disabled}
                     className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${tool === 'eraser'
-                            ? 'bg-white shadow-sm text-red-600'
-                            : 'text-slate-500 hover:text-slate-700'
+                        ? 'bg-white shadow-sm text-red-600'
+                        : 'text-slate-500 hover:text-slate-700'
                         }`}
                 >
                     🧹 橡皮

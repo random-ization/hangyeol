@@ -34,7 +34,6 @@ const getFallbackTheme = (name: string, coverUrl?: string) => {
     { bg: '#ede9fe', spine: '#4c1d95', text: '#4c1d95', accent: '#7c3aed' }, // Violet
   ];
 
-  // Use coverUrl as seed if available for variety
   const seed = coverUrl || name;
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
@@ -62,32 +61,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ canAccessContent, onShowU
 
   const [filterInstituteId, setFilterInstituteId] = useState<string>('ALL');
 
-  if (!user) {
-    return <Navigate to="/" replace />;
-  }
-
-  if (selectedInstitute && selectedLevel) {
-    return (
-      <Dashboard
-        user={user}
-        institute={institutes.find(i => i.id === selectedInstitute)}
-        level={selectedLevel}
-        language={language}
-        onChangeCourse={() => { setInstitute(''); setLevel(0); }}
-        onOpenVocabBook={() => navigate('/dashboard/vocabulary?list=saved')}
-        onOpenMistakeBook={() => navigate('/dashboard/vocabulary?list=mistakes')}
-        onClearMistakes={clearMistakes}
-        onStartModule={mod => {
-          const contextKey = `${selectedInstitute}-${selectedLevel}-1`;
-          const content = textbookContexts[contextKey];
-          if (content && !canAccessContent(content)) { onShowUpgradePrompt(); return; }
-          navigate(`/dashboard/${mod.toLowerCase()}`);
-        }}
-      />
-    );
-  }
-
+  // ✅ 修复：将 useMemo 移到所有条件返回之前，遵守 React Hooks 规则
   const allTextbooks = useMemo(() => {
+    if (!user) return [];
+
     const all = institutes.flatMap(inst => {
       const levels = parseLevels(inst.levels);
 
@@ -126,8 +103,36 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ canAccessContent, onShowU
     } else {
       return all.filter(book => book.institute.id === filterInstituteId);
     }
-  }, [institutes, user.lastInstitute, user.lastLevel, filterInstituteId]);
+  }, [institutes, user, filterInstituteId]);
 
+  // 1. 如果未登录，重定向
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  // 2. 如果已经选中了具体课程，渲染详细 Dashboard
+  if (selectedInstitute && selectedLevel) {
+    return (
+      <Dashboard
+        user={user}
+        institute={institutes.find(i => i.id === selectedInstitute)}
+        level={selectedLevel}
+        language={language}
+        onChangeCourse={() => { setInstitute(''); setLevel(0); }}
+        onOpenVocabBook={() => navigate('/dashboard/vocabulary?list=saved')}
+        onOpenMistakeBook={() => navigate('/dashboard/vocabulary?list=mistakes')}
+        onClearMistakes={clearMistakes}
+        onStartModule={mod => {
+          const contextKey = `${selectedInstitute}-${selectedLevel}-1`;
+          const content = textbookContexts[contextKey];
+          if (content && !canAccessContent(content)) { onShowUpgradePrompt(); return; }
+          navigate(`/dashboard/${mod.toLowerCase()}`);
+        }}
+      />
+    );
+  }
+
+  // 3. 渲染书架视图
   return (
     <div className="max-w-[1200px] mx-auto pb-20 px-4 sm:px-6">
 
@@ -144,10 +149,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ canAccessContent, onShowU
 
         {/* 筛选按钮区域 */}
         <div className="relative group w-full md:w-auto z-20">
-          {/* 悬停提示 (Tooltip) - 调整到下方，防止被顶部导航遮挡 */}
           <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-xl z-30">
             {language === 'zh' ? '按语学院筛选' : 'Filter by Institute'}
-            {/* 小三角 (指向上面) */}
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-slate-800"></div>
           </div>
 
@@ -205,7 +208,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ canAccessContent, onShowU
                 `}
                 style={{ backgroundColor: book.style.bg }}
               >
-                {/* 1. 书脊效果 (加深颜色，增强立体感) */}
+                {/* 1. 书脊效果 */}
                 <div
                   className="absolute left-0 top-0 bottom-0 w-4 z-30 shadow-[inset_-2px_0_4px_rgba(0,0,0,0.2)] opacity-90"
                   style={{ backgroundColor: book.style.spine }}
@@ -220,7 +223,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ canAccessContent, onShowU
                     className="absolute inset-0 w-full h-full object-cover z-20"
                   />
                 ) : (
-                  /* 3. 默认 CSS 极简封面 (无图片时显示) */
+                  /* 3. 默认 CSS 极简封面 */
                   <>
                     <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent pointer-events-none z-10"></div>
 

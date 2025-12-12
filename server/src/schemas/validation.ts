@@ -97,6 +97,7 @@ export const SaveTopikExamSchema = z.object({
   type: z.enum(['READING', 'LISTENING']),
   round: z.number().int(),
   timeLimit: z.number().int().min(1),
+  paperType: z.enum(['A', 'B']).optional().nullable(),
 
   // ✅ 修复：添加音频字段，允许为空
   audioUrl: z.string().optional().nullable(),
@@ -107,12 +108,22 @@ export const SaveTopikExamSchema = z.object({
     z.object({
       id: z.union([z.string(), z.number()]).optional(),
       number: z.number().int(),
+
+      // ✅ 修复：question 允许为空（图片题可能没有提问文本）
+      question: z.string().optional().nullable().default(''),
+
       passage: z.string().optional().nullable(),
       audioUrl: z.string().optional().nullable(),
-      question: z.string(),
 
       // ✅ 修复：统一字段名为 image (匹配前端)，允许为空
       image: z.string().optional().nullable(),
+      imageUrl: z.string().optional().nullable(), // 兼容旧字段名
+
+      // ✅ 新增字段支持
+      instruction: z.string().optional().nullable(),
+      layout: z.string().optional().nullable(),
+      groupCount: z.number().int().optional().nullable(),
+      contextBox: z.string().optional().nullable(),
 
       options: z.array(z.string()),
       optionImages: z.array(z.string()).optional().nullable(),

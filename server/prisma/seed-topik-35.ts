@@ -408,8 +408,196 @@ const TOPIK_35_READING = {
             ],
             correctAnswer: 0,
             score: 2
+        },
+        // --- [32~34] 内容一致 ---
+        {
+            id: 32,
+            number: 32,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2,
+            instruction: "※ [32～34] 다음을 읽고 내용이 같은 것을 고르십시오."
+        },
+        {
+            id: 33,
+            number: 33,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2
+        },
+        {
+            id: 34,
+            number: 34,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2
+        },
+        // --- [35~38] 主题选择 ---
+        {
+            id: 35,
+            number: 35,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2,
+            instruction: "※ [35～38] 다음 글의 주제로 가장 알맞은 것을 고르십시오."
+        },
+        {
+            id: 36,
+            number: 36,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2
+        },
+        {
+            id: 37,
+            number: 37,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2
+        },
+        {
+            id: 38,
+            number: 38,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2
+        },
+        // --- [39~41] 보기 插入 ---
+        {
+            id: 39,
+            number: 39,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2,
+            instruction: "※ [39～41] 다음 글에서 <보기>의 문장이 들어가기에 가장 알맞은 곳을 고르십시오."
+        },
+        {
+            id: 40,
+            number: 40,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2
+        },
+        {
+            id: 41,
+            number: 41,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2
+        },
+        // --- [42~43] 分组阅读 ---
+        {
+            id: 42,
+            number: 42,
+            groupCount: 2,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2,
+            instruction: "※ [42～43] 다음을 읽고 물음에 답하십시오."
+        },
+        {
+            id: 43,
+            number: 43,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2
+        },
+        // --- [44~45] 分组阅读 ---
+        {
+            id: 44,
+            number: 44,
+            groupCount: 2,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2,
+            instruction: "※ [44～45] 다음을 읽고 물음에 답하십시오."
+        },
+        {
+            id: 45,
+            number: 45,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2
+        },
+        // --- [46~47] 分组阅读 ---
+        {
+            id: 46,
+            number: 46,
+            groupCount: 2,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2,
+            instruction: "※ [46～47] 다음을 읽고 물음에 답하십시오."
+        },
+        {
+            id: 47,
+            number: 47,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2
+        },
+        // --- [48~50] 分组阅读 ---
+        {
+            id: 48,
+            number: 48,
+            groupCount: 3,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2,
+            instruction: "※ [48～50] 다음을 읽고 물음에 답하십시오."
+        },
+        {
+            id: 49,
+            number: 49,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2
+        },
+        {
+            id: 50,
+            number: 50,
+            passage: "",
+            question: "",
+            options: ["", "", "", ""],
+            correctAnswer: 0,
+            score: 2
         }
-        // 题目 32-50 待续，用户将通过编辑器添加
     ]
 };
 

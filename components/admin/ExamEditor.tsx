@@ -81,6 +81,7 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
     const [activeQuestionId, setActiveQuestionId] = useState<number>(1);
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [loadingQuestions, setLoadingQuestions] = useState(false);
 
     // Labels 简化版，按需扩展
     const labels = {
@@ -89,7 +90,14 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
     };
     const t = labels[language as keyof typeof labels] || labels.en;
 
-    // ✅ 核心优化：通用上传函数，对接 S3/Spaces
+    // ✅ 修复：引入 CDN Fetch 逻辑
+    // 由于 TopikExamWithUrl 定义在 hook 文件中，这里简单定义一个兼容类型或直接断言
+    const fetchQuestionsFromUrl = async (url: string) => {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Failed to load questions');
+        return await res.json() as TopikQuestion[];
+    };
+
     const handleFileUpload = async (
         file: File,
         onSuccess: (url: string) => void
@@ -105,6 +113,33 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
             setUploading(false);
         }
     };
+
+    // --- Effects ---
+    // 监听 selectedExam 变化，如果是 S3 托管数据（questionsUrl），则加载数据
+    useEffect(() => {
+        if (!selectedExam) return;
+
+        const loadQuestions = async () => {
+            // Check if we need to load questions (Legacy: has questions array; New: has questionsUrl but no questions)
+            const exam = selectedExam as any;
+            if (!exam.questions && exam.questionsUrl) {
+                setLoadingQuestions(true);
+                try {
+                    const questions = await fetchQuestionsFromUrl(exam.questionsUrl);
+                    // Update state without triggering infinite loop (since we are setting questions, which invalidates this check)
+                    setSelectedExam(prev => prev ? { ...prev, questions } : null);
+                } catch (e) {
+                    console.error("Failed to load exam questions from S3", e);
+                    alert("Failed to load exam content. Please check network.");
+                } finally {
+                    setLoadingQuestions(false);
+                }
+            }
+        };
+
+        loadQuestions();
+    }, [selectedExam?.id]); // Only re-run when ID changes to avoid loop when we update 'questions'
+
 
     // --- Handlers ---
     const createNewExam = (type: TopikType) => {
@@ -203,7 +238,10 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
 
     // --- Render Visual Editor (您最喜欢的 UI 部分) ---
     const renderVisualEditor = () => {
-        if (!currentExam) return null;
+        if (loadingQuestions) {
+            return <div className="flex h-full items-center justify-center text-slate-500"><Loader2 className="w-8 h-8 animate-spin mb-2" /> Loading Exam Content...</div>;
+        }
+        if (!currentExam || !currentExam.questions) return <div className="flex h-full items-center justify-center text-slate-400">Content not available</div>;
 
         return (
             <div className="flex h-full bg-slate-100">

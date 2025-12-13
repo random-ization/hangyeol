@@ -147,7 +147,8 @@ export const api = {
           method: 'PUT',
           body: JSON.stringify(exam.questions),
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'x-amz-acl': 'public-read' // Match signed header
           }
         });
 

@@ -135,12 +135,16 @@ export const getPresignedUrl = (key: string, contentType: string = 'application/
     .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
     .join('&');
 
+  // Headers to sign
+  // NOTE: x-amz-acl must be signed if sent
+  const acl = 'public-read';
+
   const canonicalRequest = [
     'PUT',
     uri,
     sortedQuery,
-    `host:${endpointHost}\n`,
-    'host',
+    `host:${endpointHost}\nx-amz-acl:${acl}\n`, // Added acl
+    'host;x-amz-acl', // Added acl to SignedHeaders
     'UNSIGNED-PAYLOAD'
   ].join('\n');
 

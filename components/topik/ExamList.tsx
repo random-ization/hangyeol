@@ -110,7 +110,7 @@ export const ExamList: React.FC<ExamListProps> = ({
             const percentage = totalScore > 0 ? (attempt.score / totalScore) * 100 : 0;
             const passed = percentage >= 60;
 
-            const totalQuestions = matchingExam ? matchingExam.questions.length : (attempt as any).totalQuestions || '?';
+            const totalQuestions = matchingExam ? (matchingExam.questions?.length || '?') : (attempt as any).totalQuestions || '?';
             const correctCount = attempt.correctCount ?? '?';
 
             return (
@@ -278,7 +278,7 @@ export const ExamList: React.FC<ExamListProps> = ({
                 <div className="flex items-center gap-4 text-sm text-slate-500 font-medium">
                   <span className="flex items-center gap-1.5">
                     <FileText className="w-4 h-4" />
-                    {exam.questions.length} 题
+                    {exam.questions?.length || 0} 题
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Calendar className="w-4 h-4" />
@@ -303,8 +303,8 @@ export const ExamList: React.FC<ExamListProps> = ({
                 )}
 
                 <button className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isReading
-                    ? 'bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'
-                    : 'bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white'
+                  ? 'bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'
+                  : 'bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white'
                   }`}>
                   <PlayCircle className="w-5 h-5 fill-current" />
                 </button>

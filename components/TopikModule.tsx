@@ -47,6 +47,17 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
   const listeningExams = exams.filter(e => e.type === 'LISTENING');
   const examContextPrefix = currentExam ? `TOPIK-${currentExam.id}` : '';
 
+  // DEBUG: 检查 Q5-10 的图片数据
+  useEffect(() => {
+    if (currentExam) {
+      console.log('[TopikModule] Exam loaded:', currentExam.id);
+      const q5to10 = currentExam.questions.filter(q => Number(q.id) >= 5 && Number(q.id) <= 10);
+      q5to10.forEach(q => {
+        console.log(`[TopikModule] Q${q.id}: image="${q.image}", imageUrl="${q.imageUrl}", passage="${q.passage?.substring(0, 30)}..."`);
+      });
+    }
+  }, [currentExam]);
+
   // New Hook Usage
   // Note: internal contextKey handling needs to be dynamic based on what we select?
   // Actually, TOPIK module has many contexts potentially? 
@@ -317,7 +328,10 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
 
   // 1. 渲染文章/材料 (Reading Passage / Box / Images)
   const renderPassage = (q: TopikQuestion) => {
-    // 图片 (Listening Q1-3, Charts)
+    // DEBUG: 检查图片数据
+    console.log(`[renderPassage] Q${q.id}: image="${q.image}", imageUrl="${q.imageUrl}"`);
+
+    // 图片 (Q5-10 图表题, Listening Q1-3)
     if (q.image || q.imageUrl) {
       return (
         <div className="mb-6 flex justify-center bg-white p-2 border border-slate-100 rounded">
@@ -370,6 +384,21 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
       );
     }
 
+    // 表格/图表样式 (Reading Q9-10) - 有 passage 且包含表格格式
+    if (q.passage && (q.id === 9 || q.id === 10 || q.passage.includes('|') || q.passage.includes('구분'))) {
+      return (
+        <div className="mb-6 border-2 border-slate-800 bg-white shadow-md overflow-hidden">
+          <div
+            className={`${FONT_SERIF} text-[15px] leading-[1.9] whitespace-pre-wrap text-slate-800 p-5 select-text`}
+            onMouseUp={handleTextSelection}
+            style={{ fontFamily: 'D2Coding, monospace' }}
+          >
+            {renderHighlightedText(q.passage, contextKey)}
+          </div>
+        </div>
+      );
+    }
+
     // 普通长文章 (Reading Q1-50 General)
     if (q.passage) {
       return (
@@ -386,10 +415,19 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
     return null;
   };
 
+  // 辅助函数：检查是否为图片题 (Q5-10) - 这些题目只需显示图片和选项
+  const isImageOnlyQuestion = (q: TopikQuestion) => {
+    const id = Number(q.id);
+    return id >= 5 && id <= 10;
+  };
+
   // 2. 渲染单个题目 (Question Block)
   const renderQuestion = (q: TopikQuestion, showPassage = false) => {
     const isReview = view === 'REVIEW';
     const myAnswer = isReview ? currentReviewAttempt?.userAnswers[q.id] : userAnswers[q.id];
+
+    // 判断是否为图片题 (Q5-10) - 这些题目只显示图片，不显示 question 文本
+    const isImageOnly = isImageOnlyQuestion(q);
 
     return (
       <div key={q.id} ref={el => { questionRefs.current[q.id] = el; }} className="mb-10 break-inside-avoid">
@@ -397,21 +435,16 @@ const TopikModule: React.FC<TopikModuleProps> = ({ exams, language, history, onS
         <div className="flex gap-2 mb-3">
           <span className={`text-[19px] font-bold text-slate-900 ${FONT_SERIF} min-w-[28px] pt-0.5`}>{q.id}.</span>
           <div className="flex-1">
+            {/* 渲染图片/passage (如果需要) */}
             {showPassage && renderPassage(q)}
-            {q.question && (
+
+            {/* Q5-10: 只显示图片，不显示 question 文本 */}
+            {/* 其他题目: 显示 question 文本 */}
+            {!isImageOnly && q.question && (
               <div
                 className={`${FONT_SANS} text-[17px] font-bold text-slate-900 leading-snug mb-3 select-text`}
                 onMouseUp={handleTextSelection}
               >
-                {/* For question text, simpler render to avoid breaking split(regex) if html exists? 
-                    Actually renderHighlightedText returns ReactNodes. 
-                    If q.question has HTML like parens replacement... 
-                    Original: dangerouslySetInnerHTML with replace.
-                    If we highlight, we might break HTML.
-                    Compromise: Text Matching might fail on HTML entities.
-                    But TOPIK module questions are usually simple text with ( ).
-                    I'll apply highlight.
-                */}
                 {renderHighlightedText(q.question.replace(/\(\s*\)/g, '(      )'), contextKey)}
               </div>
             )}

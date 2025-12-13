@@ -50,4 +50,56 @@ app.get('/api/debug', (req, res) => {
   });
 });
 
+// RAW S3 CHECK (Inline implementation to debug 500 error)
+app.get('/api/s3-check-raw', async (req, res) => {
+  try {
+    const aws4 = require('aws4');
+    const https = require('https');
+
+    const endpoint = process.env.SPACES_ENDPOINT;
+    const bucket = process.env.SPACES_BUCKET;
+    const accessKeyId = process.env.SPACES_KEY;
+    const secretAccessKey = process.env.SPACES_SECRET;
+
+    if (!endpoint || !bucket || !accessKeyId || !secretAccessKey) {
+      return res.status(500).json({ error: 'Missing env vars', endpoint, bucket });
+    }
+
+    const url = new URL(endpoint);
+    const host = `${bucket}.${url.host}`;
+    const opts = {
+      host,
+      path: '/', // List bucket
+      method: 'GET',
+      service: 's3',
+      region: 'us-east-1',
+      headers: { 'x-amz-acl': 'public-read' }
+    };
+
+    aws4.sign(opts, { accessKeyId, secretAccessKey });
+
+    const request = https.request(opts, (response: any) => {
+      let body = '';
+      response.on('data', (chunk: any) => body += chunk);
+      response.on('end', () => {
+        res.json({
+          statusCode: response.statusCode,
+          headers: response.headers,
+          bodySnippet: body.substring(0, 200), // First 200 chars
+          success: response.statusCode === 200
+        });
+      });
+    });
+
+    request.on('error', (e: any) => {
+      res.status(500).json({ error: 'Request error', message: e.message });
+    });
+
+    request.end();
+
+  } catch (e: any) {
+    res.status(500).json({ error: 'Catch error', message: e.message, stack: e.stack });
+  }
+});
+
 export default app;

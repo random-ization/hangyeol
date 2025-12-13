@@ -1,4 +1,6 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+// server/src/lib/storage.ts - DYNAMIC IMPORT VERSION
+// 使用动态导入 AWS SDK，防止启动时因内存或依赖问题导致应用崩溃
+
 import multer from 'multer';
 import path from 'path';
 import dotenv from 'dotenv';
@@ -6,10 +8,19 @@ import { Request, Response, NextFunction } from 'express';
 
 dotenv.config();
 
+// 类型定义（我们需要自己定义或使用 any，为了避免 build 时需要 @aws-sdk 类型，我们这里使用 any）
+// 如果编译时有 @aws-sdk/client-s3 依赖，我们可以用 import type
+import type { S3Client } from '@aws-sdk/client-s3';
+
 // 延迟初始化 S3 客户端
 let _s3Client: S3Client | null = null;
-const getS3Client = (): S3Client => {
+
+// 动态获取 S3 客户端
+const getS3Client = async (): Promise<S3Client> => {
   if (!_s3Client) {
+    // DYNAMIC IMPORT: 只有在需要时才加载库
+    const { S3Client } = await import('@aws-sdk/client-s3');
+
     if (!process.env.SPACES_ENDPOINT || !process.env.SPACES_KEY || !process.env.SPACES_SECRET) {
       console.warn('[storage] Missing S3/Spaces configuration');
     }
@@ -88,6 +99,10 @@ const createUploadMiddleware = (folder: string, type: 'avatar' | 'media', fieldN
         const key = generateKey(folder, file.originalname);
         const bucket = process.env.SPACES_BUCKET || '';
 
+        // DYNAMIC IMPORT
+        const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+        const client = await getS3Client();
+
         const command = new PutObjectCommand({
           Bucket: bucket,
           Key: key,
@@ -96,7 +111,7 @@ const createUploadMiddleware = (folder: string, type: 'avatar' | 'media', fieldN
           ACL: 'public-read',
         });
 
-        await getS3Client().send(command);
+        await client.send(command);
 
         const cdnBase = getCdnUrl();
         const url = `${cdnBase}/${key}`;
@@ -109,7 +124,8 @@ const createUploadMiddleware = (folder: string, type: 'avatar' | 'media', fieldN
         next();
       } catch (uploadError) {
         console.error('[storage] S3 Upload Failed:', uploadError);
-        next(new Error('File upload to storage failed'));
+        // 出错时不崩溃，而是传递错误
+        next(new Error(`File upload failed: ${(uploadError as any).message}`));
       }
     });
   };
@@ -137,6 +153,10 @@ export const uploadJsonToS3 = async (data: any, key: string): Promise<UploadJson
     const jsonString = JSON.stringify(data);
     const buffer = Buffer.from(jsonString, 'utf-8');
 
+    // DYNAMIC IMPORT
+    const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+    const client = await getS3Client();
+
     const command = new PutObjectCommand({
       Bucket: bucket,
       Key: key,
@@ -146,7 +166,7 @@ export const uploadJsonToS3 = async (data: any, key: string): Promise<UploadJson
       CacheControl: 'public, max-age=31536000, immutable',
     });
 
-    await getS3Client().send(command);
+    await client.send(command);
 
     const cdnBase = getCdnUrl();
     return {
@@ -163,12 +183,16 @@ export const deleteFromS3 = async (key: string): Promise<void> => {
   try {
     const bucket = process.env.SPACES_BUCKET || '';
 
+    // DYNAMIC IMPORT
+    const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+    const client = await getS3Client();
+
     const command = new DeleteObjectCommand({
       Bucket: bucket,
       Key: key,
     });
 
-    await getS3Client().send(command);
+    await client.send(command);
   } catch (e) {
     console.warn('[storage] Delete Failed (non-fatal):', e);
   }
@@ -188,8 +212,12 @@ export const testS3Connection = async (): Promise<{ success: boolean; message: s
     const bucket = process.env.SPACES_BUCKET;
     if (!bucket) throw new Error('SPACES_BUCKET not defined');
 
+    // DYNAMIC IMPORT
+    const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+    const client = await getS3Client();
+
     const key = `debug/connection-test-${Date.now()}.txt`;
-    await getS3Client().send(new PutObjectCommand({
+    await client.send(new PutObjectCommand({
       Bucket: bucket,
       Key: key,
       Body: 'Connection Test OK',
@@ -201,6 +229,6 @@ export const testS3Connection = async (): Promise<{ success: boolean; message: s
 
     return { success: true, message: 'S3 Connection OK' };
   } catch (e: any) {
-    return { success: false, message: e.message };
+    return { success: false, message: e.message || String(e) };
   }
 };

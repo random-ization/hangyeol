@@ -108,6 +108,7 @@ export const SaveTopikExamSchema = z.object({
 
   isPaid: z.boolean().optional(),
 
+  questionsUrl: z.string().optional().nullable(),
   questions: z.array(
     z.object({
       id: z.union([z.string(), z.number()]).optional(),
@@ -148,7 +149,7 @@ export const SaveTopikExamSchema = z.object({
       explanation: z.string().optional().nullable(),
       score: z.number().optional().default(2),
     })
-  ),
+  ).optional().nullable(),
 });
 
 export const UpdateProfileSchema = z.object({

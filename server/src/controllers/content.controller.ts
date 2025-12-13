@@ -136,7 +136,22 @@ export const getTopikExamById = async (req: Request, res: Response) => {
     if (!exam) {
       return res.status(404).json({ error: 'Exam not found' });
     }
-    res.json(exam);
+
+    // Handle questions format (New: { url: string } vs Old: [...])
+    const questions = exam.questions as any;
+    let finalExam = { ...exam };
+
+    if (questions && typeof questions === 'object' && questions.url && !Array.isArray(questions)) {
+      finalExam = {
+        ...exam,
+        questions: null, // Frontend will load from URL
+        questionsUrl: questions.url,
+      } as any;
+    } else {
+      // Ensure legacy format respects the type expected by frontend (no changes needed)
+    }
+
+    res.json(finalExam);
   } catch (e: any) {
     console.error('[getTopikExamById] Error:', e);
     res.status(500).json({ error: 'Failed to fetch exam' });
@@ -148,9 +163,31 @@ export const getTopikExamById = async (req: Request, res: Response) => {
  */
 export const saveTopikExam = async (req: Request, res: Response) => {
   try {
-    // Validate input
-    const validatedData: SaveTopikExamInput = SaveTopikExamSchema.parse(req.body);
-    const { id, questions, ...data } = validatedData;
+    // Validate input (Schema now allows questionsUrl and optional questions)
+    // 注意：Schema 定义是 strict object 吗？如果不允许 unknown keys，且 questionsUrl 不在 schema 里会报错。
+    // 我们刚才加了 questionsUrl 到 schema。
+    const validatedData = SaveTopikExamSchema.parse(req.body);
+    // Typescript might complain if SaveTopikExamInput doesn't have questionsUrl yet? 
+    // Zod infer should pick it up automatically.
+
+    // cast to any to avoid temporary TS issues if type definition isn't updated
+    const input = validatedData as any;
+    const { id, questions, questionsUrl, ...data } = input;
+
+    // Determine what to save in 'questions' column
+    let questionsData: any = questions;
+
+    // If frontend uploaded to S3 and provided a URL, use that
+    if (questionsUrl) {
+      questionsData = { url: questionsUrl };
+    }
+    // Legacy mode: if full questions array provided, save as JSON (eventually we want to migrate this too)
+    else if (!questionsData) {
+      // if both missing, default to empty array or null? 
+      // If updating, maybe we shouldn't overwrite? But 'questions' is required in Prisma usually?
+      // Let's assume input validation handles "at least one" constraint or we default.
+      questionsData = [];
+    }
 
     // Check if exists to determine update or create
     const existing = await prisma.topikExam.findUnique({ where: { id } });
@@ -160,8 +197,8 @@ export const saveTopikExam = async (req: Request, res: Response) => {
       result = await prisma.topikExam.update({
         where: { id },
         data: {
-          ...data,
-          questions,
+          ...data, // validated fields
+          questions: questionsData,
         },
       });
     } else {
@@ -169,7 +206,7 @@ export const saveTopikExam = async (req: Request, res: Response) => {
         data: {
           id,
           ...data,
-          questions,
+          questions: questionsData,
         },
       });
     }

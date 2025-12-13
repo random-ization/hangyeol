@@ -20,3 +20,38 @@ export const handleFileUpload = (req: Request, res: Response) => {
     res.status(500).json({ error: 'File upload failed' });
   }
 };
+
+export const handlePresign = (req: Request, res: Response) => {
+  try {
+    const { filename, contentType } = req.body;
+
+    if (!filename) {
+      return res.status(400).json({ error: 'Filename is required' });
+    }
+
+    // Dynamic import to avoid circular dependency if any, though import should be fine
+    const { getPresignedUrl } = require('../lib/storage');
+
+    // Generate key: uploads/presigned/{timestamp}-{filename}
+    // For TOPIK questions, maybe we want specific folder?
+    // Let's use a generic 'uploads' folder for now, or detect type
+    const folder = req.body.folder || 'uploads';
+    // Validate folder to prevent path traversal
+    if (!['uploads', 'exams', 'avatars'].includes(folder)) {
+      return res.status(400).json({ error: 'Invalid folder' });
+    }
+
+    const key = `${folder}/${Date.now()}-${filename}`;
+    const url = getPresignedUrl(key, contentType || 'application/json');
+
+    res.json({
+      success: true,
+      url, // Upload URL (PUT)
+      key,
+      publicUrl: url.split('?')[0] // Public read URL
+    });
+  } catch (error: any) {
+    console.error('Presign Error:', error);
+    res.status(500).json({ error: 'Failed to generate presigned URL', details: error.message });
+  }
+};

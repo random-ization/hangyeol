@@ -108,58 +108,54 @@ export const saveContent = async (req: Request, res: Response) => {
 // --- TOPIK Exam ---
 
 /**
- * 获取考试列表 (不包含 questions，减少流量)
+ * 获取考试列表 (兼容旧数据和新 S3 格式)
  */
 export const getTopikExams = async (req: Request, res: Response) => {
   try {
-    // 使用 select 排除 questions 字段，大幅减少数据传输
     const exams = await prisma.topikExam.findMany({
       orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        title: true,
-        round: true,
-        type: true,
-        paperType: true,
-        timeLimit: true,
-        audioUrl: true,
-        description: true,
-        createdAt: true,
-        isPaid: true,
-        // questions 字段不查询！由前端按需从 CDN 获取
-        // 但我们需要返回 questionsUrl 供前端获取
-        questions: true, // 这里只取 URL 对象
-      },
     });
 
-    // 处理返回数据：如果 questions 是 { url: "..." } 格式，提取出来
+    // 处理返回数据：兼容旧格式（完整 questions）和新格式（URL 引用）
     const formattedExams = exams.map(exam => {
-      const questions = exam.questions as any;
+      try {
+        const questions = exam.questions as any;
 
-      // 检查是否为 URL 引用格式
-      if (questions && typeof questions === 'object' && questions.url && !Array.isArray(questions)) {
+        // 检查是否为 URL 引用格式（新格式）
+        if (questions && typeof questions === 'object' && questions.url && !Array.isArray(questions)) {
+          return {
+            ...exam,
+            questions: null, // 列表页不返回题目数据
+            questionsUrl: questions.url, // 返回 CDN URL
+            hasQuestions: true,
+          };
+        }
+
+        // 兼容旧数据：直接返回完整题目
         return {
           ...exam,
-          questions: null, // 列表页不返回题目数据
-          questionsUrl: questions.url, // 返回 CDN URL
-          hasQuestions: true,
+          questions, // 保留原始 questions 数据
+          questionsUrl: null,
+          hasQuestions: Array.isArray(questions) && questions.length > 0,
+        };
+      } catch (formatError) {
+        console.error(`[getTopikExams] Error formatting exam ${exam.id}:`, formatError);
+        // 返回原始数据以保持兼容
+        return {
+          ...exam,
+          questionsUrl: null,
+          hasQuestions: false,
         };
       }
-
-      // 兼容旧数据：直接返回完整题目（过渡期间）
-      return {
-        ...exam,
-        questionsUrl: null,
-        hasQuestions: Array.isArray(questions) && questions.length > 0,
-      };
     });
 
     res.json(formattedExams);
   } catch (e: any) {
     console.error('[getTopikExams] Error:', e);
-    res.status(500).json({ error: 'Failed to fetch exams' });
+    res.status(500).json({ error: 'Failed to fetch exams', details: e.message });
   }
 };
+
 
 /**
  * 获取单个考试详情（包含完整 questions，用于编辑器）

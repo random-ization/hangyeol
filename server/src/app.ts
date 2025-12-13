@@ -78,24 +78,15 @@ app.get('/api/s3-check-raw', async (req, res) => {
 
     aws4.sign(opts, { accessKeyId, secretAccessKey });
 
-    const request = https.request(opts, (response: any) => {
-      let body = '';
-      response.on('data', (chunk: any) => body += chunk);
-      response.on('end', () => {
-        res.json({
-          statusCode: response.statusCode,
-          headers: response.headers,
-          bodySnippet: body.substring(0, 200), // First 200 chars
-          success: response.statusCode === 200
-        });
-      });
+    // PURE COMPUTATION CHECK: Do not send request, just return signed headers
+    // This verifies that aws4 library loads and runs correctly without crashing
+    res.json({
+      success: true,
+      message: 'AWS4 Signing Successful (No Network Request Sent)',
+      signedHeaders: opts.headers,
+      host: opts.host,
+      path: opts.path
     });
-
-    request.on('error', (e: any) => {
-      res.status(500).json({ error: 'Request error', message: e.message });
-    });
-
-    request.end();
 
   } catch (e: any) {
     res.status(500).json({ error: 'Catch error', message: e.message, stack: e.stack });

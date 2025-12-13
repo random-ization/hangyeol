@@ -183,7 +183,7 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
     };
 
     const updateQuestion = (id: number, field: keyof TopikQuestion, value: any) => {
-        if (!selectedExam) return;
+        if (!selectedExam || !selectedExam.questions) return;
         const updatedQuestions = selectedExam.questions.map(q =>
             q.id === id ? { ...q, [field]: value } : q
         );
@@ -191,7 +191,7 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
     };
 
     const updateOption = (qId: number, optIdx: number, value: string) => {
-        if (!selectedExam) return;
+        if (!selectedExam || !selectedExam.questions) return;
         const q = selectedExam.questions.find(q => q.id === qId);
         if (!q) return;
         const newOptions = [...q.options];
@@ -200,7 +200,7 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
     };
 
     const updateOptionImage = (qId: number, optIdx: number, url: string) => {
-        if (!selectedExam) return;
+        if (!selectedExam || !selectedExam.questions) return;
         const q = selectedExam.questions.find(q => q.id === qId);
         if (!q) return;
         const newImages = [...(q.optionImages || ['', '', '', ''])];
@@ -234,7 +234,7 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
 
     const currentExam = selectedExam;
     const STRUCTURE = currentExam?.type === 'LISTENING' ? TOPIK_LISTENING_STRUCTURE : TOPIK_READING_STRUCTURE;
-    const getQ = (id: number) => currentExam?.questions.find(q => q.id === id);
+    const getQ = (id: number) => currentExam?.questions?.find(q => q.id === id);
 
     // --- Render Visual Editor (您最喜欢的 UI 部分) ---
     const renderVisualEditor = () => {

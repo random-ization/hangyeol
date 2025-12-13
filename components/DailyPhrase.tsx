@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { MessageSquare } from 'lucide-react';
+import { request } from '../services/api';
 
 interface DailyPhrase {
     id: string;
@@ -17,11 +18,7 @@ const DailyPhrase: React.FC = () => {
     useEffect(() => {
         const fetchDailyPhrase = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/daily-phrase/today');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch daily phrase');
-                }
-                const data = await response.json();
+                const data = await request<DailyPhrase>('/daily-phrase/today');
                 setPhrase(data);
             } catch (err) {
                 console.error('Error fetching daily phrase:', err);

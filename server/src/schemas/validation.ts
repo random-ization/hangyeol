@@ -112,7 +112,11 @@ export const SaveTopikExamSchema = z.object({
   questions: z.array(
     z.object({
       id: z.union([z.string(), z.number()]).optional(),
-      number: z.number().int(),
+      // ✅ 修复：number 允许为空，预处理时使用 id 作为默认值
+      number: z.preprocess(
+        (val) => (val == null ? undefined : Number(val)),
+        z.number().int().optional()
+      ),
 
       // ✅ 修复：question 允许为空（图片题可能没有提问文本）
       question: z.string().optional().nullable().default(''),

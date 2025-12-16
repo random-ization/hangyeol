@@ -135,9 +135,21 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         }
 
         console.log(`[DataContext] Exam saved, questionsUrl: ${saved.questionsUrl}`);
-      } catch (e) {
+      } catch (e: any) {
         console.error('[DataContext] Failed to save exam:', e);
-        alert('Failed to save exam');
+        // 显示详细错误信息
+        let errorMsg = 'Failed to save exam';
+        if (e.raw?.details) {
+          // Zod validation errors
+          if (Array.isArray(e.raw.details)) {
+            errorMsg = e.raw.details.map((d: any) => `${d.path?.join('.')}: ${d.message}`).join('\n');
+          } else {
+            errorMsg = JSON.stringify(e.raw.details);
+          }
+        } else if (e.message) {
+          errorMsg = e.message;
+        }
+        alert(`保存失败:\n${errorMsg}`);
       }
     },
     [topikExams]

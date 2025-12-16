@@ -18,8 +18,9 @@ interface DataContextType {
 
   // Data Actions
   fetchInitialData: () => Promise<void>;
-  addInstitute: (name: string, levels?: LevelConfig[]) => Promise<void>;
-  updateInstitute: (id: string, name: string) => Promise<void>;
+  fetchTextbookContentData: (key: string) => Promise<TextbookContent | null>;
+  addInstitute: (name: string, levels?: LevelConfig[], options?: { coverUrl?: string; themeColor?: string; publisher?: string }) => Promise<void>;
+  updateInstitute: (id: string, updates: { name?: string; coverUrl?: string; themeColor?: string; publisher?: string }) => Promise<void>;
   deleteInstitute: (id: string) => Promise<void>;
   saveTextbookContext: (key: string, content: TextbookContent) => Promise<void>;
   saveTopikExam: (exam: TopikExam) => Promise<void>;
@@ -61,6 +62,29 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   }, []);
 
+  // Fetch single textbook content data from S3 proxy (with cache controls)
+  const fetchTextbookContentData = useCallback(async (key: string): Promise<TextbookContent | null> => {
+    try {
+      // First check if we have cached content with all fields
+      const cached = textbookContexts[key];
+      if (cached && cached.vocabularyList) {
+        return cached as TextbookContent;
+      }
+
+      // Fetch fresh data from proxy endpoint
+      const data = await api.getTextbookContentData(key);
+      if (data) {
+        // Update local cache
+        setTextbookContexts(prev => ({ ...prev, [key]: data }));
+        return data as TextbookContent;
+      }
+      return null;
+    } catch (e) {
+      console.error(`Failed to fetch content for ${key}`, e);
+      return null;
+    }
+  }, [textbookContexts]);
+
   // Fetch data when user logs in
   useEffect(() => {
     if (user) {
@@ -69,7 +93,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   }, [user, fetchInitialData]);
 
   const addInstitute = useCallback(
-    async (name: string, levels?: LevelConfig[]) => {
+    async (name: string, levels?: LevelConfig[], options?: { coverUrl?: string; themeColor?: string; publisher?: string }) => {
       try {
         // Use provided levels or default to 6 levels with 10 units each
         const levelConfig = levels || Array.from({ length: 6 }, (_, i) => ({ level: i + 1, units: 10 }));
@@ -77,6 +101,9 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
           id: name.toLowerCase().replace(/\s+/g, '-'),
           name,
           levels: levelConfig,
+          coverUrl: options?.coverUrl || null,
+          themeColor: options?.themeColor || null,
+          publisher: options?.publisher || null,
         });
         setInstitutes([...institutes, newInst]);
       } catch (e) {
@@ -87,9 +114,9 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   );
 
   const updateInstitute = useCallback(
-    async (id: string, name: string) => {
+    async (id: string, updates: { name?: string; coverUrl?: string; themeColor?: string; publisher?: string }) => {
       try {
-        const updated = await api.updateInstitute(id, name);
+        const updated = await api.updateInstitute(id, updates);
         setInstitutes(institutes.map(i => (i.id === id ? updated : i)));
       } catch (e) {
         alert('Failed to update institute');
@@ -172,6 +199,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     textbookContexts,
     topikExams,
     fetchInitialData,
+    fetchTextbookContentData,
     addInstitute,
     updateInstitute,
     deleteInstitute,

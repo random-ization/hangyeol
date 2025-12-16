@@ -30,8 +30,8 @@ interface ContentEditorProps {
   textbookContexts: TextbookContextMap;
   language: Language;
   onSaveContext: (key: string, content: TextbookContent) => void;
-  onAddInstitute: (name: string, levels?: LevelConfig[]) => void | Promise<void>;
-  onUpdateInstitute?: (id: string, name: string) => Promise<void>;
+  onAddInstitute: (name: string, levels?: LevelConfig[], options?: { coverUrl?: string; themeColor?: string; publisher?: string }) => void | Promise<void>;
+  onUpdateInstitute?: (id: string, updates: { name?: string; coverUrl?: string; themeColor?: string; publisher?: string }) => Promise<void>;
   onDeleteInstitute?: (id: string) => Promise<void>;
 }
 
@@ -184,6 +184,10 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
   const [newTextbookName, setNewTextbookName] = useState('');
   const [newLevelCount, setNewLevelCount] = useState(6);
   const [newUnitsPerLevel, setNewUnitsPerLevel] = useState(10);
+  const [newCoverUrl, setNewCoverUrl] = useState('');
+  const [newThemeColor, setNewThemeColor] = useState('#1e3a8a');
+  const [newPublisher, setNewPublisher] = useState('');
+  const [coverUploading, setCoverUploading] = useState(false);
 
   // Get available levels and units for selected institute
   const availableLevels = useMemo(() => {
@@ -413,6 +417,26 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
     }
   };
 
+  // Handle cover image upload
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    setCoverUploading(true);
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await api.uploadFile(formData);
+      setNewCoverUrl(response.url);
+    } catch (error) {
+      console.error('Failed to upload cover', error);
+      alert('Failed to upload cover image');
+    } finally {
+      setCoverUploading(false);
+    }
+  };
+
   // Handle add textbook
   const handleAddTextbook = async () => {
     if (!newTextbookName.trim()) return;
@@ -430,10 +454,17 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
     }));
 
     try {
-      await onAddInstitute(newTextbookName.trim(), levels);
+      await onAddInstitute(newTextbookName.trim(), levels, {
+        coverUrl: newCoverUrl || undefined,
+        themeColor: newThemeColor || undefined,
+        publisher: newPublisher || undefined,
+      });
       setNewTextbookName('');
       setNewLevelCount(6);
       setNewUnitsPerLevel(10);
+      setNewCoverUrl('');
+      setNewThemeColor('#1e3a8a');
+      setNewPublisher('');
       setShowAddModal(false);
     } catch (err) {
       console.error('Failed to create textbook:', err);
@@ -598,7 +629,7 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
                 onClick={() => {
                   const newName = prompt('Enter new name for textbook:', selectedInstitute.name);
                   if (newName && newName.trim() !== selectedInstitute.name) {
-                    onUpdateInstitute(selectedInstitute.id, newName.trim());
+                    onUpdateInstitute(selectedInstitute.id, { name: newName.trim() });
                   }
                 }}
                 className="p-2.5 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
@@ -977,9 +1008,21 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
                   type="text"
                   value={newTextbookName}
                   onChange={e => setNewTextbookName(e.target.value)}
-                  placeholder="e.g., Yonsei, Sogang, Ewha"
+                  placeholder="e.g., 延世大学韩国语 (1)"
                   className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">🏫 Publisher / University (用于筛选)</label>
+                <input
+                  type="text"
+                  value={newPublisher}
+                  onChange={e => setNewPublisher(e.target.value)}
+                  placeholder="e.g., 延世大学, 首尔大学, 梨花女子大学"
+                  className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">同一大学/出版社的教材填写相同名称即可按大学筛选</p>
               </div>
 
               <div className="flex gap-4">
@@ -1007,7 +1050,64 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
                 </div>
               </div>
 
-              <p className="text-sm text-gray-500">
+              {/* Cover Image Upload */}
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  📷 Cover Image (Optional)
+                </label>
+                <div className="flex items-center gap-4">
+                  <label className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 cursor-pointer transition-colors flex items-center gap-2">
+                    {coverUploading ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</>
+                    ) : (
+                      <><Upload className="w-4 h-4" /> {newCoverUrl ? 'Change Cover' : 'Upload Cover'}</>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleCoverUpload}
+                      className="hidden"
+                      disabled={coverUploading}
+                    />
+                  </label>
+                  {newCoverUrl && (
+                    <div className="flex items-center gap-2">
+                      <img src={newCoverUrl} alt="Cover preview" className="w-12 h-16 object-cover rounded border" />
+                      <button
+                        onClick={() => setNewCoverUrl('')}
+                        className="text-red-500 hover:bg-red-50 p-1 rounded"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Theme Color */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  🎨 Theme Color
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={newThemeColor}
+                    onChange={(e) => setNewThemeColor(e.target.value)}
+                    className="w-10 h-10 rounded cursor-pointer border-2 border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={newThemeColor}
+                    onChange={(e) => setNewThemeColor(e.target.value)}
+                    placeholder="#1e3a8a"
+                    className="w-24 p-2 border border-gray-300 rounded-lg text-sm font-mono"
+                  />
+                  <span className="text-sm text-gray-500">Used for book spine and accents</span>
+                </div>
+              </div>
+
+              <p className="text-sm text-gray-500 pt-2 border-t border-gray-200">
                 This will create {newLevelCount} levels with {newUnitsPerLevel} units each ({newLevelCount * newUnitsPerLevel} total units)
               </p>
             </div>

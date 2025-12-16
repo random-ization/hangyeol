@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { uploadJsonToS3, deleteFromS3, extractKeyFromUrl } from '../lib/storage';
+import { uploadJsonToS3, deleteFromS3, extractKeyFromUrl, sendToS3 } from '../lib/storage';
 import {
   CreateInstituteSchema,
   CreateInstituteInput,
@@ -28,9 +28,16 @@ export const createInstitute = async (req: Request, res: Response) => {
   try {
     // Validate input
     const validatedData: CreateInstituteInput = CreateInstituteSchema.parse(req.body);
-    const { id, name, levels } = validatedData;
+    const { id, name, levels, coverUrl, themeColor, publisher } = validatedData;
     const institute = await prisma.institute.create({
-      data: { id, name, levels: JSON.stringify(levels) },
+      data: {
+        id,
+        name,
+        levels: JSON.stringify(levels),
+        coverUrl: coverUrl || null,
+        themeColor: themeColor || null,
+        publisher: publisher || null,
+      },
     });
     res.json({ ...institute, levels: JSON.parse(institute.levels) });
   } catch (e: any) {
@@ -44,15 +51,22 @@ export const createInstitute = async (req: Request, res: Response) => {
 export const updateInstitute = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name } = req.body;
+    const { name, levels, coverUrl, themeColor, publisher } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ error: 'Name is required' });
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (levels !== undefined) updateData.levels = JSON.stringify(levels);
+    if (coverUrl !== undefined) updateData.coverUrl = coverUrl || null;
+    if (themeColor !== undefined) updateData.themeColor = themeColor || null;
+    if (publisher !== undefined) updateData.publisher = publisher || null;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
     }
 
     const institute = await prisma.institute.update({
       where: { id },
-      data: { name },
+      data: updateData,
     });
     res.json({ ...institute, levels: JSON.parse(institute.levels) });
   } catch (e: any) {
@@ -85,19 +99,142 @@ export const getContent = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Proxy endpoint to fetch textbook content from S3 with cache controls
+ * GET /api/content/textbook/:key/data
+ */
+export const getTextbookContentData = async (req: Request, res: Response) => {
+  try {
+    const { key } = req.params;
+
+    // Get content metadata from database
+    const content = await prisma.textbookContent.findUnique({
+      where: { key },
+    });
+
+    if (!content) {
+      return res.status(404).json({ error: 'Content not found' });
+    }
+
+    // If contentUrl exists, fetch from S3
+    if (content.contentUrl) {
+      const https = await import('https');
+
+      // Add cache-busting parameter
+      const urlWithCacheBust = `${content.contentUrl}?_t=${Date.now()}`;
+
+      return new Promise<void>((resolve, reject) => {
+        https.get(urlWithCacheBust, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+          }
+        }, (s3Res) => {
+          if (!s3Res.statusCode || s3Res.statusCode >= 400) {
+            res.status(s3Res.statusCode || 500).json({ error: 'Failed to fetch content from storage' });
+            return resolve();
+          }
+
+          let data = '';
+          s3Res.on('data', chunk => data += chunk);
+          s3Res.on('end', () => {
+            try {
+              const contentData = JSON.parse(data);
+              // Set cache control headers on response
+              res.set({
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0',
+              });
+              res.json({
+                ...content,
+                ...contentData,
+              });
+              resolve();
+            } catch (parseErr) {
+              res.status(500).json({ error: 'Failed to parse content data' });
+              resolve();
+            }
+          });
+        }).on('error', (err) => {
+          console.error('[getTextbookContentData] S3 fetch error:', err);
+          res.status(500).json({ error: 'Failed to fetch content from storage' });
+          resolve();
+        });
+      });
+    }
+
+    // Fallback: return legacy data from database
+    res.json(content);
+  } catch (e: any) {
+    console.error('[getTextbookContentData] Error:', e);
+    res.status(500).json({ error: 'Failed to fetch content' });
+  }
+};
+
 export const saveContent = async (req: Request, res: Response) => {
   try {
     // Validate input
     const validatedData: SaveContentInput = SaveContentSchema.parse(req.body);
     const { key, ...data } = validatedData;
+
+    // Extract content fields for S3 upload
+    const contentData = {
+      generalContext: data.generalContext || '',
+      vocabularyList: data.vocabularyList || '',
+      readingText: data.readingText || '',
+      readingTranslation: data.readingTranslation || '',
+      listeningScript: data.listeningScript || '',
+      listeningTranslation: data.listeningTranslation || '',
+      grammarList: data.grammarList || '',
+    };
+
+    // Upload content to S3
+    const timestamp = Date.now();
+    const s3Key = `content/textbook/${key}/${timestamp}.json`;
+    const contentJson = JSON.stringify(contentData);
+    const contentBuffer = Buffer.from(contentJson, 'utf-8');
+
+    try {
+      await sendToS3(s3Key, contentBuffer, 'application/json');
+    } catch (s3Error: any) {
+      console.error('[saveContent] S3 upload failed:', s3Error);
+      return res.status(500).json({ error: 'Failed to upload content to storage', details: s3Error.message });
+    }
+
+    // Build S3 URL
+    const cdnUrl = process.env.SPACES_CDN_URL || `https://${process.env.SPACES_BUCKET}.${new URL(process.env.SPACES_ENDPOINT!).host.replace('digitaloceanspaces.com', 'cdn.digitaloceanspaces.com')}`;
+    const contentUrl = `${cdnUrl}/${s3Key}`;
+
+    // Save metadata to database with contentUrl
+    const dbData = {
+      contentUrl,
+      readingTitle: data.readingTitle || null,
+      listeningTitle: data.listeningTitle || null,
+      listeningAudioUrl: data.listeningAudioUrl || null,
+      isPaid: data.isPaid || false,
+      // Clear legacy fields (data is now in S3)
+      generalContext: null,
+      vocabularyList: null,
+      readingText: null,
+      readingTranslation: null,
+      listeningScript: null,
+      listeningTranslation: null,
+      grammarList: null,
+    };
+
     const content = await prisma.textbookContent.upsert({
       where: { key },
-      update: data,
-      create: { key, ...data },
+      update: dbData,
+      create: { key, ...dbData },
     });
-    res.json(content);
+
+    // Return the full content for frontend
+    res.json({
+      ...content,
+      ...contentData, // Include content for immediate use
+    });
   } catch (e: any) {
-    console.error(e);
+    console.error('[saveContent] Error:', e);
     if (e.name === 'ZodError') {
       return res.status(400).json({ error: 'Invalid input', details: e.errors });
     }

@@ -85,6 +85,9 @@ export interface Institute {
   id: string;
   name: string; // e.g., Yonsei, Sogang, Ewha
   levels: LevelConfig[] | number[]; // Support both old format and new format
+  coverUrl?: string; // Cover image URL for all books in this series
+  themeColor?: string; // Theme color for book styling (hex color)
+  publisher?: string; // University/Publisher name for filtering (e.g., "延世大学")
 }
 
 export enum LearningModuleType {

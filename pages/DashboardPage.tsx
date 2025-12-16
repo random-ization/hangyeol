@@ -59,7 +59,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ canAccessContent, onShowU
   const navigate = useNavigate();
   const labels = getLabels(language);
 
-  const [filterInstituteId, setFilterInstituteId] = useState<string>('ALL');
+  const [filterPublisher, setFilterPublisher] = useState<string>('ALL');
+
+  // Get unique publishers from all institutes
+  const uniquePublishers = useMemo(() => {
+    const publishers = institutes
+      .map(inst => inst.publisher)
+      .filter((p): p is string => !!p);
+    return [...new Set(publishers)];
+  }, [institutes]);
 
   // ✅ 修复：将 useMemo 移到所有条件返回之前，遵守 React Hooks 规则
   const allTextbooks = useMemo(() => {
@@ -70,13 +78,13 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ canAccessContent, onShowU
 
       let spineColor, bgColor, textColor, accentColor;
 
-      if ((inst as any).themeColor) {
-        spineColor = (inst as any).themeColor;
-        bgColor = `${(inst as any).themeColor}20`;
-        textColor = (inst as any).themeColor;
-        accentColor = (inst as any).themeColor;
+      if (inst.themeColor) {
+        spineColor = inst.themeColor;
+        bgColor = `${inst.themeColor}20`;
+        textColor = inst.themeColor;
+        accentColor = inst.themeColor;
       } else {
-        const fallback = getFallbackTheme(inst.name, (inst as any).coverUrl);
+        const fallback = getFallbackTheme(inst.name, inst.coverUrl);
         spineColor = fallback.spine;
         bgColor = fallback.bg;
         textColor = fallback.text;
@@ -98,12 +106,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ canAccessContent, onShowU
       }));
     });
 
-    if (filterInstituteId === 'ALL') {
+    if (filterPublisher === 'ALL') {
       return all.sort((a, b) => (b.isLastActive ? 1 : 0) - (a.isLastActive ? 1 : 0));
     } else {
-      return all.filter(book => book.institute.id === filterInstituteId);
+      return all.filter(book => book.institute.publisher === filterPublisher);
     }
-  }, [institutes, user, filterInstituteId]);
+  }, [institutes, user, filterPublisher]);
 
   // 1. 如果未登录，重定向
   if (!user) {
@@ -158,14 +166,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ canAccessContent, onShowU
             <Filter className="h-4 w-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
           </div>
           <select
-            value={filterInstituteId}
-            onChange={(e) => setFilterInstituteId(e.target.value)}
+            value={filterPublisher}
+            onChange={(e) => setFilterPublisher(e.target.value)}
             className="appearance-none w-full md:w-[200px] pl-10 pr-10 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl shadow-sm hover:border-indigo-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer"
           >
-            <option value="ALL">{language === 'zh' ? '全部语学院' : 'All Institutes'}</option>
-            {institutes.map(inst => (
-              <option key={inst.id} value={inst.id}>
-                {inst.name}
+            <option value="ALL">{language === 'zh' ? '全部语学院' : 'All Publishers'}</option>
+            {uniquePublishers.map(pub => (
+              <option key={pub} value={pub}>
+                {pub}
               </option>
             ))}
           </select>
@@ -181,7 +189,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ canAccessContent, onShowU
             <BookOpen className="w-10 h-10" />
           </div>
           <p className="text-slate-500 font-medium text-lg">
-            {filterInstituteId !== 'ALL' ? '该语学院暂无教材数据。' : '书架空空如也，请联系管理员添加教材。'}
+            {filterPublisher !== 'ALL' ? '该语学院暂无教材数据。' : '书架空空如也，请联系管理员添加教材。'}
           </p>
         </div>
       ) : (

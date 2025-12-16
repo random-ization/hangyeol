@@ -37,24 +37,29 @@ model User {
 }
 
 model Institute {
-  id     String @id
-  name   String
-  levels String
+  id         String  @id
+  name       String
+  levels     String
+  coverUrl   String? // Cover image URL for textbooks
+  themeColor String? // Theme color in hex format (e.g. #1e3a8a)
+  publisher  String? // University/Publisher name for filtering
 }
 
 model TextbookContent {
   key                  String  @id
+  contentUrl           String? // S3 URL pointing to full content JSON
+  readingTitle         String?
+  listeningTitle       String?
+  listeningAudioUrl    String?
+  isPaid               Boolean @default(false)
+  // Legacy fields - kept for backward compatibility during transition
   generalContext       String?
   vocabularyList       String?
   readingText          String?
   readingTranslation   String?
-  readingTitle         String?
   listeningScript      String?
   listeningTranslation String?
-  listeningTitle       String?
-  listeningAudioUrl    String?
   grammarList          String?
-  isPaid               Boolean @default(false) // Whether this unit requires paid subscription
 }
 
 model TopikExam {

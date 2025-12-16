@@ -101,10 +101,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(institute),
     }),
-  updateInstitute: async (id: string, name: string) =>
+  updateInstitute: async (id: string, updates: { name?: string; coverUrl?: string; themeColor?: string; publisher?: string; levels?: any[] }) =>
     request(`/content/institutes/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ name }),
+      body: JSON.stringify(updates),
     }),
   deleteInstitute: async (id: string) =>
     request(`/content/institutes/${id}`, {
@@ -112,6 +112,9 @@ export const api = {
     }),
 
   getTextbookContent: async () => request<Record<string, any>>('/content/textbook'),
+  // Fetch single textbook content data via proxy (with cache controls)
+  getTextbookContentData: async (key: string) =>
+    request<any>(`/content/textbook/${encodeURIComponent(key)}/data`),
   saveTextbookContent: async (key: string, content: any) =>
     request('/content/textbook', {
       method: 'POST',

@@ -5,6 +5,7 @@ import {
   updateInstitute,
   deleteInstitute,
   getContent,
+  getTextbookContentData,
   saveContent,
   getTopikExams,
   getTopikExamById,
@@ -22,6 +23,7 @@ const router = Router();
 // Public read access (or protected depending on requirements, usually public for learners)
 router.get('/institutes', getInstitutes);
 router.get('/textbook', getContent); // Get all context map for simplicity in this demo
+router.get('/textbook/:key/data', getTextbookContentData); // Proxy fetch from S3 with cache controls
 router.get('/topik', getTopikExams); // 列表（不含 questions）
 router.get('/topik/:id', getTopikExamById); // 单个详情（含 questionsUrl）
 router.get('/topik/:id/questions', getTopikExamQuestions); // 代理获取题目数据 (避免 CORS)

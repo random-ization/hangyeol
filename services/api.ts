@@ -124,66 +124,10 @@ export const api = {
   getTopikExamQuestions: async (id: string) => request<any[]>(`/content/topik/${id}/questions`),
 
   saveTopikExam: async (exam: any) => {
-    // S3 Migration Optimization: Direct Upload
-    // If questions are present, upload to S3 directly via Presigned URL
-    if (exam.questions && Array.isArray(exam.questions) && exam.questions.length > 0) {
-      try {
-        console.log('[saveTopikExam] requesting presigned URL...');
-        // 1. Get Presigned URL
-        const presignRes = await request<{ url: string; key: string; publicUrl: string }>('/upload/presign', {
-          method: 'POST',
-          body: JSON.stringify({
-            filename: `exam-${exam.id || Date.now()}.json`,
-            contentType: 'application/json',
-            folder: 'exams' // Use specific folder
-          })
-        });
+    // 简化：直接发送所有数据到后端，让后端处理 S3 上传
+    // 避免前端直接访问 S3 的 CORS 问题
+    console.log('[saveTopikExam] Sending exam to backend...');
 
-        console.log('[saveTopikExam] uploading to S3...', presignRes.publicUrl);
-
-        // 2. Upload to S3 (Direct PUT)
-        // using fetch directly to avoid default headers (like Auth) which S3 might reject if signed headers mismatch
-        // But headers must match signature. Backend signed with "host".
-        const s3Res = await fetch(presignRes.url, {
-          method: 'PUT',
-          body: JSON.stringify(exam.questions),
-          headers: {
-            'Content-Type': 'application/json',
-            'x-amz-acl': 'public-read' // Match signed header
-          }
-        });
-
-        if (!s3Res.ok) {
-          throw new Error(`S3 Upload failed: ${s3Res.status}`);
-        }
-
-        console.log('[saveTopikExam] upload successful, saving metadata...');
-
-        // 3. Save Metadata with questionsUrl
-        // Remove questions array to reduce payload
-        const { questions, ...examMsg } = exam;
-        return request('/content/topik', {
-          method: 'POST',
-          body: JSON.stringify({
-            ...examMsg,
-            questionsUrl: presignRes.publicUrl,
-            questions: null // Clear questions array
-          }),
-        });
-
-      } catch (e) {
-        console.error('[saveTopikExam] Direct upload failed, falling back to legacy save (or failing)', e);
-        // Fallback: try legacy save (might crash backend if too large/network broken)
-        // But let's try it anyway or just throw? 
-        // If backend network is broken, legacy save will fail if it tries to upload.
-        // If backend was reverted to DB storage, legacy save works.
-        // We assume backend is updated to handle questionsUrl. 
-        // If we fail here, let's just throw for now to see the error.
-        throw e;
-      }
-    }
-
-    // Default (no questions or legacy)
     return request('/content/topik', {
       method: 'POST',
       body: JSON.stringify(exam),

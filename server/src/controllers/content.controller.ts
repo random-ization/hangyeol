@@ -223,29 +223,41 @@ export const getTopikExamQuestions = async (req: Request, res: Response) => {
  */
 export const saveTopikExam = async (req: Request, res: Response) => {
   try {
-    // Validate input (Schema now allows questionsUrl and optional questions)
-    // 注意：Schema 定义是 strict object 吗？如果不允许 unknown keys，且 questionsUrl 不在 schema 里会报错。
-    // 我们刚才加了 questionsUrl 到 schema。
     const validatedData = SaveTopikExamSchema.parse(req.body);
-    // Typescript might complain if SaveTopikExamInput doesn't have questionsUrl yet? 
-    // Zod infer should pick it up automatically.
-
-    // cast to any to avoid temporary TS issues if type definition isn't updated
     const input = validatedData as any;
     const { id, questions, questionsUrl, ...data } = input;
 
     // Determine what to save in 'questions' column
-    let questionsData: any = questions;
+    let questionsData: any;
 
-    // If frontend uploaded to S3 and provided a URL, use that
+    // If frontend already uploaded to S3 and provided a URL, use that
     if (questionsUrl) {
       questionsData = { url: questionsUrl };
     }
-    // Legacy mode: if full questions array provided, save as JSON (eventually we want to migrate this too)
-    else if (!questionsData) {
-      // if both missing, default to empty array or null? 
-      // If updating, maybe we shouldn't overwrite? But 'questions' is required in Prisma usually?
-      // Let's assume input validation handles "at least one" constraint or we default.
+    // If questions array is provided, upload to S3 first
+    else if (questions && Array.isArray(questions) && questions.length > 0) {
+      try {
+        console.log('[saveTopikExam] Uploading questions to S3...');
+
+        // Use native HTTPS upload (same as uploadMedia)
+        const key = `exams/${id || 'exam'}-${Date.now()}.json`;
+        const jsonBuffer = Buffer.from(JSON.stringify(questions), 'utf-8');
+
+        // Import sendToSpacesNative directly (it's in storage.ts)
+        const { sendToS3 } = await import('../lib/storage');
+        await sendToS3(key, jsonBuffer, 'application/json');
+
+        const cdnUrl = process.env.SPACES_CDN_URL ||
+          `https://${process.env.SPACES_BUCKET}.${new URL(process.env.SPACES_ENDPOINT || '').host.replace('digitaloceanspaces', 'cdn.digitaloceanspaces')}`;
+
+        questionsData = { url: `${cdnUrl}/${key}` };
+        console.log('[saveTopikExam] Questions uploaded to:', questionsData.url);
+      } catch (uploadError) {
+        console.error('[saveTopikExam] S3 upload failed, saving to DB:', uploadError);
+        // Fallback: save to database directly (not ideal but works)
+        questionsData = questions;
+      }
+    } else {
       questionsData = [];
     }
 
@@ -257,7 +269,7 @@ export const saveTopikExam = async (req: Request, res: Response) => {
       result = await prisma.topikExam.update({
         where: { id },
         data: {
-          ...data, // validated fields
+          ...data,
           questions: questionsData,
         },
       });
@@ -277,7 +289,7 @@ export const saveTopikExam = async (req: Request, res: Response) => {
     if (e.name === 'ZodError') {
       return res.status(400).json({ error: 'Invalid input', details: e.errors });
     }
-    res.status(500).json({ error: 'Failed to save exam' });
+    res.status(500).json({ error: 'Failed to save exam', details: e.message });
   }
 };
 

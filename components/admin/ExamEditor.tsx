@@ -201,18 +201,9 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
     const handleSave = async () => {
         if (!selectedExam) return;
 
-        // DEBUG: 检查 Q5-10 的图片数据
-        const q5to10 = selectedExam.questions.filter(q => q.id >= 5 && q.id <= 10);
-        console.log('[ExamEditor] Saving exam, Q5-10 image data:');
-        q5to10.forEach(q => {
-            console.log(`  Q${q.id}: image="${q.image}", passage="${q.passage?.substring(0, 20)}..."`);
-        });
-
         setSaving(true);
         await onUpdateTopikExam(selectedExam);
         setSaving(false);
-
-        alert('保存成功! 请检查 Console 查看 Q5-10 的图片数据:');
     };
 
     const deleteExam = () => {

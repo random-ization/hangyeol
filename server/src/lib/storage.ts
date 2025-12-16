@@ -181,7 +181,8 @@ const memoryUpload = multer({
 // Avatar/Media 暂时只保存到内存并尝试上传（如果网络通的话），否则只作为 Mock
 // 鉴于目前网络状况，我们暂时让它通过，但不做真实上传，除非我们要实现复杂的 multipart/form-data 签名逻辑
 // 或者，我们可以用上面实现的 signV4 + https 来尝试上传
-const sendToSpacesNative = async (key: string, body: Buffer, contentType: string) => {
+// 导出此函数供其他模块使用 (如 content.controller.ts 上传 questions JSON)
+export const sendToS3 = async (key: string, body: Buffer, contentType: string) => {
   const endpoint = process.env.SPACES_ENDPOINT!;
   const bucket = process.env.SPACES_BUCKET!;
   const host = `${bucket}.${new URL(endpoint).host}`;
@@ -232,6 +233,9 @@ const sendToSpacesNative = async (key: string, body: Buffer, contentType: string
     req.end();
   });
 };
+
+// Alias for internal use
+const sendToSpacesNative = sendToS3;
 
 const createUploadMiddleware = (folder: string, type: 'avatar' | 'media', fieldName: string) => {
   return async (req: Request, res: Response, next: NextFunction) => {

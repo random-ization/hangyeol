@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TopikExam, TopikQuestion, TopikType, Language } from '../../types';
 import {
     Save, Trash2, FileText, Headphones, Loader2, Lock, Unlock, Upload,
-    ArrowLeft, CheckSquare, ImageIcon, Edit2, Plus
+    ArrowLeft, CheckSquare, ImageIcon, Edit2, Plus, FileUp, X
 } from 'lucide-react';
 import { api } from '../../services/api'; // ✅ 引入 API 服务
 
@@ -82,6 +82,11 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [loadingQuestions, setLoadingQuestions] = useState(false);
+
+    // Bulk Import Modal
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importText, setImportText] = useState('');
+    const [importError, setImportError] = useState('');
 
     // Labels 简化版，按需扩展
     const labels = {
@@ -231,6 +236,82 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
         if (selectedExam && window.confirm(`Delete ${selectedExam.title}?`)) {
             onDeleteTopikExam(selectedExam.id);
             setSelectedExam(null);
+        }
+    };
+
+    // Bulk Import Handler
+    const handleImportQuestions = () => {
+        if (!selectedExam || !importText.trim()) return;
+
+        try {
+            // Parse JSON
+            let importedQuestions: TopikQuestion[];
+
+            // Try to parse as JSON array
+            const trimmed = importText.trim();
+            if (trimmed.startsWith('[')) {
+                importedQuestions = JSON.parse(trimmed);
+            } else if (trimmed.startsWith('{')) {
+                // Single object, wrap in array
+                importedQuestions = [JSON.parse(trimmed)];
+            } else {
+                throw new Error('请输入有效的 JSON 格式（数组或对象）');
+            }
+
+            if (!Array.isArray(importedQuestions)) {
+                throw new Error('导入数据必须是题目数组');
+            }
+
+            // Validate and normalize each question
+            const validatedQuestions = importedQuestions.map((q, idx) => {
+                if (!q.id || typeof q.id !== 'number') {
+                    throw new Error(`第 ${idx + 1} 题缺少有效的 id 字段`);
+                }
+                if (!q.options || !Array.isArray(q.options) || q.options.length !== 4) {
+                    throw new Error(`第 ${q.id} 题的 options 必须是包含4个选项的数组`);
+                }
+
+                return {
+                    id: q.id,
+                    number: q.number || q.id,
+                    passage: q.passage || '',
+                    question: q.question || '',
+                    contextBox: q.contextBox || '',
+                    options: q.options,
+                    correctAnswer: q.correctAnswer ?? 0,
+                    score: q.score || 2,
+                    instruction: q.instruction || '',
+                    image: q.image || q.imageUrl || '',
+                    layout: q.layout || undefined,
+                    groupCount: q.groupCount || undefined,
+                } as TopikQuestion;
+            });
+
+            // Merge with existing questions - replace by id
+            const existingQuestions = selectedExam.questions || [];
+            const mergedQuestions = [...existingQuestions];
+
+            validatedQuestions.forEach(newQ => {
+                const existingIdx = mergedQuestions.findIndex(q => q.id === newQ.id);
+                if (existingIdx >= 0) {
+                    mergedQuestions[existingIdx] = newQ;
+                } else {
+                    mergedQuestions.push(newQ);
+                }
+            });
+
+            // Sort by id
+            mergedQuestions.sort((a, b) => a.id - b.id);
+
+            // Update exam
+            setSelectedExam({ ...selectedExam, questions: mergedQuestions });
+            setShowImportModal(false);
+            setImportText('');
+            setImportError('');
+
+            alert(`成功导入 ${validatedQuestions.length} 道题目！\n\n请检查后点击"保存"按钮保存到服务器。`);
+        } catch (e: any) {
+            setImportError(e.message || '解析失败，请检查 JSON 格式');
         }
     };
 
@@ -561,14 +642,23 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
                                 <span className="text-slate-300">/</span>
                                 <span>{selectedExam.title}</span>
                             </div>
-                            <button
-                                onClick={handleSave}
-                                disabled={saving}
-                                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-bold shadow-sm flex items-center gap-2"
-                            >
-                                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                {t.save}
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setShowImportModal(true)}
+                                    className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors font-medium flex items-center gap-2"
+                                >
+                                    <FileUp className="w-4 h-4" />
+                                    批量导入
+                                </button>
+                                <button
+                                    onClick={handleSave}
+                                    disabled={saving}
+                                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-bold shadow-sm flex items-center gap-2"
+                                >
+                                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                    {t.save}
+                                </button>
+                            </div>
                         </div>
                         {/* Editor */}
                         <div className="flex-1 overflow-hidden">
@@ -581,6 +671,75 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
                     </div>
                 )}
             </div>
+
+            {/* Bulk Import Modal */}
+            {showImportModal && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+                        <div className="flex items-center justify-between p-6 border-b">
+                            <h2 className="text-xl font-bold text-slate-800">批量导入题目</h2>
+                            <button
+                                onClick={() => { setShowImportModal(false); setImportError(''); }}
+                                className="text-slate-400 hover:text-slate-600"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 flex-1 overflow-y-auto">
+                            <div className="mb-4">
+                                <div className="text-sm text-slate-600 mb-2">
+                                    <strong>JSON 格式说明：</strong>粘贴包含题目的 JSON 数组
+                                </div>
+                                <pre className="text-xs bg-slate-50 p-3 rounded-lg overflow-x-auto text-slate-600 mb-4">
+                                    {`[
+  {
+    "id": 32,
+    "passage": "正文内容...",
+    "question": "题目问题...",
+    "contextBox": "보기内容（可选）",
+    "options": ["选项1", "选项2", "选项3", "选项4"],
+    "correctAnswer": 0,
+    "instruction": "指示语（可选）"
+  },
+  ...
+]`}
+                                </pre>
+                            </div>
+
+                            <textarea
+                                value={importText}
+                                onChange={(e) => { setImportText(e.target.value); setImportError(''); }}
+                                placeholder="在此粘贴 JSON 数据..."
+                                className="w-full h-64 p-4 border border-slate-200 rounded-xl resize-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none font-mono text-sm"
+                            />
+
+                            {importError && (
+                                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                                    ❌ {importError}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end gap-3 p-6 border-t">
+                            <button
+                                onClick={() => { setShowImportModal(false); setImportError(''); }}
+                                className="px-6 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={handleImportQuestions}
+                                disabled={!importText.trim()}
+                                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                <FileUp className="w-4 h-4" />
+                                导入并预览
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

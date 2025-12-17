@@ -278,7 +278,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ canAccessContent, onShowU
                 <h4 className="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors line-clamp-1">
                   {book.institute.name}
                 </h4>
-                <p className="text-sm text-slate-400 font-medium">第 {book.level} 册</p>
+                <p className="text-sm text-slate-400 font-medium">
+                  第 {book.level} 册{book.institute.volume ? `（${book.institute.volume}）` : ''}
+                </p>
               </div>
             </button>
           ))}

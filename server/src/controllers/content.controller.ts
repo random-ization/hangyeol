@@ -392,23 +392,24 @@ export const saveTopikExam = async (req: Request, res: Response) => {
     const input = validatedData as any;
     const { id, questions, questionsUrl, ...data } = input;
 
+    console.log('[saveTopikExam] Received data:');
+    console.log('  - id:', id);
+    console.log('  - questions array length:', questions?.length || 0);
+    console.log('  - questionsUrl:', questionsUrl || 'N/A');
+
     // Determine what to save in 'questions' column
     let questionsData: any;
 
-    // If frontend already uploaded to S3 and provided a URL, use that
-    if (questionsUrl) {
-      questionsData = { url: questionsUrl };
-    }
-    // If questions array is provided, upload to S3 first
-    else if (questions && Array.isArray(questions) && questions.length > 0) {
+    // PRIORITY: If questions array is provided, ALWAYS upload fresh to S3
+    // This ensures edits are reflected immediately
+    if (questions && Array.isArray(questions) && questions.length > 0) {
       try {
-        console.log('[saveTopikExam] Uploading questions to S3...');
+        console.log('[saveTopikExam] Uploading fresh questions to S3...');
 
-        // Use native HTTPS upload (same as uploadMedia)
+        // Use native HTTPS upload with NEW timestamp key
         const key = `exams/${id || 'exam'}-${Date.now()}.json`;
         const jsonBuffer = Buffer.from(JSON.stringify(questions), 'utf-8');
 
-        // Import sendToSpacesNative directly (it's in storage.ts)
         const { sendToS3 } = await import('../lib/storage');
         await sendToS3(key, jsonBuffer, 'application/json');
 
@@ -416,12 +417,17 @@ export const saveTopikExam = async (req: Request, res: Response) => {
           `https://${process.env.SPACES_BUCKET}.${new URL(process.env.SPACES_ENDPOINT || '').host.replace('digitaloceanspaces', 'cdn.digitaloceanspaces')}`;
 
         questionsData = { url: `${cdnUrl}/${key}` };
-        console.log('[saveTopikExam] Questions uploaded to:', questionsData.url);
+        console.log('[saveTopikExam] NEW S3 URL:', questionsData.url);
       } catch (uploadError) {
         console.error('[saveTopikExam] S3 upload failed, saving to DB:', uploadError);
-        // Fallback: save to database directly (not ideal but works)
+        // Fallback: save to database directly
         questionsData = questions;
       }
+    }
+    // Fallback: use provided URL if no questions array
+    else if (questionsUrl) {
+      console.log('[saveTopikExam] No questions array, using existing URL');
+      questionsData = { url: questionsUrl };
     } else {
       questionsData = [];
     }

@@ -324,6 +324,9 @@ export const getTopikExamQuestions = async (req: Request, res: Response) => {
     }
 
     const questions = exam.questions as any;
+    console.log('[getTopikExamQuestions] Exam ID:', id);
+    console.log('[getTopikExamQuestions] DB questions type:', typeof questions);
+    console.log('[getTopikExamQuestions] DB questions.url:', questions?.url || 'N/A');
 
     // If questions is stored as URL reference, fetch from S3
     if (questions && typeof questions === 'object' && questions.url && !Array.isArray(questions)) {

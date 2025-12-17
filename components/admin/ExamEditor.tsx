@@ -107,22 +107,43 @@ const ExamEditor: React.FC<ExamEditorProps> = ({
     };
 
     // --- Effects ---
-    // 监听 selectedExam 变化，始终从后端代理加载最新数据（避免缓存问题）
+    // 监听 selectedExam 变化，从后端代理加载最新数据（避免缓存问题）
     useEffect(() => {
         if (!selectedExam) return;
 
+        // 如果是新创建的考试（已经有 questions 数组），不需要从后端加载
+        if (selectedExam.questions && selectedExam.questions.length > 0) {
+            console.log('[ExamEditor] Exam already has questions, skipping fetch');
+            return;
+        }
+
         const loadQuestions = async () => {
-            // 始终从后端获取最新数据
             setLoadingQuestions(true);
             try {
                 console.log('[ExamEditor] Loading fresh questions for exam:', selectedExam.id);
                 const questions = await api.getTopikExamQuestions(selectedExam.id);
                 console.log('[ExamEditor] Got', questions?.length || 0, 'questions');
-                // Update state without triggering infinite loop
                 setSelectedExam(prev => prev ? { ...prev, questions } : null);
             } catch (e) {
                 console.error("Failed to load exam questions", e);
-                alert("Failed to load exam content. Please check network.");
+                // 如果加载失败且没有现有题目，初始化空题目
+                if (!selectedExam.questions || selectedExam.questions.length === 0) {
+                    console.log('[ExamEditor] Initializing empty questions for new exam');
+                    const emptyQuestions: TopikQuestion[] = [];
+                    for (let i = 1; i <= 50; i++) {
+                        emptyQuestions.push({
+                            id: i,
+                            number: i,
+                            passage: '',
+                            question: `Question ${i}`,
+                            options: ['', '', '', ''],
+                            correctAnswer: 0,
+                            image: '',
+                            score: 2
+                        });
+                    }
+                    setSelectedExam(prev => prev ? { ...prev, questions: emptyQuestions } : null);
+                }
             } finally {
                 setLoadingQuestions(false);
             }

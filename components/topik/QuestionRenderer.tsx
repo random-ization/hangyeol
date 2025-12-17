@@ -122,8 +122,11 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
       [showCorrect, correctAnswer, userAnswer]
     );
 
-    // 2-column only if ALL options are very short (single words/short phrases)
-    // Sentence-like options should use single column
+    // Layout logic for options:
+    // - Very short options (1-2 chars, like ㉠ ㉡ ㉢ ㉣) => 4 columns horizontal
+    // - Short options (≤8 chars) => 2 columns
+    // - Long options (>8 chars) => 1 column
+    const allVeryShort = question.options.every(opt => opt.length <= 2);
     const hasLongOptions = question.options.some(opt => opt.length > 8);
 
     return (
@@ -162,10 +165,21 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
               />
             )}
 
+            {/* Context Box (보기) - for INSERT_BOX type questions */}
+            {question.contextBox && (
+              <div className="mb-4 border border-black p-4 bg-white">
+                <div
+                  className={`${FONT_SERIF} text-lg leading-loose whitespace-pre-wrap text-black`}
+                  onMouseUp={onTextSelect}
+                  dangerouslySetInnerHTML={{ __html: highlightText(question.contextBox) }}
+                />
+              </div>
+            )}
+
             {/* Options */}
             <div className={`
               grid gap-y-2 gap-x-4
-              ${hasLongOptions ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}
+              ${allVeryShort ? 'grid-cols-4' : hasLongOptions ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}
             `}>
               {question.options.map((option, optionIndex) => {
                 const status = getOptionStatus(optionIndex);

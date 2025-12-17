@@ -19,8 +19,8 @@ interface DataContextType {
   // Data Actions
   fetchInitialData: () => Promise<void>;
   fetchTextbookContentData: (key: string) => Promise<TextbookContent | null>;
-  addInstitute: (name: string, levels?: LevelConfig[], options?: { coverUrl?: string; themeColor?: string; publisher?: string }) => Promise<void>;
-  updateInstitute: (id: string, updates: { name?: string; coverUrl?: string; themeColor?: string; publisher?: string }) => Promise<void>;
+  addInstitute: (name: string, levels?: LevelConfig[], options?: { coverUrl?: string; themeColor?: string; publisher?: string; displayLevel?: string; volume?: string }) => Promise<void>;
+  updateInstitute: (id: string, updates: { name?: string; coverUrl?: string; themeColor?: string; publisher?: string; displayLevel?: string; volume?: string }) => Promise<void>;
   deleteInstitute: (id: string) => Promise<void>;
   saveTextbookContext: (key: string, content: TextbookContent) => Promise<void>;
   saveTopikExam: (exam: TopikExam) => Promise<void>;
@@ -93,17 +93,26 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   }, [user, fetchInitialData]);
 
   const addInstitute = useCallback(
-    async (name: string, levels?: LevelConfig[], options?: { coverUrl?: string; themeColor?: string; publisher?: string }) => {
+    async (name: string, levels?: LevelConfig[], options?: { coverUrl?: string; themeColor?: string; publisher?: string; displayLevel?: string; volume?: string }) => {
       try {
         // Use provided levels or default to 6 levels with 10 units each
         const levelConfig = levels || Array.from({ length: 6 }, (_, i) => ({ level: i + 1, units: 10 }));
+
+        // Generate ID including volume to allow same-name different-volume textbooks
+        let baseId = name.toLowerCase().replace(/\s+/g, '-');
+        if (options?.volume) {
+          baseId += `-${options.volume}`;
+        }
+
         const newInst = await api.createInstitute({
-          id: name.toLowerCase().replace(/\s+/g, '-'),
+          id: baseId,
           name,
           levels: levelConfig,
           coverUrl: options?.coverUrl || null,
           themeColor: options?.themeColor || null,
           publisher: options?.publisher || null,
+          displayLevel: options?.displayLevel || null,
+          volume: options?.volume || null,
         });
         setInstitutes([...institutes, newInst]);
       } catch (e) {
@@ -114,7 +123,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   );
 
   const updateInstitute = useCallback(
-    async (id: string, updates: { name?: string; coverUrl?: string; themeColor?: string; publisher?: string }) => {
+    async (id: string, updates: { name?: string; coverUrl?: string; themeColor?: string; publisher?: string; displayLevel?: string; volume?: string }) => {
       try {
         const updated = await api.updateInstitute(id, updates);
         setInstitutes(institutes.map(i => (i.id === id ? updated : i)));

@@ -11,13 +11,15 @@ import {
   updateLearningProgress,
   updateProfileAvatar,
   updateProfile,
-  changePassword
+  changePassword,
+  getUserStats
 } from '../controllers/user.controller';
 
 const router = Router();
 
 router.use(authenticate);
 
+router.get('/stats', getUserStats);
 router.post('/word', saveWord);
 router.post('/mistake', saveMistake);
 router.post('/annotation', saveAnnotation);

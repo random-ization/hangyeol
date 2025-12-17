@@ -338,3 +338,103 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ error: 'Failed to change password' });
   }
 };
+
+// Get User Stats for Dashboard
+export const getUserStats = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+
+    // Get today's date at midnight
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Get start of week (Monday)
+    const startOfWeek = new Date(today);
+    const dayOfWeek = today.getDay();
+    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Adjust for Monday start
+    startOfWeek.setDate(today.getDate() - diff);
+
+    // 1. Calculate streak - count consecutive days with activity
+    const allActivities = await prisma.learningActivity.findMany({
+      where: { userId },
+      select: { date: true },
+      orderBy: { date: 'desc' },
+    });
+
+    // Get unique dates
+    const uniqueDates = [...new Set(allActivities.map(a => {
+      const d = new Date(a.date);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    }))].sort((a, b) => b - a); // Sort descending
+
+    let streak = 0;
+    const todayTime = today.getTime();
+    const yesterdayTime = todayTime - 24 * 60 * 60 * 1000;
+
+    // Check if user was active today or yesterday (to not break streak mid-day)
+    if (uniqueDates.length > 0 && (uniqueDates[0] === todayTime || uniqueDates[0] === yesterdayTime)) {
+      streak = 1;
+      let expectedDate = uniqueDates[0] - 24 * 60 * 60 * 1000;
+
+      for (let i = 1; i < uniqueDates.length; i++) {
+        if (uniqueDates[i] === expectedDate) {
+          streak++;
+          expectedDate -= 24 * 60 * 60 * 1000;
+        } else {
+          break;
+        }
+      }
+    }
+
+    // 2. Get weekly learning minutes (Mon-Sun)
+    const weekActivities = await prisma.learningActivity.findMany({
+      where: {
+        userId,
+        date: { gte: startOfWeek },
+      },
+      select: { date: true, duration: true },
+    });
+
+    const weeklyMinutes = [0, 0, 0, 0, 0, 0, 0]; // Mon-Sun
+    weekActivities.forEach(activity => {
+      const activityDate = new Date(activity.date);
+      let dayIndex = activityDate.getDay() - 1;
+      if (dayIndex < 0) dayIndex = 6; // Sunday
+      weeklyMinutes[dayIndex] += activity.duration || 0;
+    });
+
+    // 3. Get today's activities
+    const todayActivities = await prisma.learningActivity.findMany({
+      where: {
+        userId,
+        date: today,
+      },
+    });
+
+    const todayStats = {
+      wordsLearned: 0,
+      readingsCompleted: 0,
+      listeningsCompleted: 0,
+    };
+
+    todayActivities.forEach(activity => {
+      if (activity.activityType === 'VOCAB') {
+        todayStats.wordsLearned += activity.itemsStudied || 0;
+      } else if (activity.activityType === 'READING') {
+        todayStats.readingsCompleted += 1;
+      } else if (activity.activityType === 'LISTENING') {
+        todayStats.listeningsCompleted += 1;
+      }
+    });
+
+    res.json({
+      streak,
+      weeklyMinutes,
+      todayActivities: todayStats,
+    });
+  } catch (e: any) {
+    console.error('Get User Stats Error:', e);
+    res.status(500).json({ error: 'Failed to get user stats' });
+  }
+};

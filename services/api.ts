@@ -77,6 +77,17 @@ export const api = {
 
   getMe: async () => request('/auth/me'),
 
+  // --- User Stats ---
+  getUserStats: async () => request<{
+    streak: number;
+    weeklyMinutes: number[];
+    todayActivities: {
+      wordsLearned: number;
+      readingsCompleted: number;
+      listeningsCompleted: number;
+    };
+  }>('/user/stats'),
+
   // --- Admin / Users ---
   getUsers: async (): Promise<any[]> => {
     // 采用绝对路径以兼容部署下的 base
@@ -101,7 +112,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(institute),
     }),
-  updateInstitute: async (id: string, updates: { name?: string; coverUrl?: string; themeColor?: string; publisher?: string; levels?: any[] }) =>
+  updateInstitute: async (id: string, updates: { name?: string; coverUrl?: string; themeColor?: string; publisher?: string; displayLevel?: string; volume?: string; levels?: any[] }) =>
     request(`/content/institutes/${id}`, {
       method: 'PUT',
       body: JSON.stringify(updates),

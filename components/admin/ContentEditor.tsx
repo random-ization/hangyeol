@@ -48,8 +48,8 @@ interface ContentEditorProps {
   textbookContexts: TextbookContextMap;
   language: Language;
   onSaveContext: (key: string, content: TextbookContent) => void;
-  onAddInstitute: (name: string, levels?: LevelConfig[], options?: { coverUrl?: string; themeColor?: string; publisher?: string }) => void | Promise<void>;
-  onUpdateInstitute?: (id: string, updates: { name?: string; coverUrl?: string; themeColor?: string; publisher?: string }) => Promise<void>;
+  onAddInstitute: (name: string, levels?: LevelConfig[], options?: { coverUrl?: string; themeColor?: string; publisher?: string; displayLevel?: string; volume?: string }) => void | Promise<void>;
+  onUpdateInstitute?: (id: string, updates: { name?: string; coverUrl?: string; themeColor?: string; publisher?: string; displayLevel?: string; volume?: string }) => Promise<void>;
   onDeleteInstitute?: (id: string) => Promise<void>;
 }
 
@@ -113,6 +113,8 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
   const [newCoverUrl, setNewCoverUrl] = useState('');
   const [newThemeColor, setNewThemeColor] = useState('#3B82F6');
   const [newPublisher, setNewPublisher] = useState('');
+  const [newDisplayLevel, setNewDisplayLevel] = useState('');
+  const [newVolume, setNewVolume] = useState('');
   const [coverUploading, setCoverUploading] = useState(false);
 
   // Edit Institute Modal
@@ -122,6 +124,8 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
   const [editCoverUrl, setEditCoverUrl] = useState('');
   const [editThemeColor, setEditThemeColor] = useState('#3B82F6');
   const [editPublisher, setEditPublisher] = useState('');
+  const [editDisplayLevel, setEditDisplayLevel] = useState('');
+  const [editVolume, setEditVolume] = useState('');
   const [editCoverUploading, setEditCoverUploading] = useState(false);
 
   // Save status
@@ -317,12 +321,16 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
         coverUrl: newCoverUrl,
         themeColor: newThemeColor,
         publisher: newPublisher,
+        displayLevel: newDisplayLevel,
+        volume: newVolume,
       });
       setShowAddTextbook(false);
       setNewTextbookName('');
       setNewCoverUrl('');
       setNewThemeColor('#3B82F6');
       setNewPublisher('');
+      setNewDisplayLevel('');
+      setNewVolume('');
     } catch (error) {
       console.error('Add textbook failed:', error);
     }
@@ -498,12 +506,14 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-4">
                   <h3 className="text-white font-bold text-lg truncate">{institute.name}</h3>
-                  {institute.publisher && (
-                    <p className="text-white/70 text-sm truncate">{institute.publisher}</p>
+                  {(institute.displayLevel || institute.volume) && (
+                    <p className="text-white/90 text-sm">
+                      {institute.displayLevel}{institute.displayLevel && institute.volume ? ' · ' : ''}{institute.volume}
+                    </p>
                   )}
-                  <p className="text-white/60 text-xs mt-1">
-                    {parseLevels(institute.levels).length} 级
-                  </p>
+                  {institute.publisher && (
+                    <p className="text-white/60 text-xs truncate">{institute.publisher}</p>
+                  )}
                 </div>
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                   <button
@@ -514,6 +524,8 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
                       setEditCoverUrl(institute.coverUrl || '');
                       setEditThemeColor(institute.themeColor || '#3B82F6');
                       setEditPublisher(institute.publisher || '');
+                      setEditDisplayLevel(institute.displayLevel || '');
+                      setEditVolume(institute.volume || '');
                       setShowEditInstitute(true);
                     }}
                     className="p-2 bg-white/90 rounded-full shadow hover:bg-white"
@@ -1318,6 +1330,33 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
               />
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">等级</label>
+                <input
+                  type="text"
+                  value={newDisplayLevel}
+                  onChange={(e) => setNewDisplayLevel(e.target.value)}
+                  placeholder="例如: 一级, 1급"
+                  className="w-full px-4 py-2 border rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">上下册</label>
+                <select
+                  value={newVolume}
+                  onChange={(e) => setNewVolume(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg bg-white"
+                >
+                  <option value="">请选择...</option>
+                  <option value="上册">上册</option>
+                  <option value="下册">下册</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                </select>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">封面图片</label>
               <div className="flex items-center gap-4">
@@ -1412,6 +1451,8 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
         coverUrl: editCoverUrl || undefined,
         themeColor: editThemeColor,
         publisher: editPublisher || undefined,
+        displayLevel: editDisplayLevel || undefined,
+        volume: editVolume || undefined,
       });
       setShowEditInstitute(false);
       setEditingInstitute(null);
@@ -1453,6 +1494,33 @@ const ContentEditor: React.FC<ContentEditorProps> = ({
                 onChange={(e) => setEditPublisher(e.target.value)}
                 className="w-full px-4 py-2 border rounded-lg"
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">等级</label>
+                <input
+                  type="text"
+                  value={editDisplayLevel}
+                  onChange={(e) => setEditDisplayLevel(e.target.value)}
+                  placeholder="例如: 一级, 1급"
+                  className="w-full px-4 py-2 border rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">上下册</label>
+                <select
+                  value={editVolume}
+                  onChange={(e) => setEditVolume(e.target.value)}
+                  className="w-full px-4 py-2 border rounded-lg bg-white"
+                >
+                  <option value="">请选择...</option>
+                  <option value="上册">上册</option>
+                  <option value="下册">下册</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                </select>
+              </div>
             </div>
 
             <div>

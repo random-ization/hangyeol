@@ -28,7 +28,7 @@ export const createInstitute = async (req: Request, res: Response) => {
   try {
     // Validate input
     const validatedData: CreateInstituteInput = CreateInstituteSchema.parse(req.body);
-    const { id, name, levels, coverUrl, themeColor, publisher } = validatedData;
+    const { id, name, levels, coverUrl, themeColor, publisher, displayLevel, volume } = validatedData;
     const institute = await prisma.institute.create({
       data: {
         id,
@@ -37,6 +37,8 @@ export const createInstitute = async (req: Request, res: Response) => {
         coverUrl: coverUrl || null,
         themeColor: themeColor || null,
         publisher: publisher || null,
+        displayLevel: displayLevel || null,
+        volume: volume || null,
       },
     });
     res.json({ ...institute, levels: JSON.parse(institute.levels) });
@@ -51,7 +53,7 @@ export const createInstitute = async (req: Request, res: Response) => {
 export const updateInstitute = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, levels, coverUrl, themeColor, publisher } = req.body;
+    const { name, levels, coverUrl, themeColor, publisher, displayLevel, volume } = req.body;
 
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
@@ -59,6 +61,8 @@ export const updateInstitute = async (req: Request, res: Response) => {
     if (coverUrl !== undefined) updateData.coverUrl = coverUrl || null;
     if (themeColor !== undefined) updateData.themeColor = themeColor || null;
     if (publisher !== undefined) updateData.publisher = publisher || null;
+    if (displayLevel !== undefined) updateData.displayLevel = displayLevel || null;
+    if (volume !== undefined) updateData.volume = volume || null;
 
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ error: 'No fields to update' });

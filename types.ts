@@ -88,6 +88,8 @@ export interface Institute {
   coverUrl?: string; // Cover image URL for all books in this series
   themeColor?: string; // Theme color for book styling (hex color)
   publisher?: string; // University/Publisher name for filtering (e.g., "延世大学")
+  displayLevel?: string; // Display level like "一级", "1급", "Level 1"
+  volume?: string; // Volume like "上册", "下册", "A", "B"
 }
 
 export enum LearningModuleType {

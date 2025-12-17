@@ -37,12 +37,14 @@ model User {
 }
 
 model Institute {
-  id         String  @id
-  name       String
-  levels     String
-  coverUrl   String? // Cover image URL for textbooks
-  themeColor String? // Theme color in hex format (e.g. #1e3a8a)
-  publisher  String? // University/Publisher name for filtering
+  id           String  @id
+  name         String
+  levels       String
+  coverUrl     String? // Cover image URL for textbooks
+  themeColor   String? // Theme color in hex format (e.g. #1e3a8a)
+  publisher    String? // University/Publisher name for filtering
+  displayLevel String? // Display level like "一级", "1급"
+  volume       String? // Volume like "上册", "下册"
 }
 
 model TextbookContent {

@@ -75,6 +75,8 @@ export const CreateInstituteSchema = z.object({
   coverUrl: z.string().optional().nullable(),
   themeColor: z.string().optional().nullable(),
   publisher: z.string().optional().nullable(),
+  displayLevel: z.string().optional().nullable(),
+  volume: z.string().optional().nullable(),
 });
 
 export const SaveContentSchema = z.object({

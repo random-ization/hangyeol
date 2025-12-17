@@ -269,7 +269,11 @@ const createUploadMiddleware = (folder: string, type: 'avatar' | 'media', fieldN
       }
 
       const file = req.file;
-      const key = `${folder}/${Date.now()}-${file.originalname}`;
+      // Encode filename to handle Chinese/special characters, but keep extension readable
+      const ext = file.originalname.split('.').pop() || '';
+      const baseName = file.originalname.replace(/\.[^.]+$/, '');
+      const safeBaseName = encodeURIComponent(baseName).replace(/%/g, '_');
+      const key = `${folder}/${Date.now()}-${safeBaseName}.${ext}`;
       console.log('[storage] Uploading file:', { key, mimetype: file.mimetype, size: file.size });
 
       try {

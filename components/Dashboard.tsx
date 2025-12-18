@@ -134,7 +134,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <BookMarked className="w-6 h-6" />
                 </div>
                 <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold border border-indigo-200">
-                  {user.savedWords.length} items
+                  {(user.savedWords || []).length} items
                 </span>
               </div>
               <h4 className="font-bold text-xl text-slate-800 mb-1">{labels.vocabBook}</h4>
@@ -157,7 +157,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <AlertCircle className="w-6 h-6" />
                 </div>
                 <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold border border-red-200">
-                  {user.mistakes.length} items
+                  {(user.mistakes || []).length} items
                 </span>
               </div>
               <h4 className="font-bold text-xl text-slate-800 mb-1">{labels.mistakeBook}</h4>
@@ -168,15 +168,15 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div className="relative z-10 flex gap-3 mt-auto">
             <button
               onClick={onOpenMistakeBook}
-              disabled={user.mistakes.length === 0}
-              className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${user.mistakes.length > 0
-                  ? 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-200'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+              disabled={(user.mistakes || []).length === 0}
+              className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${(user.mistakes || []).length > 0
+                ? 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-200'
+                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                 }`}
             >
               <RefreshCw className="w-4 h-4" /> {labels.startReview}
             </button>
-            {user.mistakes.length > 0 && (
+            {(user.mistakes || []).length > 0 && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();

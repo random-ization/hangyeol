@@ -253,7 +253,7 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {[
                 { label: labels.dayStreak, value: user.statistics?.dayStreak || 0, color: 'text-orange-500', bg: 'bg-orange-50' },
-                { label: labels.wordsLearned, value: user.savedWords.length, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                { label: labels.wordsLearned, value: (user.savedWords || []).length, color: 'text-emerald-500', bg: 'bg-emerald-50' },
                 { label: labels.examsTaken, value: examsTaken, color: 'text-purple-500', bg: 'bg-purple-50' },
                 { label: labels.averageScore, value: `${averageScore}%`, color: 'text-blue-500', bg: 'bg-blue-50' }
               ].map((stat, i) => (

@@ -285,7 +285,7 @@ const createUploadMiddleware = (folder: string, type: 'avatar' | 'media', fieldN
         delete (req.file as any).buffer;
         console.log('[storage] Upload successful:', (req.file as any).location);
         next();
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error('[storage] Upload failed:', e.message || e);
         console.error('[storage] Full error:', e);
         return res.status(500).json({

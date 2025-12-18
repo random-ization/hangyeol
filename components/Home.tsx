@@ -145,7 +145,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, language }) => {
                 </div>
                 <div className="flex-1 text-left">
                   <div className="font-bold text-slate-700 text-sm">{labels.vocabBook}</div>
-                  <div className="text-xs text-slate-400">{user.savedWords.length} words saved</div>
+                  <div className="text-xs text-slate-400">{(user.savedWords || []).length} words saved</div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-500" />
               </button>
@@ -159,7 +159,7 @@ const Home: React.FC<HomeProps> = ({ user, onNavigate, language }) => {
                 </div>
                 <div className="flex-1 text-left">
                   <div className="font-bold text-slate-700 text-sm">{labels.mistakeBook}</div>
-                  <div className="text-xs text-slate-400">{user.mistakes.length} words to review</div>
+                  <div className="text-xs text-slate-400">{(user.mistakes || []).length} words to review</div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-red-500" />
               </button>

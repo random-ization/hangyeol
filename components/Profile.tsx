@@ -111,8 +111,9 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (err: any) {
-      if (err.message.includes('incorrect') || err.message.includes('wrong')) {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : '';
+      if (errMsg.includes('incorrect') || errMsg.includes('wrong')) {
         error(labels.wrongPassword);
       } else {
         error('Failed to change password');
@@ -122,8 +123,9 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
     }
   };
 
-  // Calculate statistics - use consistent optional chaining
-  const totalWords = user.savedWords.length;
+  // Calculate statistics - use consistent optional chaining and fallbacks
+  const savedWords = user.savedWords || [];
+  const totalWords = savedWords.length;
   const examHistory = user.examHistory || [];
   const examsTaken = examHistory.length;
   const averageScore =
@@ -268,8 +270,8 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
           <button
             onClick={() => setActiveTab('info')}
             className={`flex-1 px-6 py-4 font-medium transition-colors ${activeTab === 'info'
-                ? 'text-indigo-600 border-b-2 border-indigo-600'
-                : 'text-slate-600 hover:text-slate-900'
+              ? 'text-indigo-600 border-b-2 border-indigo-600'
+              : 'text-slate-600 hover:text-slate-900'
               }`}
           >
             <div className="flex items-center justify-center gap-2">
@@ -280,8 +282,8 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
           <button
             onClick={() => setActiveTab('security')}
             className={`flex-1 px-6 py-4 font-medium transition-colors ${activeTab === 'security'
-                ? 'text-indigo-600 border-b-2 border-indigo-600'
-                : 'text-slate-600 hover:text-slate-900'
+              ? 'text-indigo-600 border-b-2 border-indigo-600'
+              : 'text-slate-600 hover:text-slate-900'
               }`}
           >
             <div className="flex items-center justify-center gap-2">
@@ -292,8 +294,8 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
           <button
             onClick={() => setActiveTab('stats')}
             className={`flex-1 px-6 py-4 font-medium transition-colors ${activeTab === 'stats'
-                ? 'text-indigo-600 border-b-2 border-indigo-600'
-                : 'text-slate-600 hover:text-slate-900'
+              ? 'text-indigo-600 border-b-2 border-indigo-600'
+              : 'text-slate-600 hover:text-slate-900'
               }`}
           >
             <div className="flex items-center justify-center gap-2">
@@ -341,8 +343,8 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
                 <div className="space-y-3">
                   <div
                     className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium ${user.tier === 'PAID'
-                        ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300'
-                        : 'bg-slate-50 border-2 border-slate-200'
+                      ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300'
+                      : 'bg-slate-50 border-2 border-slate-200'
                       }`}
                   >
                     {user.tier === 'PAID' && <Crown className="text-amber-600" size={20} />}

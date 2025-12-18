@@ -12,6 +12,21 @@ export type UserRole = 'STUDENT' | 'ADMIN';
 
 export type Language = 'en' | 'zh' | 'vi' | 'mn';
 
+// Canvas data structure for drawing annotations
+export interface CanvasLineData {
+  id: string;
+  tool: 'pen' | 'highlighter' | 'eraser';
+  points: number[];
+  color: string;
+  strokeWidth: number;
+  opacity: number;
+}
+
+export interface CanvasData {
+  lines: CanvasLineData[];
+  version: number;
+}
+
 export interface Annotation {
   id: string;
   contextKey: string; // e.g. "yonsei-1-1-READING"
@@ -24,6 +39,13 @@ export interface Annotation {
   note: string;
   timestamp: number;
   createdAt?: number; // Alias for timestamp
+
+  // Canvas annotation fields (TOPIK drawing)
+  targetType?: 'TEXTBOOK' | 'EXAM';
+  targetId?: string;
+  pageIndex?: number;
+  data?: CanvasData; // Canvas vector line data
+  visibility?: 'PRIVATE' | 'PUBLIC' | 'CLASS';
 }
 
 export interface UserStatistics {
@@ -43,7 +65,15 @@ export interface ExamAttempt {
   totalScore?: number; // Alias for maxScore
   correctCount?: number; // Number of correct answers
   timestamp: number;
-  userAnswers: Record<number, number>; // questionId -> optionIndex
+  userAnswers: Record<string, number>; // questionId (string) -> optionIndex (JSON keys are always strings)
+}
+
+// Mistake model - simplified version, matches Prisma Mistake model
+export interface Mistake {
+  id: string;
+  korean: string;
+  english: string;
+  createdAt?: number;
 }
 
 export interface User {
@@ -57,7 +87,7 @@ export interface User {
   createdAt?: number; // Alias for joinDate
   lastActive: number;
   savedWords: VocabularyItem[]; // Changed to reuse VocabularyItem for simplicity
-  mistakes: VocabularyItem[]; // New: For tracking mistakes
+  mistakes: Mistake[]; // Matches Prisma Mistake model
   annotations: Annotation[];
   statistics?: UserStatistics;
   examHistory: ExamAttempt[]; // New: Track exam results

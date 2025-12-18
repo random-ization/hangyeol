@@ -6,7 +6,7 @@ import React, {
   ReactNode,
   useEffect,
 } from 'react';
-import { LearningModuleType, VocabularyItem } from '../types';
+import { LearningModuleType, VocabularyItem, Mistake } from '../types';
 import { useAuth } from './AuthContext';
 
 interface LearningContextType {
@@ -21,8 +21,8 @@ interface LearningContextType {
   setActiveModule: (module: LearningModuleType | null) => void;
 
   // Custom List State (for saved words / mistakes review)
-  activeCustomList: VocabularyItem[] | null;
-  setActiveCustomList: (list: VocabularyItem[] | null) => void;
+  activeCustomList: VocabularyItem[] | Mistake[] | null;
+  setActiveCustomList: (list: VocabularyItem[] | Mistake[] | null) => void;
   activeListType: 'SAVED' | 'MISTAKES' | null;
   setActiveListType: (type: 'SAVED' | 'MISTAKES' | null) => void;
 }
@@ -46,7 +46,7 @@ export const LearningProvider: React.FC<LearningProviderProps> = ({ children }) 
   const [selectedInstitute, setSelectedInstitute] = useState<string>('');
   const [selectedLevel, setSelectedLevel] = useState<number>(0);
   const [activeModule, setActiveModule] = useState<LearningModuleType | null>(null);
-  const [activeCustomList, setActiveCustomList] = useState<VocabularyItem[] | null>(null);
+  const [activeCustomList, setActiveCustomList] = useState<VocabularyItem[] | Mistake[] | null>(null);
   const [activeListType, setActiveListType] = useState<'SAVED' | 'MISTAKES' | null>(null);
 
   // Resume learning from last position when user logs in

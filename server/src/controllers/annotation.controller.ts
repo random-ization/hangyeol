@@ -45,7 +45,7 @@ export const getAnnotations = async (req: Request, res: Response) => {
     });
 
     res.json(annotations);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Failed to fetch annotations:', e);
     res.status(500).json({ error: 'Failed to fetch annotations' });
   }
@@ -182,7 +182,7 @@ export const saveAnnotation = async (req: Request, res: Response) => {
       error: 'Invalid request: must provide either contextKey (for textbook) or targetType=EXAM with targetId and pageIndex (for TOPIK)'
     });
 
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Failed to save annotation:', e);
     res.status(500).json({ error: 'Failed to save annotation' });
   }
@@ -211,7 +211,7 @@ export const deleteAnnotation = async (req: Request, res: Response) => {
 
     await prisma.annotation.delete({ where: { id } });
     res.json({ success: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Failed to delete annotation:', e);
     res.status(500).json({ error: 'Failed to delete annotation' });
   }

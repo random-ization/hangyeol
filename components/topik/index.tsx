@@ -215,13 +215,29 @@ export const TopikModule: React.FC<TopikModuleProps> = ({
     setView('RESULT');
   };
 
-  const reviewExam = (attempt?: ExamAttempt) => {
+  const reviewExam = async (attempt?: ExamAttempt) => {
     if (attempt) {
       setCurrentReviewAttempt(attempt);
       const exam = exams.find(e => e.id === attempt.examId);
       if (exam) {
-        setCurrentExam(exam);
-        setUserAnswers(attempt.userAnswers);
+        setLoading(true);
+        try {
+          // Load full questions from API
+          const { api } = await import('../../services/api');
+          let fullQuestions = await api.getTopikExamQuestions(exam.id);
+          if (!fullQuestions) fullQuestions = [];
+
+          const fullExam = { ...exam, questions: fullQuestions };
+          setCurrentExam(fullExam);
+          setUserAnswers(attempt.userAnswers);
+          setView('REVIEW');
+        } catch (error) {
+          console.error("Failed to load exam for review:", error);
+          alert("无法加载试卷，请重试");
+        } finally {
+          setLoading(false);
+        }
+        return;
       }
     }
     setView('REVIEW');

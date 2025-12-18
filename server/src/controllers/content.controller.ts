@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { uploadJsonToS3, deleteFromS3, extractKeyFromUrl, sendToS3 } from '../lib/storage';
+import { isZodError, getErrorMessage } from '../lib/errors';
 import {
   CreateInstituteSchema,
   CreateInstituteInput,
@@ -19,7 +20,7 @@ export const getInstitutes = async (req: Request, res: Response) => {
       levels: JSON.parse(i.levels),
     }));
     res.json(formatted);
-  } catch (e: any) {
+  } catch (e: unknown) {
     res.status(500).json({ error: 'Failed to fetch institutes' });
   }
 };
@@ -42,8 +43,8 @@ export const createInstitute = async (req: Request, res: Response) => {
       },
     });
     res.json({ ...institute, levels: JSON.parse(institute.levels) });
-  } catch (e: any) {
-    if (e.name === 'ZodError') {
+  } catch (e: unknown) {
+    if (isZodError(e)) {
       return res.status(400).json({ error: 'Invalid input', details: e.errors });
     }
     res.status(500).json({ error: 'Failed to create institute' });
@@ -73,7 +74,7 @@ export const updateInstitute = async (req: Request, res: Response) => {
       data: updateData,
     });
     res.json({ ...institute, levels: JSON.parse(institute.levels) });
-  } catch (e: any) {
+  } catch (e: unknown) {
     res.status(500).json({ error: 'Failed to update institute' });
   }
 };
@@ -83,7 +84,7 @@ export const deleteInstitute = async (req: Request, res: Response) => {
     const { id } = req.params;
     await prisma.institute.delete({ where: { id } });
     res.json({ success: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     res.status(500).json({ error: 'Failed to delete institute' });
   }
 };
@@ -98,7 +99,7 @@ export const getContent = async (req: Request, res: Response) => {
       map[c.key] = c;
     });
     res.json(map);
-  } catch (e: any) {
+  } catch (e: unknown) {
     res.status(500).json({ error: 'Failed to fetch content' });
   }
 };
@@ -169,7 +170,7 @@ export const getTextbookContentData = async (req: Request, res: Response) => {
 
     // Fallback: return legacy data from database
     res.json(content);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[getTextbookContentData] Error:', e);
     res.status(500).json({ error: 'Failed to fetch content' });
   }
@@ -237,9 +238,9 @@ export const saveContent = async (req: Request, res: Response) => {
       ...content,
       ...contentData, // Include content for immediate use
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[saveContent] Error:', e);
-    if (e.name === 'ZodError') {
+    if (isZodError(e)) {
       return res.status(400).json({ error: 'Invalid input', details: e.errors });
     }
     res.status(500).json({ error: 'Failed to save content' });
@@ -271,7 +272,7 @@ export const getTopikExams = async (req: Request, res: Response) => {
     });
 
     res.json(normalizedExams);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[getTopikExams] Error:', e);
     res.status(500).json({ error: 'Failed to fetch exams' });
   }
@@ -306,7 +307,7 @@ export const getTopikExamById = async (req: Request, res: Response) => {
     }
 
     res.json(finalExam);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[getTopikExamById] Error:', e);
     res.status(500).json({ error: 'Failed to fetch exam' });
   }
@@ -381,7 +382,7 @@ export const getTopikExamQuestions = async (req: Request, res: Response) => {
 
     // No questions available
     return res.json([]);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[getTopikExamQuestions] Error:', e);
     res.status(500).json({ error: 'Failed to fetch exam questions' });
   }
@@ -459,12 +460,12 @@ export const saveTopikExam = async (req: Request, res: Response) => {
     }
 
     res.json(result);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[saveTopikExam] Error:', e);
-    if (e.name === 'ZodError') {
+    if (isZodError(e)) {
       return res.status(400).json({ error: 'Invalid input', details: e.errors });
     }
-    res.status(500).json({ error: 'Failed to save exam', details: e.message });
+    res.status(500).json({ error: 'Failed to save exam', details: getErrorMessage(e) });
   }
 };
 
@@ -476,7 +477,7 @@ export const deleteTopikExam = async (req: Request, res: Response) => {
     const { id } = req.params;
     await prisma.topikExam.delete({ where: { id } });
     res.json({ success: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     res.status(500).json({ error: 'Failed to delete exam' });
   }
 };
@@ -505,7 +506,7 @@ export const getLegalDocument = async (req: Request, res: Response) => {
       content: document.content,
       updatedAt: document.updatedAt.getTime(),
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error(e);
     res.status(500).json({ error: 'Failed to fetch legal document' });
   }
@@ -552,7 +553,7 @@ export const saveLegalDocument = async (req: Request, res: Response) => {
       content: document.content,
       updatedAt: document.updatedAt.getTime(),
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error(e);
     res.status(500).json({ error: 'Failed to save legal document' });
   }

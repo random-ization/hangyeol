@@ -10,6 +10,7 @@ import {
   User,
   Language,
   VocabularyItem,
+  Mistake,
   Annotation,
   ExamAttempt,
   TextbookContent,
@@ -32,7 +33,7 @@ interface AuthContextType {
 
   // User Actions
   saveWord: (vocabItem: VocabularyItem | string, meaning?: string) => Promise<void>;
-  recordMistake: (word: VocabularyItem) => Promise<void>;
+  recordMistake: (word: Mistake | VocabularyItem) => Promise<void>;
   clearMistakes: () => void;
   saveAnnotation: (annotation: Annotation) => Promise<void>;
   saveExamAttempt: (attempt: ExamAttempt) => Promise<void>;
@@ -191,11 +192,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children, onLoginSuc
   );
 
   const recordMistake = useCallback(
-    async (word: VocabularyItem) => {
+    async (word: Mistake | VocabularyItem) => {
+      // Convert VocabularyItem to Mistake format if needed
+      const mistake: Mistake = 'id' in word
+        ? word as Mistake
+        : {
+          id: `mistake-${Date.now()}`,
+          korean: word.korean,
+          english: word.english,
+          createdAt: Date.now(),
+        };
+
       // Use functional update to prevent race conditions
       setUser(prev => {
         if (!prev) return prev;
-        return { ...prev, mistakes: [...prev.mistakes, word] };
+        return { ...prev, mistakes: [...prev.mistakes, mistake] };
       });
       try {
         await api.saveMistake(word);

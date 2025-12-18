@@ -50,8 +50,9 @@ export const handlePresign = (req: Request, res: Response) => {
       key,
       publicUrl: url.split('?')[0] // Public read URL
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Presign Error:', error);
-    res.status(500).json({ error: 'Failed to generate presigned URL', details: error.message });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: 'Failed to generate presigned URL', details: message });
   }
 };

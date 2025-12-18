@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { prisma } from '../lib/prisma';
+import { isZodError } from '../lib/errors';
 import bcrypt from 'bcryptjs';
 import {
   SaveWordSchema,
@@ -44,9 +45,9 @@ export const saveWord = async (req: AuthRequest, res: Response) => {
       },
     });
     res.json(word);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Save Word Error', e);
-    if (e.name === 'ZodError') {
+    if (isZodError(e)) {
       return res.status(400).json({ error: 'Invalid input', details: e.errors });
     }
     res.status(500).json({ error: 'Failed to save word' });
@@ -75,8 +76,8 @@ export const saveMistake = async (req: AuthRequest, res: Response) => {
       data: { userId, korean, english },
     });
     res.json(mistake);
-  } catch (e: any) {
-    if (e.name === 'ZodError') {
+  } catch (e: unknown) {
+    if (isZodError(e)) {
       return res.status(400).json({ error: 'Invalid input', details: e.errors });
     }
     res.status(500).json({ error: 'Failed to save mistake' });
@@ -130,9 +131,9 @@ export const saveAnnotation = async (req: AuthRequest, res: Response) => {
       },
     });
     res.json(created);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error(e);
-    if (e.name === 'ZodError') {
+    if (isZodError(e)) {
       return res.status(400).json({ error: 'Invalid input', details: e.errors });
     }
     res.status(500).json({ error: 'Failed to save annotation' });
@@ -162,9 +163,9 @@ export const saveExamAttempt = async (req: AuthRequest, res: Response) => {
       },
     });
     res.json(attempt);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error(e);
-    if (e.name === 'ZodError') {
+    if (isZodError(e)) {
       return res.status(400).json({ error: 'Invalid input', details: e.errors });
     }
     res.status(500).json({ error: 'Failed to save exam result' });
@@ -192,7 +193,7 @@ export const deleteExamAttempt = async (req: AuthRequest, res: Response) => {
     });
 
     res.json({ success: true, id });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Delete Exam Attempt Error', e);
     res.status(500).json({ error: 'Failed to delete exam attempt' });
   }
@@ -216,16 +217,16 @@ export const logActivity = async (req: AuthRequest, res: Response) => {
         activityType,
         duration: duration || null,
         itemsStudied: itemsStudied || null,
-        // Prisma automatically handles Json type - no need to stringify
-        metadata: metadata ?? undefined,
+        // Cast to InputJsonValue for Prisma compatibility
+        metadata: (metadata ?? null) as any,
         date: today,
       },
     });
 
     res.json(activity);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Log Activity Error:', e);
-    if (e.name === 'ZodError') {
+    if (isZodError(e)) {
       return res.status(400).json({ error: 'Invalid input', details: e.errors });
     }
     res.status(500).json({ error: 'Failed to log activity' });
@@ -252,9 +253,9 @@ export const updateLearningProgress = async (req: AuthRequest, res: Response) =>
     });
 
     res.json({ success: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Update Learning Progress Error:', e);
-    if (e.name === 'ZodError') {
+    if (isZodError(e)) {
       return res.status(400).json({ error: 'Invalid input', details: e.errors });
     }
     res.status(500).json({ error: 'Failed to update learning progress' });
@@ -300,8 +301,8 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
 
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
-  } catch (e: any) {
-    if (e.name === 'ZodError') {
+  } catch (e: unknown) {
+    if (isZodError(e)) {
       return res.status(400).json({ error: 'Invalid input', details: e.errors });
     }
     res.status(500).json({ error: 'Failed to update profile' });
@@ -331,8 +332,8 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
     });
 
     res.json({ success: true });
-  } catch (e: any) {
-    if (e.name === 'ZodError') {
+  } catch (e: unknown) {
+    if (isZodError(e)) {
       return res.status(400).json({ error: 'Invalid input', details: e.errors });
     }
     res.status(500).json({ error: 'Failed to change password' });
@@ -433,7 +434,7 @@ export const getUserStats = async (req: AuthRequest, res: Response) => {
       weeklyMinutes,
       todayActivities: todayStats,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Get User Stats Error:', e);
     res.status(500).json({ error: 'Failed to get user stats' });
   }

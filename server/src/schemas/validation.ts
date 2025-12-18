@@ -44,15 +44,27 @@ export const SaveExamAttemptSchema = z.object({
   examTitle: z.string().min(1, 'Exam title is required'),
   score: z.number().int().min(0),
   maxScore: z.number().int().min(1),
-  userAnswers: z.record(z.string(), z.number()),
+  totalScore: z.number().int().min(1).optional(), // Alias for maxScore (frontend compatibility)
+  correctCount: z.number().int().min(0).optional(), // Number of correct answers
+  userAnswers: z.record(z.string(), z.number()), // String keys (number keys get coerced by JSON)
   timestamp: z.union([z.string(), z.number(), z.date()]).optional(),
 });
+
+// ActivityMetadata type for better type safety
+const ActivityMetadataSchema = z.object({
+  examId: z.string().optional(),
+  score: z.number().optional(),
+  unitKey: z.string().optional(),
+  institute: z.string().optional(),
+  level: z.number().optional(),
+  unit: z.number().optional(),
+}).passthrough(); // Allow additional properties
 
 export const LogActivitySchema = z.object({
   activityType: z.enum(['VOCAB', 'READING', 'LISTENING', 'GRAMMAR', 'EXAM']),
   duration: z.number().int().min(0).optional().nullable(),
   itemsStudied: z.number().int().min(0).optional().nullable(),
-  metadata: z.record(z.string(), z.any()).optional().nullable(),
+  metadata: ActivityMetadataSchema.optional().nullable(),
 });
 
 export const UpdateLearningProgressSchema = z.object({

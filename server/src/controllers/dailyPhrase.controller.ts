@@ -81,9 +81,10 @@ export const createPhrase = async (req: Request, res: Response) => {
         });
 
         res.status(201).json(phrase);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error creating phrase:', error);
-        if (error.code === 'P2002') {
+        // Check for Prisma unique constraint violation
+        if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
             return res.status(400).json({ error: 'A phrase with this dayIndex already exists' });
         }
         res.status(500).json({ error: 'Failed to create phrase' });

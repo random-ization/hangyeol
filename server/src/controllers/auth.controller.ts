@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
+import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
@@ -14,11 +15,29 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const RESET_TOKEN_EXPIRY_HOURS = 1;
 const VERIFICATION_TOKEN_EXPIRY_MINUTES = 10;
 
+// Valid tier values
+const VALID_TIERS = ['FREE', 'PAID'] as const;
+type ValidTier = typeof VALID_TIERS[number];
+
+// Type for User with all relations loaded
+type UserWithRelations = Prisma.UserGetPayload<{
+  include: {
+    savedWords: true;
+    mistakes: true;
+    annotations: true;
+    examHistory: true;
+    learningActivities: true;
+  };
+}>;
+
+// Type for learning activity
+type LearningActivity = Prisma.LearningActivityGetPayload<{}>;
+
 // Helper to generate random token
 const generateToken = (): string => crypto.randomBytes(32).toString('hex');
 
-// Helper to calculate day streak
-const calculateDayStreak = (activities: any[]): number => {
+// Helper to calculate day streak (now properly typed)
+const calculateDayStreak = (activities: LearningActivity[]): number => {
   if (!activities || activities.length === 0) return 0;
 
   // Get unique dates, sorted descending
@@ -56,9 +75,9 @@ const calculateDayStreak = (activities: any[]): number => {
   return streak;
 };
 
-// Helper to format user for frontend
-const formatUser = (user: any) => {
-  const formattedHistory = user.examHistory.map((h: any) => ({
+// Helper to format user for frontend (now properly typed)
+const formatUser = (user: UserWithRelations) => {
+  const formattedHistory = user.examHistory.map((h) => ({
     ...h,
     timestamp: h.timestamp.getTime(),
     // userAnswers is already an object (Json type in Prisma)
@@ -68,15 +87,15 @@ const formatUser = (user: any) => {
   const activities = user.learningActivities || [];
 
   // Calculate listening hours
-  const listeningActivities = activities.filter((a: any) => a.activityType === 'LISTENING');
+  const listeningActivities = activities.filter((a) => a.activityType === 'LISTENING');
   const totalListeningMinutes = listeningActivities.reduce(
-    (sum: number, a: any) => sum + (a.duration || 0),
+    (sum, a) => sum + (a.duration || 0),
     0
   );
   const listeningHours = parseFloat((totalListeningMinutes / 60).toFixed(1));
 
   // Calculate readings completed
-  const readingActivities = activities.filter((a: any) => a.activityType === 'READING');
+  const readingActivities = activities.filter((a) => a.activityType === 'READING');
   const readingsCompleted = readingActivities.length;
 
   // Calculate day streak
@@ -87,24 +106,47 @@ const formatUser = (user: any) => {
   const now = Date.now();
   for (let i = 364; i >= 0; i--) {
     const date = new Date(now - i * MS_PER_DAY).toDateString();
-    const hasActivity = activities.some((a: any) => new Date(a.date).toDateString() === date);
+    const hasActivity = activities.some((a) => new Date(a.date).toDateString() === date);
     activityLog.push(hasActivity);
   }
+
+  // Validate tier - fallback to FREE if invalid
+  const validTier: ValidTier = (VALID_TIERS as readonly string[]).includes(user.tier)
+    ? (user.tier as ValidTier)
+    : 'FREE';
 
   return {
     id: user.id,
     name: user.name,
     email: user.email,
-    avatar: user.avatar,
-    tier: user.tier,
-    role: user.role,
+    avatar: user.avatar ?? undefined, // Convert null to undefined for frontend
+    tier: validTier,
+    role: user.role as 'STUDENT' | 'ADMIN',
     joinDate: user.createdAt.getTime(),
     lastActive: Date.now(),
     savedWords: user.savedWords,
-    mistakes: user.mistakes,
-    annotations: user.annotations.map((a: any) => ({
-      ...a,
+    mistakes: user.mistakes.map((m) => ({
+      id: m.id,
+      korean: m.korean,
+      english: m.english,
+      createdAt: m.createdAt.getTime(),
+    })),
+    annotations: user.annotations.map((a) => ({
+      id: a.id,
+      contextKey: a.contextKey,
+      startOffset: a.startOffset ?? undefined,
+      endOffset: a.endOffset ?? undefined,
+      sentenceIndex: a.sentenceIndex ?? undefined,
+      text: a.text,
+      color: a.color as 'yellow' | 'green' | 'blue' | 'pink' | null,
+      note: a.note ?? '',
       timestamp: a.createdAt.getTime(),
+      // Canvas annotation fields
+      targetType: a.targetType ?? undefined,
+      targetId: a.targetId ?? undefined,
+      pageIndex: a.pageIndex ?? undefined,
+      data: a.data ?? undefined,
+      visibility: a.visibility ?? undefined,
     })),
     examHistory: formattedHistory,
     statistics: {
@@ -115,17 +157,13 @@ const formatUser = (user: any) => {
       activityLog,
     },
     // Learning progress
-    lastInstitute: user.lastInstitute,
-    lastLevel: user.lastLevel,
-    lastUnit: user.lastUnit,
-    lastModule: user.lastModule,
+    lastInstitute: user.lastInstitute ?? undefined,
+    lastLevel: user.lastLevel ?? undefined,
+    lastUnit: user.lastUnit ?? undefined,
+    lastModule: user.lastModule ?? undefined,
     // Subscription details
-    subscriptionType: user.subscriptionType,
-    subscriptionExpiry: user.subscriptionExpiry
-      ? typeof user.subscriptionExpiry.getTime === 'function'
-        ? user.subscriptionExpiry.getTime()
-        : undefined
-      : undefined,
+    subscriptionType: user.subscriptionType ?? undefined,
+    subscriptionExpiry: user.subscriptionExpiry?.getTime(),
   };
 };
 

@@ -129,8 +129,8 @@ const ModulePage: React.FC = () => {
           instituteName={institutes.find(i => i.id === selectedInstitute)?.name || 'Korean'}
           onSaveWord={saveWord}
           onSaveAnnotation={saveAnnotation}
-          savedWordKeys={user.savedWords.map(w => w.korean)}
-          annotations={user.annotations}
+          savedWordKeys={(user.savedWords || []).map(w => w.korean)}
+          annotations={user.annotations || []}
           language={language}
           levelContexts={currentLevelContexts}
         />
@@ -140,7 +140,7 @@ const ModulePage: React.FC = () => {
           course={currentCourse}
           instituteName={institutes.find(i => i.id === selectedInstitute)?.name || 'Korean'}
           onSaveAnnotation={saveAnnotation}
-          annotations={user.annotations}
+          annotations={user.annotations || []}
           language={language}
           levelContexts={currentLevelContexts}
         />

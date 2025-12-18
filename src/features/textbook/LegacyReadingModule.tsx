@@ -11,6 +11,10 @@ import { useAnnotation } from '../../../hooks/useAnnotation';
 import AnnotationMenu from '../../../components/AnnotationMenu';
 import { getHighlightClasses } from '../../utils/highlightUtils';
 import AnnotationSidebar from '../../components/annotation/AnnotationSidebar';
+import { useAuth } from '../../../contexts/AuthContext';
+import { SubscriptionType } from '../../../types';
+import UpgradeModal from '../../../components/common/UpgradeModal';
+import { Lock } from 'lucide-react';
 
 interface ReadingModuleProps {
   course: CourseSelection;
@@ -55,6 +59,8 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
 
   // Translation Hover State
   const [hoveredSentenceIndex, setHoveredSentenceIndex] = useState<number | null>(null);
+
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
   const labels = getLabels(language);
 
@@ -319,39 +325,68 @@ const ReadingModule: React.FC<ReadingModuleProps> = ({
             {unitsWithReading.map(u => {
               const c = levelContexts[u];
               const title = c.readingTitle || `Unit ${u}`;
+
+              const { user } = useAuth();
+              const isLocked = user?.subscriptionType === SubscriptionType.FREE && u > 3;
+
               return (
                 <button
                   key={u}
-                  onClick={() => setActiveUnit(u)}
-                  className="group relative w-full bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all text-left flex justify-between items-center overflow-hidden"
+                  onClick={() => {
+                    if (isLocked) {
+                      setUpgradeModalOpen(true);
+                    } else {
+                      setActiveUnit(u);
+                    }
+                  }}
+                  className={`group relative w-full bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all text-left flex justify-between items-center overflow-hidden ${isLocked ? 'hover:border-slate-200 opacity-90' : 'hover:border-indigo-200'
+                    }`}
                 >
-                  <div className="absolute inset-y-0 left-0 w-1 bg-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className={`absolute inset-y-0 left-0 w-1 transition-opacity ${isLocked ? 'bg-amber-500 opacity-0 group-hover:opacity-100' : 'bg-indigo-500 opacity-0 group-hover:opacity-100'}`}></div>
                   <div className="flex items-center gap-5">
-                    <div className="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-mono font-bold text-lg group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
-                      {u}
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-mono font-bold text-lg transition-colors ${isLocked
+                      ? 'bg-slate-100 text-slate-400 group-hover:bg-amber-50 group-hover:text-amber-600'
+                      : 'bg-slate-100 text-slate-600 group-hover:bg-indigo-50 group-hover:text-indigo-600'
+                      }`}>
+                      {isLocked ? <Lock className="w-5 h-5" /> : u}
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-slate-800 group-hover:text-indigo-700 transition-colors font-serif">
+                      <h3 className={`text-lg font-bold transition-colors font-serif ${isLocked ? 'text-slate-500' : 'text-slate-800 group-hover:text-indigo-700'
+                        }`}>
                         {title}
                       </h3>
                       <div className="flex items-center gap-3 mt-1.5">
                         <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
                           Unit {u}
                         </span>
-                        {course.level <= 2 && (
+                        {isLocked && (
+                          <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 flex items-center gap-1">
+                            Pro
+                          </span>
+                        )}
+                        {course.level <= 2 && !isLocked && (
                           <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">Beginner</span>
                         )}
                       </div>
                     </div>
                   </div>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:translate-x-1">
-                    <ChevronRight className="w-5 h-5" />
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all transform group-hover:translate-x-1 ${isLocked
+                    ? 'bg-slate-50 text-slate-300 group-hover:text-amber-500'
+                    : 'bg-slate-50 text-slate-400 group-hover:bg-indigo-600 group-hover:text-white'
+                    }`}>
+                    {isLocked ? <Lock className="w-4 h-4" /> : <ChevronRight className="w-5 h-5" />}
                   </div>
                 </button>
               );
             })}
           </div>
         )}
+        <UpgradeModal
+          isOpen={upgradeModalOpen}
+          onClose={() => setUpgradeModalOpen(false)}
+          title="Unlock Premium Lessons"
+          message="Lessons 4 and beyond are available exclusively for Pro members. Upgrade now to access the full curriculum!"
+        />
       </div>
     );
   }

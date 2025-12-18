@@ -28,6 +28,28 @@
   "dayStreak": "Chuỗi ngày",
   "totalWords": "Từ đã học",
   "learningHours": "Giờ học",
+  "pricing": {
+    "title": "Đầu tư cho sự thành thạo tiếng Hàn của bạn",
+    "subtitle": "Chọn gói phù hợp với tốc độ của bạn."
+  },
+  "plan": {
+    "monthly": "Hàng tháng",
+    "annual": "Hàng năm",
+    "lifetime": "Trọn đời"
+  },
+  "period": {
+    "per_month": "/ tháng",
+    "per_year": "/ năm",
+    "once": "một lần"
+  },
+  "button": {
+    "upgrade": "Nâng cấp ngay"
+  },
+  "feature": {
+    "topik_access": "Không giới hạn bài thi TOPIK",
+    "textbook_access": "Truy cập toàn bộ giáo trình",
+    "no_ads": "Trải nghiệm không quảng cáo"
+  },
   "dailyExpression": "Câu nói mỗi ngày",
   "dailyMeaning": "Chúc bạn một ngày tốt lành!",
   "reviewCenter": "Trung tâm ôn tập",
@@ -85,7 +107,7 @@
   "revenue": "Doanh thu",
   "content": "Nội dung",
   "user": "Người dùng",
-  "plan": "Gói",
+  "planHeader": "Gói",
   "selectInst": "Chọn Bộ sách",
   "addInst": "Thêm Bộ sách",
   "delete": "Xóa",

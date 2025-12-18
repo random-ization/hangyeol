@@ -9,6 +9,14 @@ datasource db {
 url      = env("DATABASE_URL")
 }
 
+
+enum SubscriptionType {
+  FREE
+  MONTHLY
+  ANNUAL
+  LIFETIME
+}
+
 model User {
   id           String        @id @default(uuid())
   email        String        @unique
@@ -20,8 +28,9 @@ model User {
   createdAt    DateTime      @default(now())
   
   // Subscription details
-  subscriptionType   String?   // ANNUAL or LIFETIME for PAID users
+  subscriptionType   SubscriptionType @default(FREE)
   subscriptionExpiry DateTime? // Expiry date for annual subscriptions
+  paddleCustomerId   String?   // For future payment integration
   
   // Email verification
   isVerified              Boolean   @default(false)

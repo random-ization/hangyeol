@@ -17,6 +17,7 @@ const LegalDocumentPage = lazy(() => import('./pages/LegalDocumentPage'));
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const SubscriptionPage = lazy(() => import('./pages/SubscriptionPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -60,8 +61,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({ canAccessContent, onShowUp
           element={<LegalDocumentPage language={language} documentType="refund" />}
         />
 
-        {/* === 受保护路由 (需要登录) === */}
         <Route element={<ProtectedRoute />}>
+          <Route path="/pricing" element={<SubscriptionPage />} />
           <Route path="/home" element={<HomePage />} />
           <Route path="/profile" element={<ProfilePage language={language} />} />
           <Route

@@ -4,6 +4,8 @@ export enum UserTier {
 }
 
 export enum SubscriptionType {
+  FREE = 'FREE',
+  MONTHLY = 'MONTHLY',
   ANNUAL = 'ANNUAL',
   LIFETIME = 'LIFETIME',
 }
@@ -83,6 +85,8 @@ export interface User {
   avatar?: string; // URL to avatar image
   tier: UserTier;
   role: UserRole;
+  subscriptionType?: SubscriptionType; // New field
+  subscriptionExpiry?: string; // New field
   joinDate: number;
   createdAt?: number; // Alias for joinDate
   lastActive: number;
@@ -98,9 +102,6 @@ export interface User {
   lastLevel?: number;
   lastUnit?: number;
   lastModule?: string;
-  // Subscription details
-  subscriptionType?: SubscriptionType; // ANNUAL or LIFETIME for PAID users
-  subscriptionExpiry?: number; // Timestamp for annual subscriptions
 }
 
 export interface SavedWord {

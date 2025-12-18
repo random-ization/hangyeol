@@ -10,6 +10,29 @@ import {
   SaveTopikExamSchema,
   SaveTopikExamInput,
 } from '../schemas/validation';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-prod';
+
+// Helper: Get user's subscription type
+const getUserSubscription = async (req: Request): Promise<string> => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return 'FREE';
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    if (!decoded.userId) return 'FREE';
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { subscriptionType: true }
+    });
+    return user?.subscriptionType || 'FREE';
+  } catch {
+    return 'FREE';
+  }
+};
 
 // --- Institute ---
 export const getInstitutes = async (req: Request, res: Response) => {
@@ -111,6 +134,26 @@ export const getContent = async (req: Request, res: Response) => {
 export const getTextbookContentData = async (req: Request, res: Response) => {
   try {
     const { key } = req.params;
+
+    // --- Subscription Lock Logic ---
+    // Extract lesson number from key (e.g., "level-1-unit-1-lesson-4")
+    const lessonMatch = key.match(/lesson-(\d+)/i);
+    if (lessonMatch) {
+      const lessonIndex = parseInt(lessonMatch[1], 10);
+
+      // If Lesson > 3, check subscription
+      if (lessonIndex > 3) {
+        const subscriptionType = await getUserSubscription(req);
+        if (subscriptionType === 'FREE') {
+          return res.status(403).json({
+            error: "PREMIUM_ONLY",
+            message: "Lesson 4+ are for Pro members only.",
+            upgradeRequired: true
+          });
+        }
+      }
+    }
+    // -------------------------------
 
     // Get content metadata from database
     const content = await prisma.textbookContent.findUnique({
@@ -292,6 +335,20 @@ export const getTopikExamById = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Exam not found' });
     }
 
+    // --- Subscription Lock Logic ---
+    // TOPIK 35 is free, others require subscription
+    if (exam.round !== 35) {
+      const subscriptionType = await getUserSubscription(req);
+      if (subscriptionType === 'FREE') {
+        return res.status(403).json({
+          error: "PREMIUM_ONLY",
+          message: "Only TOPIK 35 is free. Upgrade to access all exams.",
+          upgradeRequired: true
+        });
+      }
+    }
+    // -------------------------------
+
     // Handle questions format (New: { url: string } vs Old: [...])
     const questions = exam.questions as any;
     let finalExam = { ...exam };
@@ -327,6 +384,19 @@ export const getTopikExamQuestions = async (req: Request, res: Response) => {
     if (!exam) {
       return res.status(404).json({ error: 'Exam not found' });
     }
+
+    // --- Subscription Lock Logic ---
+    if (exam.round !== 35) {
+      const subscriptionType = await getUserSubscription(req);
+      if (subscriptionType === 'FREE') {
+        return res.status(403).json({
+          error: "PREMIUM_ONLY",
+          message: "Only TOPIK 35 is free. Upgrade to access all exams.",
+          upgradeRequired: true
+        });
+      }
+    }
+    // -------------------------------
 
     const questions = exam.questions as any;
     console.log('[getTopikExamQuestions] Exam ID:', id);

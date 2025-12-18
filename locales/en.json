@@ -28,6 +28,28 @@
   "dayStreak": "Day Streak",
   "totalWords": "Total Words",
   "learningHours": "Learning Hours",
+  "pricing": {
+    "title": "Invest in your Korean Fluency",
+    "subtitle": "Choose the plan that fits your pace."
+  },
+  "plan": {
+    "monthly": "Monthly",
+    "annual": "Annual",
+    "lifetime": "Lifetime"
+  },
+  "period": {
+    "per_month": "/ month",
+    "per_year": "/ year",
+    "once": "one-time"
+  },
+  "button": {
+    "upgrade": "Upgrade Now"
+  },
+  "feature": {
+    "topik_access": "Unlimited TOPIK Exams",
+    "textbook_access": "Full Textbook Access",
+    "no_ads": "Ad-free Experience"
+  },
   "dailyExpression": "Today's Expression",
   "dailyMeaning": "Have a nice day!",
   "reviewCenter": "Review Center",
@@ -85,7 +107,7 @@
   "revenue": "Revenue",
   "content": "Content",
   "user": "User",
-  "plan": "Plan",
+  "planHeader": "Plan",
   "selectInst": "Select Series",
   "addInst": "Add Series",
   "delete": "Delete",

@@ -155,7 +155,8 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
       user.subscriptionType === SubscriptionType.ANNUAL &&
       user.subscriptionExpiry
     ) {
-      const days = Math.ceil((user.subscriptionExpiry - Date.now()) / (1000 * 60 * 60 * 24));
+      const expiryDate = new Date(user.subscriptionExpiry).getTime();
+      const days = Math.ceil((expiryDate - Date.now()) / (1000 * 60 * 60 * 24));
       return days > 0 ? days : 0;
     }
     return null;

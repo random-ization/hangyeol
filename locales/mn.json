@@ -28,6 +28,28 @@
   "dayStreak": "Өдрийн цуврал",
   "totalWords": "Нийт үг",
   "learningHours": "Сурсан цаг",
+  "pricing": {
+    "title": "Солонгос хэлийг чөлөөтэй эзэмшихэд хөрөнгө оруулаарай",
+    "subtitle": "Өөрийн хурдад тохирсон багцыг сонгоорой."
+  },
+  "plan": {
+    "monthly": "Сар бүр",
+    "annual": "Жил бүр",
+    "lifetime": "Насан туршдаа"
+  },
+  "period": {
+    "per_month": "/ сар",
+    "per_year": "/ жил",
+    "once": "нэг удаа"
+  },
+  "button": {
+    "upgrade": "Одоо сайжруулах"
+  },
+  "feature": {
+    "topik_access": "Хязгааргүй TOPIK шалгалтууд",
+    "textbook_access": "Бүх сурах бичигт нэвтрэх",
+    "no_ads": "Зар сурталчилгаагүй"
+  },
   "dailyExpression": "Өдрийн үг",
   "dailyMeaning": "Өдрийг сайхан өнгөрүүлээрэй!",
   "reviewCenter": "Давтах төв",
@@ -85,7 +107,7 @@
   "revenue": "Орлого",
   "content": "Агуулга",
   "user": "Хэрэглэгч",
-  "plan": "Төлөвлөгөө",
+  "planHeader": "Төлөвлөгөө",
   "selectInst": "Цуврал сонгох",
   "addInst": "Нэмэх",
   "delete": "Устгах",

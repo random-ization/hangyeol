@@ -28,6 +28,28 @@
   "dayStreak": "连续打卡",
   "totalWords": "积累单词",
   "learningHours": "学习时长",
+  "pricing": {
+    "title": "投资您的韩语流利度",
+    "subtitle": "选择适合您节奏的计划。"
+  },
+  "plan": {
+    "monthly": "月度会员",
+    "annual": "年度会员",
+    "lifetime": "终身会员"
+  },
+  "period": {
+    "per_month": "/ 月",
+    "per_year": "/ 年",
+    "once": "一次性"
+  },
+  "button": {
+    "upgrade": "立即升级"
+  },
+  "feature": {
+    "topik_access": "无限 TOPIK 模考",
+    "textbook_access": "解锁所有教科书",
+    "no_ads": "无广告体验"
+  },
   "dailyExpression": "每日一句",
   "dailyMeaning": "祝你度过美好的一天！",
   "reviewCenter": "复习中心",
@@ -85,7 +107,7 @@
   "revenue": "收入",
   "content": "内容",
   "user": "用户",
-  "plan": "方案",
+  "planHeader": "方案",
   "selectInst": "选择系列",
   "addInst": "添加系列",
   "delete": "删除",

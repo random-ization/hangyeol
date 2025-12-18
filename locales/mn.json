@@ -341,12 +341,70 @@
   "enterTitle": "Баримтын гарчиг оруулах",
   "enterContent": "Баримтын агуулга оруулах...",
   "appName": "DuHan",
+  "coursesOverview": {
+    "backToHome": "Back to Home",
+    "navTitle": "Premium Benefits & Features",
+    "activatePremium": "Unlock Premium"
+  },
+  "dashboard": {
+    "banner": {
+      "upgradeTitle": "Upgrade to Premium",
+      "upgradeDesc": "You are currently on the <1>Free Tier</1>, with limited access to courses.",
+      "unlockDesc": "Upgrade to unlock all 100+ units and TOPIK exams.",
+      "viewBenefits": "View Benefits",
+      "decorationTitle": "Upgrade to Premium",
+      "decorationDesc": "Upgrade to unlock full curriculum & TOPIK exams"
+    },
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening",
+      "goalPart1": "You are one step away from your goal",
+      "goalPart2": "TOPIK 6",
+      "goalPart3": "Keep it up!"
+    },
+    "common": {
+      "streak": "Streak Challenge",
+      "days": "{{count}} days",
+      "continueLearning": "Continue Learning",
+      "lastStudied": "Last Studied",
+      "noCourse": "No textbook started yet. Pick one from \"Curriculum\"!",
+      "weeklyStudyTime": "Weekly Study Time (min)",
+      "dailyGoal": "Daily Goals",
+      "viewAllPlans": "View All Plans",
+      "comingUp": "Coming Up",
+      "daysLeft": "days left",
+      "examDate": "Exam Date: {{date}}",
+      "makePlan": "Make a Plan",
+      "goalWords": "Learn {{target}} new words",
+      "goalReadings": "Read {{target}} exam articles",
+      "goalListenings": "Listen to {{target}} items",
+      "settings": {
+        "title": "Set Daily Goals",
+        "words": "Daily Words",
+        "readings": "Daily Readings",
+        "listenings": "Daily Listenings",
+        "cancel": "Cancel",
+        "save": "Save"
+      }
+    },
+    "tools": {
+      "topik_mock": "TOPIK Mock",
+      "mock_desc": "Real Simulation",
+      "flashcards": "Flashcards",
+      "flashcards_desc": "Smart Review",
+      "listening": "Listening",
+      "listening_desc": "Anytime Anywhere",
+      "mistakes": "Mistake Book",
+      "mistakes_desc": "Review Weakness"
+    }
+  },
   "landing": {
     "heroBadge": "Yonsei, Sogang, SNU сурах бичиг шинэчлэгдэж байна",
-    "heroTitle1": "Солонгосын шилдэг хэлний сургуулийг",
-    "heroTitle2": "халаасандаа багтаа",
-    "heroDesc": "Та гадаадад сурахаар бэлдэж байна уу, эсвэл хичээлээ давтаж байна уу? DuHan танд их сургуулийн хичээлтэй хөл нийлүүлэхэд тусална.",
-    "startTrial": "Үнэгүй турших",
+    "heroTitle1": "Master Korean,",
+    "heroTitle2": "One Step at a Time.",
+    "heroDesc": "From beginner to TOPIK 6. A complete curriculum with digitized textbooks, real exams, and smart analysis.",
+    "startTrial": "Start Free Trial",
     "viewCourses": "Хөтөлбөр харах",
     "statTextbooks": "Шилдэг сурах бичиг",
     "statPassRate": "TOPIK 6 тэнцэлт",

@@ -6,7 +6,7 @@ import mnTranslations from '../locales/mn.json';
 
 // Type for translation object - exported so components can use it
 export type TranslationObject = {
-  [key: string]: string | TranslationObject;
+  [key: string]: string | string[] | TranslationObject;
 };
 
 // Type for accessing labels - allows any string key access

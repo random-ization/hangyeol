@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation, Trans } from 'react-i18next';
 import {
     Play, Calendar, TrendingUp, BookOpen,
     Target, Zap, Clock,
@@ -47,6 +48,7 @@ interface LearningStats {
 
 export default function ModernDashboard() {
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const { user } = useAuth();
     const { institutes } = useData();
     const { selectedInstitute } = useLearning();
@@ -148,17 +150,17 @@ export default function ModernDashboard() {
     // 问候语
     const greeting = (() => {
         const hour = new Date().getHours();
-        if (hour < 12) return '早安';
-        if (hour < 18) return '下午好';
-        return '晚上好';
+        if (hour < 12) return t('dashboard.greeting.morning');
+        if (hour < 18) return t('dashboard.greeting.afternoon');
+        return t('dashboard.greeting.evening');
     })();
 
-    const userName = user?.name || user?.email?.split('@')[0] || '同学';
+    const userName = user?.name || user?.email?.split('@')[0] || t('displayName');
 
     if (!user) {
         return (
             <div className="p-8 text-center text-gray-500">
-                请先登录以查看仪表盘
+                {t('login')}
             </div>
         );
     }
@@ -173,7 +175,7 @@ export default function ModernDashboard() {
                         {greeting}，{userName} 👋
                     </h1>
                     <p className="text-slate-500 mt-1">
-                        距离你的目标 <span className="font-bold text-indigo-600">TOPIK 6 级</span> 还差一步，今天也要加油！
+                        {t('dashboard.greeting.goalPart1')} <span className="font-bold text-indigo-600">{t('dashboard.greeting.goalPart2')}</span> {t('dashboard.greeting.goalPart3')}
                     </p>
                 </div>
 
@@ -185,32 +187,44 @@ export default function ModernDashboard() {
                             <Flame className="w-5 h-5 fill-current" />
                         </div>
                         <div>
-                            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">连胜挑战</div>
-                            <div className="font-bold text-slate-800 text-sm">{stats.streak || 1} 天</div>
+                            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{t('dashboard.common.streak')}</div>
+                            <div className="font-bold text-slate-800 text-sm">{t('dashboard.common.days', { count: stats.streak || 1 })}</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Upgrade Banner for Free Users */}
+            {/* Upgrade Banner for Free Users - 增强版 */}
             {
                 (!user?.subscriptionType || user.subscriptionType === 'FREE') && (
-                    <div
-                        onClick={() => navigate('/pricing')}
-                        className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-4 md:p-6 text-white shadow-lg shadow-indigo-200 cursor-pointer hover:scale-[1.01] transition-transform flex items-center justify-between group"
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-colors">
-                                <Zap className="w-6 h-6 text-yellow-300 fill-current" />
+                    <div className="mb-8">
+                        <div
+                            onClick={() => navigate('/pricing')}
+                            className="bg-gradient-to-r from-indigo-900 to-violet-900 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden group cursor-pointer border border-indigo-700/50"
+                        >
+                            {/* 装饰背景 */}
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-white/10 transition-colors"></div>
+
+                            <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
+                                <div className="flex items-center gap-5">
+                                    <div className="w-14 h-14 bg-gradient-to-br from-amber-300 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300">
+                                        <Zap className="w-8 h-8 text-white fill-current" />
+                                    </div>
+                                    <div className="text-center sm:text-left">
+                                        <h3 className="font-bold text-xl mb-1">{t('dashboard.banner.upgradeTitle')}</h3>
+                                        <p className="text-indigo-200 text-sm max-w-md">
+                                            <Trans i18nKey="dashboard.banner.upgradeDesc">
+                                                您当前使用的是<span className="text-white font-bold">免费版</span>，仅可访问部分基础课程。
+                                            </Trans>
+                                            <br />{t('dashboard.banner.unlockDesc')}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button className="px-6 py-3 bg-white text-indigo-900 rounded-xl font-bold text-sm hover:bg-indigo-50 transition-colors shadow-lg whitespace-nowrap flex items-center gap-2">
+                                    {t('dashboard.banner.viewBenefits')}
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
                             </div>
-                            <div>
-                                <h3 className="font-bold text-lg leading-tight">升级会员，解锁完整课程体系与真题库</h3>
-                                <p className="text-indigo-100 text-sm mt-0.5 font-medium">Upgrade to unlock full curriculum & TOPIK exams</p>
-                            </div>
-                        </div>
-                        <div className="hidden sm:flex bg-white text-indigo-600 px-4 py-2 rounded-full font-bold text-sm items-center gap-1 group-hover:bg-indigo-50 transition-colors">
-                            立即升级
-                            <ChevronRight className="w-4 h-4" />
                         </div>
                     </div>
                 )
@@ -248,7 +262,7 @@ export default function ModernDashboard() {
                                 <div className="flex-1 text-center md:text-left w-full">
                                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-medium mb-3 border border-white/10">
                                         <BookOpen className="w-3 h-3" />
-                                        上次学到
+                                        {t('dashboard.common.lastStudied')}
                                     </div>
                                     <h2 className="text-2xl font-bold mb-2">{lastCourse.title}</h2>
                                     <p className="text-slate-400 text-sm mb-6">
@@ -269,7 +283,7 @@ export default function ModernDashboard() {
                                     <div className="mt-6">
                                         <button className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-indigo-50 transition-colors flex items-center gap-2 mx-auto md:mx-0 shadow-lg shadow-white/10">
                                             <Play className="w-4 h-4 fill-current" />
-                                            继续学习
+                                            {t('dashboard.common.continueLearning')}
                                         </button>
                                     </div>
                                 </div>
@@ -281,17 +295,17 @@ export default function ModernDashboard() {
                             className="bg-slate-100 rounded-2xl p-8 text-center text-slate-400 border-2 border-dashed border-slate-200 cursor-pointer hover:border-indigo-300 transition-colors"
                         >
                             <BookOpen className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                            <p>还没有开始学习的教材，去"课程"里挑一本吧！</p>
+                            <p>{t('dashboard.common.noCourse')}</p>
                         </div>
                     )}
 
                     {/* B. 核心功能入口 */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {[
-                            { icon: Target, label: "TOPIK 模考", color: "text-rose-600 bg-rose-50", desc: "全真模拟", path: "/topik" },
-                            { icon: BookOpen, label: "单词闪卡", color: "text-amber-600 bg-amber-50", desc: "智能复习", path: "/dashboard" },
-                            { icon: Clock, label: "听力磨耳朵", color: "text-blue-600 bg-blue-50", desc: "随时随地", path: "/dashboard" },
-                            { icon: BarChart3, label: "错题本", color: "text-emerald-600 bg-emerald-50", desc: "查漏补缺", path: "/dashboard" },
+                            { icon: Target, label: t('dashboard.tools.topik_mock'), color: "text-rose-600 bg-rose-50", desc: t('dashboard.tools.mock_desc'), path: "/topik" },
+                            { icon: BookOpen, label: t('dashboard.tools.flashcards'), color: "text-amber-600 bg-amber-50", desc: t('dashboard.tools.flashcards_desc'), path: "/dashboard" },
+                            { icon: Clock, label: t('dashboard.tools.listening'), color: "text-blue-600 bg-blue-50", desc: t('dashboard.tools.listening_desc'), path: "/dashboard" },
+                            { icon: BarChart3, label: t('dashboard.tools.mistakes'), color: "text-emerald-600 bg-emerald-50", desc: t('dashboard.tools.mistakes_desc'), path: "/dashboard" },
                         ].map((item, idx) => (
                             <div
                                 key={idx}
@@ -312,7 +326,7 @@ export default function ModernDashboard() {
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="font-bold text-slate-800 flex items-center gap-2 text-sm md:text-base">
                                 <TrendingUp className="w-5 h-5 text-indigo-600" />
-                                本周学习时长 (分钟)
+                                {t('dashboard.common.weeklyStudyTime')}
                             </h3>
                             <select className="text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none text-slate-600 cursor-pointer">
                                 <option>最近 7 天</option>
@@ -345,7 +359,7 @@ export default function ModernDashboard() {
                     {/* D. 每日目标 */}
                     <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-bold text-slate-800 text-sm md:text-base">今日目标</h3>
+                            <h3 className="font-bold text-slate-800 text-sm md:text-base">{t('dashboard.common.dailyGoal')}</h3>
                             <div className="flex items-center gap-2">
                                 <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full font-bold">{completedGoals}/3</span>
                                 <button
@@ -358,9 +372,9 @@ export default function ModernDashboard() {
                         </div>
                         <div className="space-y-3">
                             {[
-                                { id: 'words', title: `完成 ${goalProgress.words.target} 个新单词`, done: goalProgress.words.completed >= goalProgress.words.target },
-                                { id: 'readings', title: `阅读 ${goalProgress.readings.target} 篇真题文章`, done: goalProgress.readings.completed >= goalProgress.readings.target },
-                                { id: 'listenings', title: `听力练习 ${goalProgress.listenings.target} 篇`, done: goalProgress.listenings.completed >= goalProgress.listenings.target },
+                                { id: 'words', title: t('dashboard.common.goalWords', { target: goalProgress.words.target }), done: goalProgress.words.completed >= goalProgress.words.target },
+                                { id: 'readings', title: t('dashboard.common.goalReadings', { target: goalProgress.readings.target }), done: goalProgress.readings.completed >= goalProgress.readings.target },
+                                { id: 'listenings', title: t('dashboard.common.goalListenings', { target: goalProgress.listenings.target }), done: goalProgress.listenings.completed >= goalProgress.listenings.target },
                             ].map((goal) => (
                                 <div key={goal.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer group">
                                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${goal.done ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300 group-hover:border-indigo-400'
@@ -374,7 +388,7 @@ export default function ModernDashboard() {
                             ))}
                         </div>
                         <button className="w-full mt-4 py-2 text-xs font-bold text-slate-400 hover:text-indigo-600 flex items-center justify-center gap-1 transition-colors group">
-                            查看全部计划 <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                            {t('dashboard.common.viewAllPlans')} <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                         </button>
                     </div>
 
@@ -383,7 +397,7 @@ export default function ModernDashboard() {
                         <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-6 rounded-2xl text-white shadow-lg shadow-indigo-200 hover:-translate-y-1 transition-transform duration-300">
                             <div className="flex items-start justify-between mb-4">
                                 <div>
-                                    <div className="text-indigo-200 text-[10px] font-bold uppercase tracking-wider mb-1">Coming Up</div>
+                                    <div className="text-indigo-200 text-[10px] font-bold uppercase tracking-wider mb-1">{t('dashboard.common.comingUp')}</div>
                                     <h3 className="font-bold text-lg">{nextExam.name}</h3>
                                 </div>
                                 <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
@@ -393,17 +407,17 @@ export default function ModernDashboard() {
 
                             <div className="flex items-baseline gap-1 mb-2">
                                 <span className="text-4xl font-bold">{nextExam.daysLeft}</span>
-                                <span className="text-sm text-indigo-200">天后考试</span>
+                                <span className="text-sm text-indigo-200">{t('dashboard.common.daysLeft')}</span>
                             </div>
                             <p className="text-xs text-indigo-200/80 mb-4">
-                                考试日期: {nextExam.date}
+                                {t('dashboard.common.examDate', { date: nextExam.date })}
                             </p>
 
                             <button
                                 onClick={() => navigate('/topik')}
                                 className="w-full py-2 bg-white text-indigo-700 rounded-lg text-sm font-bold hover:bg-indigo-50 transition-colors"
                             >
-                                制定复习计划
+                                {t('dashboard.common.makePlan')}
                             </button>
                         </div>
                     )}
@@ -420,14 +434,14 @@ export default function ModernDashboard() {
                     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl">
                             <div className="flex items-center justify-between px-6 py-4 border-b">
-                                <h2 className="text-lg font-bold">设置每日目标</h2>
+                                <h2 className="text-lg font-bold">{t('dashboard.common.settings.title')}</h2>
                                 <button onClick={() => setShowGoalSettings(false)} className="p-2 hover:bg-gray-100 rounded-lg">
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
                             <div className="p-6 space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">每日单词数量</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('dashboard.common.settings.words')}</label>
                                     <input
                                         type="number"
                                         min="1"
@@ -438,7 +452,7 @@ export default function ModernDashboard() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">每日阅读篇数</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('dashboard.common.settings.readings')}</label>
                                     <input
                                         type="number"
                                         min="1"
@@ -449,7 +463,7 @@ export default function ModernDashboard() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">每日听力篇数</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('dashboard.common.settings.listenings')}</label>
                                     <input
                                         type="number"
                                         min="1"
@@ -465,13 +479,13 @@ export default function ModernDashboard() {
                                     onClick={() => setShowGoalSettings(false)}
                                     className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
                                 >
-                                    取消
+                                    {t('dashboard.common.settings.cancel')}
                                 </button>
                                 <button
                                     onClick={() => saveGoals(dailyGoals)}
                                     className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
                                 >
-                                    保存
+                                    {t('dashboard.common.settings.save')}
                                 </button>
                             </div>
                         </div>

@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation, Trans } from 'react-i18next';
 import {
     BookOpen, GraduationCap, Headphones, Brain, ArrowRight,
     CheckCircle2, Globe, PlayCircle, Star, Users, Zap
 } from 'lucide-react';
 import { Language } from '../types';
-import { getLabels } from '../utils/i18n';
 
 interface LandingProps {
     language: Language;
@@ -14,7 +14,7 @@ interface LandingProps {
 
 const Landing: React.FC<LandingProps> = ({ language, onLanguageChange }) => {
     const navigate = useNavigate();
-    const labels = getLabels(language);
+    const { t } = useTranslation();
     const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
 
     // 滚动显现动画 Hook
@@ -45,9 +45,25 @@ const Landing: React.FC<LandingProps> = ({ language, onLanguageChange }) => {
                     <div className="flex justify-between items-center h-16">
                         <div className="flex items-center gap-2">
                             <img src="/logo.jpg" alt="Logo" className="w-8 h-8 rounded-lg shadow-lg" />
-                            <span className="font-bold text-xl text-slate-900 tracking-tight">{labels.appName}</span>
+                            <span className="font-bold text-xl text-slate-900 tracking-tight">{t('appName')}</span>
                         </div>
                         <div className="flex items-center gap-4">
+                            {/* New Navigation Links */}
+                            <div className="hidden md:flex items-center gap-6 mr-6">
+                                <button
+                                    onClick={() => navigate('/courses')}
+                                    className="text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors"
+                                >
+                                    {t('landing.viewCourses')}
+                                </button>
+                                <button
+                                    onClick={() => navigate('/courses')}
+                                    className="text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors"
+                                >
+                                    {t('landing.pricing')}
+                                </button>
+                            </div>
+
                             {/* Language Selector */}
                             <div className="relative">
                                 <button
@@ -84,9 +100,9 @@ const Landing: React.FC<LandingProps> = ({ language, onLanguageChange }) => {
                                 )}
                             </div>
 
-                            <button onClick={() => navigate('/login')} className="text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors">{labels.login}</button>
+                            <button onClick={() => navigate('/login')} className="text-sm font-medium text-slate-600 hover:text-indigo-600 transition-colors">{t('login')}</button>
                             <button onClick={() => navigate('/register')} className="text-sm font-bold bg-slate-900 text-white px-4 py-2 rounded-full hover:bg-slate-800 transition-all hover:shadow-lg transform hover:-translate-y-0.5">
-                                {labels.startLearning || 'Start Learning'}
+                                {t('startLearning')}
                             </button>
                         </div>
                     </div>
@@ -108,18 +124,18 @@ const Landing: React.FC<LandingProps> = ({ language, onLanguageChange }) => {
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
                         </span>
-                        <span className="text-sm font-medium text-indigo-900">{labels.landing.heroBadge}</span>
+                        <span className="text-sm font-medium text-indigo-900">{t('landing.heroBadge')}</span>
                     </div>
 
                     <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight mb-8 leading-[1.1] animate-fade-in-up animation-delay-100">
-                        {labels.landing.heroTitle1}<br />
+                        {t('landing.heroTitle1')}<br />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">
-                            {labels.landing.heroTitle2}
+                            {t('landing.heroTitle2')}
                         </span>
                     </h1>
 
                     <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-in-up animation-delay-200">
-                        {labels.landing.heroDesc}
+                        {t('landing.heroDesc')}
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up animation-delay-300">
@@ -127,7 +143,7 @@ const Landing: React.FC<LandingProps> = ({ language, onLanguageChange }) => {
                             onClick={() => navigate('/register')}
                             className="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 hover:shadow-indigo-300 hover:-translate-y-1 flex items-center justify-center gap-2"
                         >
-                            {labels.landing.startTrial}
+                            {t('landing.startTrial')}
                             <ArrowRight className="w-5 h-5" />
                         </button>
                         <button
@@ -135,28 +151,16 @@ const Landing: React.FC<LandingProps> = ({ language, onLanguageChange }) => {
                             className="w-full sm:w-auto px-8 py-4 bg-white text-slate-700 border border-slate-200 rounded-2xl font-bold text-lg hover:bg-slate-50 transition-all hover:-translate-y-1 flex items-center justify-center gap-2"
                         >
                             <PlayCircle className="w-5 h-5 text-indigo-500" />
-                            {/* Fallback to Curriculum Roadmap if translation missing? Or use existing key? 
-                                User asked to rename "View Courses" button to "Curriculum Roadmap".
-                                I will just hardcode English for now or assume key update exists.
-                                The prompt said "Or corresponding multi-language Key".
-                                I'll update the text directly here since I didn't update the JSON for this specific key yet.
-                                Wait, I can't update labels.landing.viewCourses dynamic value here easily without JSON update.
-                                I'll hardcode "Curriculum Roadmap" as requested or use a new key.
-                                Given I haven't been asked to update JSON files for this task, I'll prefer updating the key if I can, OR just hardcode 'Curriculum Roadmap' if language is EN, else finding a way.
-                                For simplicity and following explicit instruction: "Change button text to 'Curriculum Roadmap'".
-                                I will simply replace {labels.landing.viewCourses} with "Curriculum Roadmap" or a check.
-                                Actually, sticking to the requested English text "Curriculum Roadmap" is safest if I don't touch JSON.
-                            */}
-                            Curriculum Roadmap
+                            了解会员权益
                         </button>
                     </div>
 
                     {/* Social Proof / Stats */}
                     <div className="mt-16 pt-8 border-t border-slate-200/60 flex flex-wrap justify-center gap-8 md:gap-16 opacity-0 translate-y-10 reveal-on-scroll transition-all duration-700">
                         {[
-                            { label: labels.landing.statTextbooks, value: '20+' },
-                            { label: labels.landing.statPassRate, value: 'High' },
-                            { label: labels.landing.statRecommend, value: '98%' },
+                            { label: t('landing.statTextbooks'), value: '20+' },
+                            { label: t('landing.statPassRate'), value: 'High' },
+                            { label: t('landing.statRecommend'), value: '98%' },
                         ].map((stat, i) => (
                             <div key={i} className="flex flex-col items-center">
                                 <span className="text-3xl font-bold text-slate-900">{stat.value}</span>
@@ -194,8 +198,9 @@ const Landing: React.FC<LandingProps> = ({ language, onLanguageChange }) => {
             <section className="py-24 bg-white relative">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-16 opacity-0 translate-y-10 reveal-on-scroll transition-all duration-700">
-                        <h2 className="text-base font-bold text-indigo-600 uppercase tracking-wide mb-2">{labels.landing.featureEyebrow}</h2>
-                        <p className="text-3xl md:text-4xl font-bold text-slate-900">{labels.landing.featureTitle}</p>
+                        <h2 className="text-base font-bold text-indigo-600 uppercase tracking-wide mb-2">{t('landing.featureEyebrow')}</h2>
+                        <p className="text-3xl md:text-4xl font-bold text-slate-900">{t('landing.featureTitle')}</p>
+                        <p className="text-slate-500 mt-4 max-w-2xl mx-auto">{t('landing.featureDesc')}</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -205,9 +210,9 @@ const Landing: React.FC<LandingProps> = ({ language, onLanguageChange }) => {
                                 <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-6 group-hover:scale-110 transition-transform duration-300">
                                     <BookOpen className="w-6 h-6 text-blue-600" />
                                 </div>
-                                <h3 className="text-2xl font-bold text-slate-900 mb-3">{labels.landing.card1Title}</h3>
+                                <h3 className="text-2xl font-bold text-slate-900 mb-3">{t('landing.card1Title')}</h3>
                                 <p className="text-slate-500 max-w-md">
-                                    {labels.landing.card1Desc}
+                                    {t('landing.card1Desc')}
                                 </p>
                             </div>
                             {/* Abstract UI Mockup */}
@@ -228,16 +233,16 @@ const Landing: React.FC<LandingProps> = ({ language, onLanguageChange }) => {
                                 <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm mb-6">
                                     <GraduationCap className="w-6 h-6 text-indigo-300" />
                                 </div>
-                                <h3 className="text-2xl font-bold mb-3">{labels.landing.card2Title}</h3>
-                                <p className="text-slate-400 mb-8">{labels.landing.card2Desc}</p>
+                                <h3 className="text-2xl font-bold mb-3">{t('landing.card2Title')}</h3>
+                                <p className="text-slate-400 mb-8">{t('landing.card2Desc')}</p>
 
                                 <div className="mt-auto space-y-3">
-                                    {Array.isArray(labels.landing.card2List) ? labels.landing.card2List.map((item: string, i: number) => (
+                                    {(t('landing.card2List', { returnObjects: true }) as string[]).map((item: string, i: number) => (
                                         <div key={i} className="flex items-center gap-3 bg-white/5 p-3 rounded-xl backdrop-blur-sm border border-white/5">
                                             <CheckCircle2 className="w-5 h-5 text-green-400" />
                                             <span className="text-sm font-medium">{item}</span>
                                         </div>
-                                    )) : null}
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -247,9 +252,9 @@ const Landing: React.FC<LandingProps> = ({ language, onLanguageChange }) => {
                             <div className="w-12 h-12 bg-violet-50 rounded-2xl flex items-center justify-center mb-4 group-hover:rotate-12 transition-transform">
                                 <Headphones className="w-6 h-6 text-violet-600" />
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-2">{labels.landing.card3Title}</h3>
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">{t('landing.card3Title')}</h3>
                             <p className="text-sm text-slate-500">
-                                {labels.landing.card3Desc}
+                                {t('landing.card3Desc')}
                             </p>
                         </div>
 
@@ -258,9 +263,9 @@ const Landing: React.FC<LandingProps> = ({ language, onLanguageChange }) => {
                             <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mb-4 group-hover:rotate-12 transition-transform">
                                 <Brain className="w-6 h-6 text-emerald-600" />
                             </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-2">{labels.landing.card4Title}</h3>
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">{t('landing.card4Title')}</h3>
                             <p className="text-sm text-slate-500">
-                                {labels.landing.card4Desc}
+                                {t('landing.card4Desc')}
                             </p>
                         </div>
                     </div>
@@ -272,12 +277,12 @@ const Landing: React.FC<LandingProps> = ({ language, onLanguageChange }) => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex flex-col md:flex-row gap-12 items-center">
                         <div className="w-full md:w-1/2 opacity-0 translate-x-[-20px] reveal-on-scroll duration-700">
-                            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-6">{labels.landing.stepTitle}</h2>
+                            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-6">{t('landing.stepTitle')}</h2>
                             <div className="space-y-8">
                                 {[
-                                    { title: labels.landing.step1Title, desc: labels.landing.step1Desc, icon: Globe },
-                                    { title: labels.landing.step2Title, desc: labels.landing.step2Desc, icon: Zap },
-                                    { title: labels.landing.step3Title, desc: labels.landing.step3Desc, icon: Star },
+                                    { title: t('landing.step1Title'), desc: t('landing.step1Desc'), icon: Globe },
+                                    { title: t('landing.step2Title'), desc: t('landing.step2Desc'), icon: Zap },
+                                    { title: t('landing.step3Title'), desc: t('landing.step3Desc'), icon: Star },
                                 ].map((step, idx) => (
                                     <div key={idx} className="flex gap-4">
                                         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold relative z-10 ring-4 ring-indigo-50">
@@ -326,19 +331,19 @@ const Landing: React.FC<LandingProps> = ({ language, onLanguageChange }) => {
                 </div>
 
                 <div className="max-w-4xl mx-auto px-4 relative z-10 text-center reveal-on-scroll">
-                    <h2 className="text-4xl md:text-5xl font-bold text-white mb-8 tracking-tight">{labels.landing.ctaTitle}</h2>
+                    <h2 className="text-4xl md:text-5xl font-bold text-white mb-8 tracking-tight">{t('landing.ctaTitle')}</h2>
                     <p className="text-xl text-indigo-200 mb-12 max-w-2xl mx-auto">
-                        {labels.landing.ctaDesc}
+                        {t('landing.ctaDesc')}
                     </p>
                     <div className="flex flex-col sm:flex-row justify-center gap-4">
                         <button
                             onClick={() => navigate('/register')}
                             className="px-10 py-5 bg-white text-indigo-900 rounded-full font-bold text-xl hover:bg-indigo-50 transition-all hover:scale-105 shadow-2xl shadow-indigo-900/50"
                         >
-                            {labels.landing.ctaBtn}
+                            {t('landing.ctaBtn')}
                         </button>
                     </div>
-                    <p className="mt-8 text-sm text-indigo-300">{labels.landing.ctaNote}</p>
+                    <p className="mt-8 text-sm text-indigo-300">{t('landing.ctaNote')}</p>
                 </div>
             </section>
 
@@ -347,16 +352,16 @@ const Landing: React.FC<LandingProps> = ({ language, onLanguageChange }) => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="flex items-center gap-2">
                         <img src="/logo.jpg" alt="Logo" className="w-8 h-8 rounded-lg" />
-                        <span className="font-bold text-slate-900">{labels.appName}</span>
+                        <span className="font-bold text-slate-900">{t('appName')}</span>
                     </div>
                     <div className="text-slate-500 text-sm">
-                        © {new Date().getFullYear()} DuHan Learning. {labels.allRightsReserved}
+                        © {new Date().getFullYear()} DuHan Learning. {t('allRightsReserved')}
                     </div>
                     <div className="flex gap-6 text-sm font-medium text-slate-600">
-                        <a href="/privacy" className="hover:text-indigo-600">{labels.privacyPolicy}</a>
-                        <a href="/terms" className="hover:text-indigo-600">{labels.termsOfService}</a>
-                        <a href="/refund" className="hover:text-indigo-600">{labels.refundPolicy}</a>
-                        <a href="#" className="hover:text-indigo-600">{labels.landing.contactUs}</a>
+                        <a href="/privacy" className="hover:text-indigo-600">{t('landing.privacy')}</a>
+                        <a href="/terms" className="hover:text-indigo-600">{t('landing.term')}</a>
+                        {/* {t('landing.legal')} - could handle multiple here if needed */}
+                        <a href="#" className="hover:text-indigo-600">{t('landing.contactUs')}</a>
                     </div>
                 </div>
             </footer>

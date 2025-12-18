@@ -30,7 +30,11 @@
   "learningHours": "Learning Hours",
   "pricing": {
     "title": "Invest in your Korean Fluency",
-    "subtitle": "Choose the plan that fits your pace."
+    "subtitle": "Choose the plan that fits your pace.",
+    "limitedOffer": "Limited Time Offer",
+    "paymentMethods": "Supports WeChat, Alipay, and International Cards.",
+    "notSure": "Not sure if it's right for you?",
+    "trial": "Register for a Free Trial"
   },
   "plan": {
     "monthly": "Monthly",
@@ -341,40 +345,65 @@
   "enterTitle": "Enter document title",
   "enterContent": "Enter document content...",
   "appName": "DuHan",
+  "coursesOverview": {
+    "backToHome": "Back to Home",
+    "navTitle": "Premium Benefits & Features",
+    "activatePremium": "Unlock Premium"
+  },
+  "dashboard": {
+    "banner": {
+      "upgradeTitle": "Upgrade to Premium",
+      "upgradeDesc": "You are currently on the <1>Free Tier</1>, with limited access to courses.",
+      "unlockDesc": "Upgrade to unlock all 100+ units and TOPIK exams.",
+      "viewBenefits": "View Benefits",
+      "decorationTitle": "Upgrade to Premium",
+      "decorationDesc": "Upgrade to unlock full curriculum & TOPIK exams"
+    },
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening",
+      "goalPart1": "You are one step away from your goal",
+      "goalPart2": "TOPIK 6",
+      "goalPart3": "Keep it up!"
+    },
+    "common": {
+      "streak": "Streak Challenge",
+      "days": "{{count}} days",
+      "continueLearning": "Continue Learning",
+      "lastStudied": "Last Studied",
+      "noCourse": "No textbook started yet. Pick one from \"Curriculum\"!",
+      "weeklyStudyTime": "Weekly Study Time (min)",
+      "dailyGoal": "Daily Goals",
+      "viewAllPlans": "View All Plans",
+      "comingUp": "Coming Up",
+      "daysLeft": "days left",
+      "examDate": "Exam Date: {{date}}",
+      "makePlan": "Make a Plan",
+      "goalWords": "Learn {{target}} new words",
+      "goalReadings": "Read {{target}} exam articles",
+      "goalListenings": "Listen to {{target}} items",
+      "settings": {
+        "title": "Set Daily Goals",
+        "words": "Daily Words",
+        "readings": "Daily Readings",
+        "listenings": "Daily Listenings",
+        "cancel": "Cancel",
+        "save": "Save"
+      }
+    },
+    "tools": {
+      "topik_mock": "TOPIK Mock",
+      "mock_desc": "Real Simulation",
+      "flashcards": "Flashcards",
+      "flashcards_desc": "Smart Review",
+      "listening": "Listening",
+      "listening_desc": "Anytime Anywhere",
+      "mistakes": "Mistake Book",
+      "mistakes_desc": "Review Weakness"
+    }
+  },
   "landing": {
-    "heroBadge": "Yonsei, Sogang, SNU Textbooks Syncing",
-    "heroTitle1": "Put Top Korean Language Schools",
-    "heroTitle2": "in Your Pocket",
-    "heroDesc": "Whether you are preparing for study abroad or reviewing after class, DuHan helps you seamlessly connect with university courses.",
-    "startTrial": "Start Free Trial",
-    "viewCourses": "View Curriculum",
-    "statTextbooks": "Textbooks",
-    "statPassRate": "IT Pass Rate",
-    "statRecommend": "Recommended",
-    "featureEyebrow": "Study Assist",
-    "featureTitle": "More Than Textbooks, It's Your AI Tutor",
-    "card1Title": "University Curriculum",
-    "card1Desc": "Digitized core textbooks from Yonsei, Sogang, etc. Keep up with class progress even when not in Korea.",
-    "card2Title": "TOPIK Mastery",
-    "card2Desc": "Past exams simulation and smart error analysis to help you get Level 6 and scholarships.",
-    "card2List": [
-      "Real Exam Simulation",
-      "Auto Grading",
-      "Scholarship Standard",
-      "Past Papers"
-    ],
-    "card3Title": "Authentic Listening",
-    "card3Desc": "Original class audio with sentence-by-sentence playback to adapt to the Korean environment.",
-    "card4Title": "Progress Tracker",
-    "card4Desc": "Automatically track learning path and schedule reviews efficiently.",
-    "stepTitle": "3 Steps to Mastery",
-    "step1Title": "Select Textbook",
-    "step1Desc": "Choose Yonsei, Sogang, etc. based on your school or goal.",
-    "step2Title": "Practice & Sync",
-    "step2Desc": "Preview words and consolidate grammar with AI assistance.",
-    "step3Title": "Classroom Ready",
-    "step3Desc": "Say goodbye to confusion and participate confidently in class.",
-    "ctaTitle": "Ready to Start Your Journey?",
     "ctaDesc": "DuHan accompanies you from Hangul to fluency. Join now for authentic resources.",
     "ctaBtn": "Create Free Account",
     "ctaNote": "No credit card required · Free tier forever",

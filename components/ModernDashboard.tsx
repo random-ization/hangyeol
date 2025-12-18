@@ -177,6 +177,7 @@ export default function ModernDashboard() {
                     </p>
                 </div>
 
+
                 {/* 状态卡片 */}
                 <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">
                     <div className="flex items-center gap-2">
@@ -190,6 +191,30 @@ export default function ModernDashboard() {
                     </div>
                 </div>
             </div>
+
+            {/* Upgrade Banner for Free Users */}
+            {
+                (!user?.subscriptionType || user.subscriptionType === 'FREE') && (
+                    <div
+                        onClick={() => navigate('/pricing')}
+                        className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-4 md:p-6 text-white shadow-lg shadow-indigo-200 cursor-pointer hover:scale-[1.01] transition-transform flex items-center justify-between group"
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-colors">
+                                <Zap className="w-6 h-6 text-yellow-300 fill-current" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg leading-tight">升级会员，解锁完整课程体系与真题库</h3>
+                                <p className="text-indigo-100 text-sm mt-0.5 font-medium">Upgrade to unlock full curriculum & TOPIK exams</p>
+                            </div>
+                        </div>
+                        <div className="hidden sm:flex bg-white text-indigo-600 px-4 py-2 rounded-full font-bold text-sm items-center gap-1 group-hover:bg-indigo-50 transition-colors">
+                            立即升级
+                            <ChevronRight className="w-4 h-4" />
+                        </div>
+                    </div>
+                )
+            }
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -390,67 +415,69 @@ export default function ModernDashboard() {
             </div>
 
             {/* 目标设置弹窗 */}
-            {showGoalSettings && (
-                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl">
-                        <div className="flex items-center justify-between px-6 py-4 border-b">
-                            <h2 className="text-lg font-bold">设置每日目标</h2>
-                            <button onClick={() => setShowGoalSettings(false)} className="p-2 hover:bg-gray-100 rounded-lg">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">每日单词数量</label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="100"
-                                    value={dailyGoals.words}
-                                    onChange={(e) => setDailyGoals({ ...dailyGoals, words: parseInt(e.target.value) || 1 })}
-                                    className="w-full px-4 py-2 border rounded-lg"
-                                />
+            {
+                showGoalSettings && (
+                    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl">
+                            <div className="flex items-center justify-between px-6 py-4 border-b">
+                                <h2 className="text-lg font-bold">设置每日目标</h2>
+                                <button onClick={() => setShowGoalSettings(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                                    <X className="w-5 h-5" />
+                                </button>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">每日阅读篇数</label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="10"
-                                    value={dailyGoals.readings}
-                                    onChange={(e) => setDailyGoals({ ...dailyGoals, readings: parseInt(e.target.value) || 1 })}
-                                    className="w-full px-4 py-2 border rounded-lg"
-                                />
+                            <div className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">每日单词数量</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="100"
+                                        value={dailyGoals.words}
+                                        onChange={(e) => setDailyGoals({ ...dailyGoals, words: parseInt(e.target.value) || 1 })}
+                                        className="w-full px-4 py-2 border rounded-lg"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">每日阅读篇数</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="10"
+                                        value={dailyGoals.readings}
+                                        onChange={(e) => setDailyGoals({ ...dailyGoals, readings: parseInt(e.target.value) || 1 })}
+                                        className="w-full px-4 py-2 border rounded-lg"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">每日听力篇数</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="10"
+                                        value={dailyGoals.listenings}
+                                        onChange={(e) => setDailyGoals({ ...dailyGoals, listenings: parseInt(e.target.value) || 1 })}
+                                        className="w-full px-4 py-2 border rounded-lg"
+                                    />
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">每日听力篇数</label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max="10"
-                                    value={dailyGoals.listenings}
-                                    onChange={(e) => setDailyGoals({ ...dailyGoals, listenings: parseInt(e.target.value) || 1 })}
-                                    className="w-full px-4 py-2 border rounded-lg"
-                                />
+                            <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
+                                <button
+                                    onClick={() => setShowGoalSettings(false)}
+                                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                                >
+                                    取消
+                                </button>
+                                <button
+                                    onClick={() => saveGoals(dailyGoals)}
+                                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                                >
+                                    保存
+                                </button>
                             </div>
-                        </div>
-                        <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
-                            <button
-                                onClick={() => setShowGoalSettings(false)}
-                                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                            >
-                                取消
-                            </button>
-                            <button
-                                onClick={() => saveGoals(dailyGoals)}
-                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                            >
-                                保存
-                            </button>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }

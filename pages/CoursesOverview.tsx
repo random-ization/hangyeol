@@ -4,6 +4,7 @@ import {
     ArrowLeft, BookOpen, GraduationCap, Brain, Headphones,
     Check, Star, Zap, Layout, Mic2, FileText
 } from 'lucide-react';
+import PricingSection from '../components/PricingSection';
 
 const CoursesOverview: React.FC = () => {
     const navigate = useNavigate();
@@ -244,22 +245,38 @@ const CoursesOverview: React.FC = () => {
                 </div>
             </section>
 
-            {/* CTA Footer */}
-            <section className="py-24 bg-slate-900 text-white text-center">
-                <div className="max-w-3xl mx-auto px-4">
-                    <h2 className="text-4xl font-bold mb-6">您的韩语进阶之路，从这里开始</h2>
-                    <p className="text-slate-400 text-lg mb-10">
-                        加入数万名韩语学习者的行列。现在注册，即可免费体验第一单元所有功能。
-                    </p>
-                    <button
-                        onClick={() => navigate('/register')}
-                        className="px-12 py-5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold text-xl transition-all hover:scale-105 shadow-2xl shadow-indigo-900/50"
-                    >
-                        免费创建账号
-                    </button>
-                    <p className="mt-6 text-sm text-slate-500">
-                        已有账号？ <button onClick={() => navigate('/login')} className="text-white hover:underline underline-offset-4">立即登录</button>
-                    </p>
+            {/* Pricing Section with Banner */}
+            <section className="py-20 bg-slate-900 text-white">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-12">
+                        <span className="inline-block py-1 px-3 rounded-full bg-indigo-500/20 text-indigo-300 text-sm font-bold mb-4 border border-indigo-500/30">
+                            Premium Access
+                        </span>
+                        <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">
+                            Unlock the full roadmap with Premium
+                        </h2>
+                        <p className="text-slate-400 max-w-2xl mx-auto text-lg">
+                            Get unlimited access to all textbooks, TOPIK exams, and AI features.
+                        </p>
+                    </div>
+
+                    {/* Dark mode context for Pricing Section */}
+                    <div className="dark">
+                        <PricingSection />
+                    </div>
+
+                    <div className="mt-12 text-center border-t border-slate-800 pt-12">
+                        <h2 className="text-2xl font-bold mb-6 text-white">Ready to start?</h2>
+                        <button
+                            onClick={() => navigate('/register')}
+                            className="px-12 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-bold text-lg transition-all hover:scale-105 shadow-2xl shadow-indigo-900/50"
+                        >
+                            Create Free Account
+                        </button>
+                        <p className="mt-6 text-sm text-slate-500">
+                            Already have an account? <button onClick={() => navigate('/login')} className="text-white hover:underline underline-offset-4">Log in</button>
+                        </p>
+                    </div>
                 </div>
             </section>
 

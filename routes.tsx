@@ -14,6 +14,9 @@ const ModulePage = lazy(() => import('./pages/ModulePage'));
 const TopikPage = lazy(() => import('./pages/TopikPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const LegalDocumentPage = lazy(() => import('./pages/LegalDocumentPage'));
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -40,6 +43,9 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({ canAccessContent, onShowUp
         <Route path="/" element={<Landing language={language} onLanguageChange={setLanguage} />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/register" element={<AuthPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/courses" element={<CoursesOverview />} />
         <Route
           path="/terms"

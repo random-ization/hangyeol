@@ -12,94 +12,42 @@ const Footer: React.FC<FooterProps> = ({ language, onNavigate }) => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-slate-800 text-slate-300 mt-auto">
-      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* About Section */}
-          <div>
-            <div className="flex items-center space-x-2 mb-4">
-              <img
-                src="/logo.jpg"
-                alt="DuHan Logo"
-                className="w-10 h-10 rounded-lg object-contain bg-white border border-slate-100 shadow-sm"
-              />
-              <span className="text-xl font-bold text-white">
-                {language === 'zh' ? '读韩' : 'DuHan'}
-              </span>
-            </div>
-            <p className="text-sm text-slate-400">
-              {labels.footerDescription || 'Your comprehensive Korean language learning platform'}
-            </p>
-          </div>
-
-          {/* Quick Links */}
-          <div>
-            <h3 className="text-white font-semibold mb-4">{labels.quickLinks || 'Quick Links'}</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <button
-                  onClick={() => onNavigate('home')}
-                  className="hover:text-white transition-colors"
-                >
-                  {labels.home}
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => onNavigate('dashboard')}
-                  className="hover:text-white transition-colors"
-                >
-                  {labels.textbookLearning}
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => onNavigate('topik')}
-                  className="hover:text-white transition-colors"
-                >
-                  {labels.topik}
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          {/* Legal Links */}
-          <div>
-            <h3 className="text-white font-semibold mb-4">{labels.legal || 'Legal'}</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <button
-                  onClick={() => onNavigate('terms')}
-                  className="hover:text-white transition-colors font-medium"
-                >
-                  {labels.termsOfService || 'Terms of Service'}
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => onNavigate('privacy')}
-                  className="hover:text-white transition-colors font-medium"
-                >
-                  {labels.privacyPolicy || 'Privacy Policy'}
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => onNavigate('refund')}
-                  className="hover:text-white transition-colors font-medium"
-                >
-                  {labels.refundPolicy || 'Refund Policy'}
-                </button>
-              </li>
-            </ul>
-          </div>
+    <footer className="bg-white py-12 border-t border-slate-200 mt-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="flex items-center gap-2">
+          <img src="/logo.jpg" alt="Logo" className="w-8 h-8 rounded-lg" />
+          <span className="font-bold text-slate-900">{labels.appName}</span>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="border-t border-slate-700 mt-8 pt-6 text-center text-sm text-slate-400">
-          <p>
-            © {currentYear} {language === 'zh' ? '读韩' : 'DuHan'}. {labels.allRightsReserved || 'All rights reserved.'}
-          </p>
+        <div className="text-slate-500 text-sm">
+          © {currentYear} DuHan Learning. {labels.allRightsReserved}
+        </div>
+
+        <div className="flex gap-6 text-sm font-medium text-slate-600">
+          <button
+            onClick={() => onNavigate('privacy')}
+            className="hover:text-indigo-600 transition-colors"
+          >
+            {labels.privacyPolicy}
+          </button>
+          <button
+            onClick={() => onNavigate('terms')}
+            className="hover:text-indigo-600 transition-colors"
+          >
+            {labels.termsOfService}
+          </button>
+          <button
+            onClick={() => onNavigate('refund')}
+            className="hover:text-indigo-600 transition-colors"
+          >
+            {labels.refundPolicy}
+          </button>
+          <a
+            href="#"
+            className="hover:text-indigo-600 transition-colors"
+          >
+            {labels.landing?.contactUs || 'Contact Us'}
+          </a>
         </div>
       </div>
     </footer>

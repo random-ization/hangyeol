@@ -2,13 +2,19 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { RegisterSchema, RegisterInput, LoginSchema, LoginInput } from '../schemas/validation';
+import { sendVerificationEmail, sendPasswordResetEmail } from '../lib/email';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-prod';
 
 // Constants
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const RESET_TOKEN_EXPIRY_HOURS = 1;
+
+// Helper to generate random token
+const generateToken = (): string => crypto.randomBytes(32).toString('hex');
 
 // Helper to calculate day streak
 const calculateDayStreak = (activities: any[]): number => {
@@ -134,30 +140,30 @@ export const register = async (req: Request, res: Response) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const verificationToken = generateToken();
 
-    const user = await prisma.user.create({
+    await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         name,
         role: 'STUDENT',
         tier: 'FREE',
+        isVerified: false,
+        verificationToken,
       },
     });
 
-    const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+    // Send verification email
+    try {
+      await sendVerificationEmail(email, verificationToken);
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      // Don't fail registration if email fails - user can request resend
+    }
 
-    // For register, we return a basic user structure since relations are empty
     res.json({
-      token,
-      user: {
-        ...user,
-        password: undefined,
-        savedWords: [],
-        mistakes: [],
-        annotations: [],
-        examHistory: [],
-      },
+      message: 'Registration successful. Please check your email to verify your account.',
     });
   } catch (error: any) {
     console.error('Register Error:', error);
@@ -165,6 +171,118 @@ export const register = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
     res.status(500).json({ error: 'Registration failed' });
+  }
+};
+
+export const verifyEmail = async (req: Request, res: Response) => {
+  try {
+    const { token } = req.query;
+
+    if (!token || typeof token !== 'string') {
+      return res.status(400).json({ error: 'Invalid verification token' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { verificationToken: token },
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid or expired verification token' });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isVerified: true,
+        verificationToken: null,
+      },
+    });
+
+    res.json({ message: 'Email verified successfully. You can now log in.' });
+  } catch (error) {
+    console.error('Verify Email Error:', error);
+    res.status(500).json({ error: 'Email verification failed' });
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    // Don't reveal if user exists or not (security best practice)
+    if (!user) {
+      return res.json({ message: 'If an account with that email exists, we sent a password reset link.' });
+    }
+
+    const resetToken = generateToken();
+    const resetTokenExpiry = new Date(Date.now() + RESET_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetToken,
+        resetTokenExpiry,
+      },
+    });
+
+    try {
+      await sendPasswordResetEmail(email, resetToken);
+    } catch (emailError) {
+      console.error('Failed to send password reset email:', emailError);
+    }
+
+    res.json({ message: 'If an account with that email exists, we sent a password reset link.' });
+  } catch (error) {
+    console.error('Forgot Password Error:', error);
+    res.status(500).json({ error: 'Failed to process password reset request' });
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: 'Token and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { resetToken: token },
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    if (!user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
+      return res.status(400).json({ error: 'Reset token has expired' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetToken: null,
+        resetTokenExpiry: null,
+      },
+    });
+
+    res.json({ message: 'Password reset successfully. You can now log in with your new password.' });
+  } catch (error) {
+    console.error('Reset Password Error:', error);
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 };
 
@@ -190,6 +308,14 @@ export const login = async (req: Request, res: Response) => {
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Check if email is verified
+    if (!user.isVerified) {
+      return res.status(403).json({
+        error: 'Please verify your email before logging in.',
+        code: 'EMAIL_NOT_VERIFIED'
+      });
     }
 
     const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });

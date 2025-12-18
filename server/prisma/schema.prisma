@@ -23,6 +23,14 @@ model User {
   subscriptionType   String?   // ANNUAL or LIFETIME for PAID users
   subscriptionExpiry DateTime? // Expiry date for annual subscriptions
   
+  // Email verification
+  isVerified         Boolean   @default(false)
+  verificationToken  String?   @unique
+  
+  // Password reset
+  resetToken         String?   @unique
+  resetTokenExpiry   DateTime?
+
   // Learning progress tracking
   lastInstitute String?       // Last selected institute
   lastLevel     Int?          // Last selected level

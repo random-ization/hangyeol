@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Language } from '../types';
 import { getLabels } from '../utils/i18n';
 import { api } from '../services/api';
-import { AlertCircle, ArrowRight, Loader2, Mail, Lock, User as UserIcon } from 'lucide-react';
+import { AlertCircle, ArrowRight, Loader2, Mail, Lock, User as UserIcon, CheckCircle2 } from 'lucide-react';
 
 interface AuthProps {
   onLogin: (user: User) => void;
@@ -11,12 +12,14 @@ interface AuthProps {
 }
 
 const Auth: React.FC<AuthProps> = ({ onLogin, language, initialMode = 'login' }) => {
+  const navigate = useNavigate();
   const [isRegistering, setIsRegistering] = useState(initialMode === 'register');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   const labels = getLabels(language);
 
@@ -26,21 +29,92 @@ const Auth: React.FC<AuthProps> = ({ onLogin, language, initialMode = 'login' })
     setLoading(true);
 
     try {
-      let response;
       if (isRegistering) {
-        response = await api.register({ name, email, password });
-      } else {
-        response = await api.login({ email, password });
-      }
+        // Registration now returns a message, not a token
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password }),
+        });
+        const data = await response.json();
 
-      localStorage.setItem('token', response.token);
-      onLogin(response.user);
+        if (response.ok) {
+          setRegistrationSuccess(true);
+        } else {
+          setError(data.error || 'Registration failed');
+        }
+      } else {
+        const response = await api.login({ email, password });
+        localStorage.setItem('token', response.token);
+        onLogin(response.user);
+      }
     } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+      // Handle email not verified error
+      if (err.code === 'EMAIL_NOT_VERIFIED') {
+        setError(language === 'zh' ? '请先验证您的邮箱后再登录' : 'Please verify your email before logging in.');
+      } else {
+        setError(err.message || 'Authentication failed');
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  // Registration success screen
+  if (registrationSuccess) {
+    return (
+      <div className="min-h-screen w-full relative flex items-center justify-center overflow-hidden bg-slate-900 font-sans selection:bg-indigo-500 selection:text-white">
+        <div className="absolute inset-0 z-0">
+          <div className="absolute top-0 right-0 w-3/4 h-3/4 bg-indigo-900/30 rounded-full mix-blend-screen filter blur-[100px] animate-blob"></div>
+          <div className="absolute bottom-0 left-0 w-3/4 h-3/4 bg-violet-900/30 rounded-full mix-blend-screen filter blur-[100px] animate-blob animation-delay-2000"></div>
+        </div>
+
+        <div className="w-full max-w-md p-6 relative z-10">
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl p-8 md:p-10 text-center animate-fade-in-up">
+            <CheckCircle2 className="w-20 h-20 text-green-400 mx-auto mb-6" />
+            <h1 className="text-2xl font-bold text-white mb-4">
+              {language === 'zh' ? '注册成功！' : 'Registration Successful!'}
+            </h1>
+            <p className="text-indigo-200 mb-8">
+              {language === 'zh'
+                ? '我们已向您的邮箱发送了验证链接，请查收并点击链接完成验证。'
+                : 'We have sent a verification link to your email. Please check your inbox and click the link to verify your account.'}
+            </p>
+            <div className="p-4 bg-indigo-500/20 border border-indigo-500/30 rounded-xl mb-6">
+              <p className="text-sm text-indigo-100 flex items-center justify-center gap-2">
+                <Mail className="w-4 h-4" />
+                {email}
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/login')}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all"
+            >
+              {language === 'zh' ? '返回登录' : 'Back to Login'}
+            </button>
+          </div>
+        </div>
+
+        <style>{`
+          @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+          }
+          .animate-blob { animation: blob 7s infinite; }
+          .animation-delay-2000 { animation-delay: 2s; }
+          .animate-fade-in-up {
+            animation: fadeInUp 0.6s ease-out forwards;
+          }
+          @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full relative flex items-center justify-center overflow-hidden bg-slate-900 font-sans selection:bg-indigo-500 selection:text-white">
@@ -128,6 +202,19 @@ const Auth: React.FC<AuthProps> = ({ onLogin, language, initialMode = 'login' })
                 />
               </div>
             </div>
+
+            {/* Forgot Password Link - Only show on login */}
+            {!isRegistering && (
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => navigate('/forgot-password')}
+                  className="text-sm text-indigo-300 hover:text-white transition-colors"
+                >
+                  {language === 'zh' ? '忘记密码？' : 'Forgot Password?'}
+                </button>
+              </div>
+            )}
 
             <button
               type="submit"

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Library,
   LogOut,
@@ -40,6 +41,8 @@ const Layout: React.FC<LayoutProps> = ({
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const labels = getLabels(language);
+  const location = useLocation();
+  const isLandingPage = location.pathname === '/';
 
   // Handle scroll effect for navbar
   useEffect(() => {
@@ -275,8 +278,8 @@ const Layout: React.FC<LayoutProps> = ({
         {children}
       </main>
 
-      {/* Footer */}
-      <Footer language={language} onNavigate={onNavigate} />
+      {/* Footer - Hide on Landing Page */}
+      {!isLandingPage && <Footer language={language} onNavigate={onNavigate} />}
     </div>
   );
 };

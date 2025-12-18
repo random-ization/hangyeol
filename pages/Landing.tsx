@@ -304,6 +304,7 @@ const Landing: React.FC<LandingProps> = ({ language }) => {
                     <div className="flex gap-6 text-sm font-medium text-slate-600">
                         <a href="#" className="hover:text-indigo-600">隐私政策</a>
                         <a href="#" className="hover:text-indigo-600">服务条款</a>
+                        <a href="/refund" className="hover:text-indigo-600">退款政策</a>
                         <a href="#" className="hover:text-indigo-600">联系我们</a>
                     </div>
                 </div>

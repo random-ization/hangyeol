@@ -42,12 +42,16 @@ const Footer: React.FC<FooterProps> = ({ language, onNavigate }) => {
           >
             {labels.refundPolicy}
           </button>
-          <a
-            href="#"
+          <button
+            onClick={() => {
+              if (window.confirm(labels.landing?.contactConfirm)) {
+                window.location.href = 'mailto:support@koreanstudy.me';
+              }
+            }}
             className="hover:text-indigo-600 transition-colors"
           >
             {labels.landing?.contactUs || 'Contact Us'}
-          </a>
+          </button>
         </div>
       </div>
     </footer>

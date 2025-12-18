@@ -356,7 +356,17 @@ const Landing: React.FC<LandingProps> = ({ language, onLanguageChange }) => {
                         <a href="/terms" className="hover:text-indigo-600">{t('landing.term')}</a>
                         {/* {t('landing.legal')} - could handle multiple here if needed */}
                         <a href="/refund" className="hover:text-indigo-600">{t('landing.refundPolicy')}</a>
-                        <a href="#" className="hover:text-indigo-600">{t('landing.contactUs')}</a>
+                        <button
+                            onClick={(e) => {
+                                e.preventDefault();
+                                if (window.confirm(t('landing.contactConfirm'))) {
+                                    window.location.href = 'mailto:support@koreanstudy.me';
+                                }
+                            }}
+                            className="hover:text-indigo-600"
+                        >
+                            {t('landing.contactUs')}
+                        </button>
                     </div>
                 </div>
             </footer>

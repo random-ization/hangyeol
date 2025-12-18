@@ -437,6 +437,23 @@
       "mistakes_desc": "Review Weakness"
     }
   },
+  "plan": {
+    "monthly": "Gói Tháng",
+    "annual": "Gói Năm",
+    "lifetime": "Trọn Đời"
+  },
+  "period": {
+    "per_month": "/ tháng",
+    "per_year": "/ năm",
+    "once": "một lần"
+  },
+  "feature": {
+    "textbook_access": "Truy cập đầy đủ giáo trình",
+    "topik_access": "Thi thử TOPIK không giới hạn"
+  },
+  "button": {
+    "upgrade": "Nâng cấp ngay"
+  },
   "landing": {
     "heroBadge": "Giáo trình Yonsei, Sogang, SNU mới",
     "heroTitle1": "Chinh phục tiếng Hàn,",
@@ -450,7 +467,7 @@
     "statPassRate": "Tỉ lệ đỗ cao",
     "statRecommend": "Học viên tin dùng",
     "featureEyebrow": "Trợ lý học tập",
-    "featureTitle": "Hơn cả giáo trình, là Gia sư AI",
+    "featureTitle": "Hơn cả giáo trình, là Gia sư thông minh",
     "featureDesc": "Chúng tôi số hóa các giáo trình tiếng Hàn tốt nhất và thêm các tính năng thông minh như dịch tức thì, lặp lại ngắt quãng.",
     "card1Title": "Chương trình Đại học",
     "card1Desc": "Giáo trình số hóa từ Yonsei, Sogang. Học song song với lớp học ngay cả khi bạn không ở Hàn Quốc.",
@@ -470,7 +487,7 @@
     "step1Title": "Chọn giáo trình",
     "step1Desc": "Chọn Yonsei, Sogang... phù hợp với mục tiêu hoặc trường học của bạn.",
     "step2Title": "Luyện tập & Đồng bộ",
-    "step2Desc": "Xem trước từ mới và củng cố ngữ pháp với sự hỗ trợ của AI.",
+    "step2Desc": "Xem trước từ vựng và bài khóa, nắm vững kiến thức mới.",
     "step3Title": "Sẵn sàng lên lớp",
     "step3Desc": "Quên đi nỗi sợ không hiểu bài. Tự tin tham gia lớp học.",
     "ctaTitle": "Sẵn sàng bắt đầu?",
@@ -479,9 +496,34 @@
     "ctaNote": "Không cần thẻ tín dụng · Gói miễn phí vĩnh viễn",
     "footerDesc": "Nền tảng học tiếng Hàn toàn diện của bạn",
     "contactUs": "Liên hệ",
+    "contactConfirm": "Bạn có muốn gửi email đến support@koreanstudy.me không?",
     "privacy": "Chính sách quyền riêng tư",
     "term": "Điều khoản dịch vụ",
     "refundPolicy": "Chính sách hoàn tiền",
     "legal": "Pháp lý"
+  },
+  "pricing": {
+    "limitedOffer": "Ưu đãi có hạn",
+    "paymentMethods": "Chúng tôi chấp nhận WeChat Pay và Alipay",
+    "notSure": "Không chắc chắn gói nào phù hợp với bạn?",
+    "trial": "Bắt đầu dùng thử miễn phí 7 ngày",
+    "discount": "GIẢM 70%",
+    "title": "Đầu tư cho sự trôi chảy tiếng Hàn của bạn",
+    "subtitle": "Chọn gói phù hợp với tốc độ của bạn.",
+    "features": {
+      "monthly": {
+        "cloudSync": "Đồng bộ ghi chú đám mây"
+      },
+      "annual": {
+        "allMonthly": "Tất cả tính năng hàng tháng",
+        "bestValue": "Giá trị tốt nhất cho người học nghiêm túc",
+        "prioritySupport": "Hỗ trợ ưu tiên"
+      },
+      "lifetime": {
+        "oneTime": "Thanh toán một lần",
+        "foreverAccess": "Truy cập vĩnh viễn mọi thứ",
+        "futureUpdates": "Bao gồm các bản cập nhật trong tương lai"
+      }
+    }
   }
 }

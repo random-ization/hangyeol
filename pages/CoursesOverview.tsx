@@ -122,7 +122,7 @@ const CoursesOverview: React.FC = () => {
                             <h2 className="text-3xl font-bold mb-4">{t('coursesOverview.feature1Title')}</h2>
                             <p className="text-slate-600 text-lg mb-8 leading-relaxed">
                                 <Trans i18nKey="coursesOverview.feature1Desc">
-                                    <span className="text-indigo-600 font-bold">Premium 会员</span> 可解锁所有合作院校（延世、西江、首尔大等）的完整电子教材。从初级语法到高级阅读，内容实时更新，无需额外购买纸质书。
+                                    <span className="text-indigo-600 font-bold">Premium Members</span> unlock full digital textbooks from Yonsei, Sogang, SNU, and more. From beginner grammar to advanced reading, content is always up-to-date without buying physical books.
                                 </Trans>
                             </p>
                             <ul className="space-y-4">
@@ -190,9 +190,9 @@ const CoursesOverview: React.FC = () => {
                     <h2 className="text-3xl font-bold mb-6">{t('coursesOverview.feature3Title')}</h2>
                     <p className="text-xl text-slate-600 mb-10 leading-relaxed">
                         <Trans i18nKey="coursesOverview.feature3Desc">
-                            遇到读不懂的句子？<br />
-                            我们内置了详尽的语法库和句型分析系统。<br />
-                            一键查看句子结构拆解与对应语法点，让自学不再有盲点。
+                            Stuck on a sentence?<br />
+                            Our built-in grammar library and syntax system are here.<br />
+                            One-click to break down sentence structure and grammar points, removing blind spots in self-study.
                         </Trans>
                     </p>
                 </div>

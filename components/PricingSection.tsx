@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { SubscriptionType } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from '../hooks/useTranslation';
+import { useTranslation } from 'react-i18next';
 
 const PricingSection: React.FC = () => {
     const { user } = useAuth();
@@ -45,47 +45,44 @@ const PricingSection: React.FC = () => {
 
     const currentPlan = user?.subscriptionType || SubscriptionType.FREE;
 
-    // cast labels to any to safely access nested properties if typing is loose
-    const labels = t as any;
-
     const plans = [
         {
             id: 'MONTHLY',
-            title: labels.plan?.monthly || 'Monthly',
+            title: t('plan.monthly', 'Monthly'),
             price: `${priceConfig.symbol}${priceConfig.monthly}`,
-            period: labels.period?.per_month || '/ month',
+            period: t('period.per_month', '/ month'),
             features: [
-                labels.feature?.textbook_access || 'Full Textbook Access',
-                labels.feature?.topik_access || 'Unlimited TOPIK Exams',
-                'Cloud sync for notes'
+                t('feature.textbook_access', 'Full Textbook Access'),
+                t('feature.topik_access', 'Unlimited TOPIK Exams'),
+                t('pricing.features.monthly.cloudSync')
             ],
             highlight: false,
             type: SubscriptionType.MONTHLY
         },
         {
             id: 'ANNUAL',
-            title: labels.plan?.annual || 'Annual',
+            title: t('plan.annual', 'Annual'),
             price: `${priceConfig.symbol}${priceConfig.annual}`,
-            period: labels.period?.per_year || '/ year',
+            period: t('period.per_year', '/ year'),
             originalPrice: language === 'zh' ? '¥228' : language === 'en' ? '$69.99' : undefined,
-            discount: labels.pricing?.discount || '70% OFF',
+            discount: t('pricing.discount', '70% OFF'),
             features: [
-                'All Monthly features',
-                'Best value for serious learners',
-                'Priority support'
+                t('pricing.features.annual.allMonthly'),
+                t('pricing.features.annual.bestValue'),
+                t('pricing.features.annual.prioritySupport')
             ],
             highlight: true,
             type: SubscriptionType.ANNUAL
         },
         {
             id: 'LIFETIME',
-            title: labels.plan?.lifetime || 'Lifetime',
+            title: t('plan.lifetime', 'Lifetime'),
             price: `${priceConfig.symbol}${priceConfig.lifetime}`,
-            period: labels.period?.once || 'one-time',
+            period: t('period.once', 'one-time'),
             features: [
-                'One-time payment',
-                'Forever access to everything',
-                'Future updates included'
+                t('pricing.features.lifetime.oneTime'),
+                t('pricing.features.lifetime.foreverAccess'),
+                t('pricing.features.lifetime.futureUpdates')
             ],
             highlight: false,
             type: SubscriptionType.LIFETIME
@@ -97,10 +94,10 @@ const PricingSection: React.FC = () => {
             <div className="max-w-7xl mx-auto">
                 <div className="text-center">
                     <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
-                        {labels.pricing?.title || "Invest in your Korean Fluency"}
+                        {t('pricing.title', "Invest in your Korean Fluency")}
                     </h2>
                     <p className="mt-4 text-xl text-gray-600 dark:text-gray-400">
-                        {labels.pricing?.subtitle || "Choose the plan that fits your pace."}
+                        {t('pricing.subtitle', "Choose the plan that fits your pace.")}
                     </p>
                 </div>
 
@@ -180,7 +177,7 @@ const PricingSection: React.FC = () => {
                                             : 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white border border-indigo-200 dark:border-gray-500 hover:bg-indigo-50 dark:hover:bg-gray-500'
                                             }`}
                                     >
-                                        {labels.button?.upgrade || "Upgrade Now"}
+                                        {t('button.upgrade', "Upgrade Now")}
                                     </button>
                                 )}
                             </div>

@@ -441,6 +441,23 @@
       "mistakes_desc": "Review Weakness"
     }
   },
+  "plan": {
+    "monthly": "Monthly",
+    "annual": "Annual",
+    "lifetime": "Lifetime"
+  },
+  "period": {
+    "per_month": "/ month",
+    "per_year": "/ year",
+    "once": "one-time"
+  },
+  "feature": {
+    "textbook_access": "Full Textbook Access",
+    "topik_access": "Unlimited TOPIK Exams"
+  },
+  "button": {
+    "upgrade": "Upgrade Now"
+  },
   "landing": {
     "heroBadge": "New Textbooks from Yonsei, Sogang, and SNU",
     "heroTitle1": "Master Korean,",
@@ -454,7 +471,7 @@
     "statPassRate": "High Pass Rate",
     "statRecommend": "Student Choice",
     "featureEyebrow": "Study Assistant",
-    "featureTitle": "More than textbooks, your AI Tutor",
+    "featureTitle": "More than textbooks, your Smart Tutor",
     "featureDesc": "We digitized the best Korean textbooks and added smart features like instant translation, spaced repetition, and pronunciation feedback.",
     "card1Title": "University Curriculum",
     "card1Desc": "Digitized textbooks from Yonsei, Sogang, and more. Study in sync with your classroom even if you are not in Korea.",
@@ -474,7 +491,7 @@
     "step1Title": "Choose Textbook",
     "step1Desc": "Select from Yonsei, Sogang, etc. based on your goal or school.",
     "step2Title": "Practice & Sync",
-    "step2Desc": "Preview new words and reinforce grammar with AI assistance.",
+    "step2Desc": "Preview new words and texts, master new knowledge.",
     "step3Title": "Class Ready",
     "step3Desc": "Forget the fear of not understanding. Participate with confidence.",
     "ctaTitle": "Ready to start your journey?",
@@ -483,9 +500,34 @@
     "ctaNote": "No credit card required · Free tier forever",
     "footerDesc": "Your comprehensive Korean language learning platform",
     "contactUs": "Contact Us",
+    "contactConfirm": "Do you want to send an email to support@koreanstudy.me?",
     "privacy": "Privacy Policy",
     "term": "Terms of Service",
     "refundPolicy": "Refund Policy",
     "legal": "Legal"
+  },
+  "pricing": {
+    "limitedOffer": "Limited Time Offer",
+    "paymentMethods": "We accept WeChat Pay and Alipay",
+    "notSure": "Not sure which plan is right for you?",
+    "trial": "Start 7-Day Free Trial",
+    "discount": "70% OFF",
+    "title": "Invest in your Korean Fluency",
+    "subtitle": "Choose the plan that fits your pace.",
+    "features": {
+      "monthly": {
+        "cloudSync": "Cloud sync for notes"
+      },
+      "annual": {
+        "allMonthly": "All Monthly features",
+        "bestValue": "Best value for serious learners",
+        "prioritySupport": "Priority support"
+      },
+      "lifetime": {
+        "oneTime": "One-time payment",
+        "foreverAccess": "Forever access to everything",
+        "futureUpdates": "Future updates included"
+      }
+    }
   }
 }

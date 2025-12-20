@@ -24,8 +24,8 @@ const getGenAI = () => {
 };
 
 // 生成题目唯一 hash（包含语言以区分不同语言的缓存）
-const generateHash = (question: string, options: string[], language: string): string => {
-    const content = `${question}|${options.join('|')}|${language}`;
+const generateHash = (question: string, options: string[], language: string, imageUrl?: string): string => {
+    const content = `${question}|${options.join('|')}|${language}|${imageUrl || ''}`;
     return crypto.createHash('md5').update(content).digest('hex');
 };
 
@@ -40,6 +40,7 @@ export interface TopikQuestionInput {
     correctAnswer: number;
     type?: string;
     language?: string; // 'zh' | 'ko' | 'en'
+    imageUrl?: string; // New: Image URL for image-based questions
 }
 
 export interface TopikAnalysisResult {
@@ -51,12 +52,12 @@ export interface TopikAnalysisResult {
 }
 
 /**
- * 分析 TOPIK 题目
+ * 分析 TOPIK 题目 (支持图片+文本多模态)
  */
 export const analyzeTopikQuestion = async (
     input: TopikQuestionInput
 ): Promise<TopikAnalysisResult> => {
-    const { question, options, correctAnswer, type, language = 'zh' } = input;
+    const { question, options, correctAnswer, type, language = 'zh', imageUrl } = input;
 
     // Language mapping for prompt
     const languageNames: Record<string, string> = {
@@ -67,8 +68,8 @@ export const analyzeTopikQuestion = async (
         'mn': 'Mongolian'
     };
 
-    // Step 1: 生成 hash（包含语言）
-    const hash = generateHash(question, options, language);
+    // Step 1: 生成 hash（包含语言和图片URL）
+    const hash = generateHash(question, options, language, imageUrl);
 
     // Step 2: 检查 L1 内存缓存
     const cachedResult = cache.get(hash);
@@ -93,33 +94,84 @@ export const analyzeTopikQuestion = async (
 
     // Step 4: 调用 Gemini API
     console.log(`[AI] Cache miss, calling Gemini API for: ${hash}`);
+    console.log(`[AI] Has image: ${!!imageUrl}`);
 
     const ai = getGenAI();
+    // Use gemini-1.5-flash for multimodal support
     const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
     const optionsStr = options.map((opt, i) => `${i + 1}. ${opt}`).join('\n');
     const correctAnswerText = options[correctAnswer] || options[0];
 
-    const prompt = `You are a strict Korean language exam proctor.
+    // Build prompt (different for image vs text questions)
+    const basePrompt = `You are a strict Korean language exam proctor.
 Analyze the following TOPIK question.
 
-Question: ${question}
+${imageUrl ? 'The question content is shown in the attached image.' : `Question: ${question}`}
 Options:
 ${optionsStr}
 Correct Answer: ${correctAnswer + 1}. ${correctAnswerText} (Explain why this is correct)
 Question Type: ${type || 'general'}
 
+${imageUrl ? 'First, carefully read and transcribe any Korean text visible in the image. Then analyze the question.' : ''}
+
 IMPORTANT: All your output MUST be in ${languageNames[language] || 'Chinese (Simplified)'}.
 
 Output pure JSON with these keys:
-- translation: Translation of the question into ${languageNames[language] || 'Chinese'}
+- translation: ${imageUrl ? 'Transcription and translation of the text in the image' : 'Translation of the question'} into ${languageNames[language] || 'Chinese'}
 - keyPoint: Key grammar or vocabulary point being tested
 - analysis: Detailed explanation of why the correct answer is right
 - wrongOptions: Object with keys "1", "2", "3", "4" explaining why each wrong option is incorrect (skip the correct answer)
 
 IMPORTANT: Return ONLY valid JSON, no markdown formatting. All text values must be in ${languageNames[language] || 'Chinese'}.`;
 
-    const result = await model.generateContent(prompt);
+    let result;
+
+    if (imageUrl) {
+        // Multimodal: Image + Text
+        try {
+            // Fetch image and convert to base64
+            console.log(`[AI] Fetching image from: ${imageUrl}`);
+            const imageResponse = await fetch(imageUrl);
+
+            if (!imageResponse.ok) {
+                throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+            }
+
+            const imageBuffer = await imageResponse.arrayBuffer();
+            const base64Image = Buffer.from(imageBuffer).toString('base64');
+
+            // Detect mime type from URL or default to png
+            let mimeType = 'image/png';
+            if (imageUrl.toLowerCase().includes('.jpg') || imageUrl.toLowerCase().includes('.jpeg')) {
+                mimeType = 'image/jpeg';
+            } else if (imageUrl.toLowerCase().includes('.webp')) {
+                mimeType = 'image/webp';
+            }
+
+            console.log(`[AI] Image size: ${imageBuffer.byteLength} bytes, type: ${mimeType}`);
+
+            // Call Gemini with image
+            result = await model.generateContent([
+                {
+                    inlineData: {
+                        mimeType,
+                        data: base64Image
+                    }
+                },
+                basePrompt
+            ]);
+        } catch (imgError) {
+            console.error('[AI] Image processing failed:', imgError);
+            // Fallback to text-only if image fails
+            console.log('[AI] Falling back to text-only analysis');
+            result = await model.generateContent(basePrompt);
+        }
+    } else {
+        // Text-only
+        result = await model.generateContent(basePrompt);
+    }
+
     const responseText = result.response.text();
 
     // 解析 JSON 响应

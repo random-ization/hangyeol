@@ -160,6 +160,7 @@ export const api = {
     correctAnswer: number;
     type?: string;
     language?: string;
+    imageUrl?: string; // New: For image-based questions
   }): Promise<{
     success: boolean;
     data: {

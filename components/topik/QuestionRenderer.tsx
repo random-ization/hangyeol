@@ -79,6 +79,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
 
       try {
         const questionText = question.question || question.passage || '';
+        const imageUrl = question.imageUrl || question.image;
+
         // Map language to API format
         const langMap: Record<string, string> = {
           'zh-CN': 'zh',
@@ -93,7 +95,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
           options: question.options,
           correctAnswer: correctAnswer ?? 0,
           type: 'TOPIK_QUESTION',
-          language: langMap[language] || 'zh'
+          language: langMap[language] || 'zh',
+          imageUrl: imageUrl, // Pass image URL for image-based questions
         });
 
         if (response.success && response.data) {

@@ -602,92 +602,14 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
                   </div>
                 )}
 
-                {/* AI Analysis Card */}
+                {/* AI Analysis Card - Using Sanitized Logic */}
                 {aiAnalysis && (
-                  <div className="mt-3 p-5 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl shadow-sm relative">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 text-indigo-600" />
-                        <span className="font-bold text-indigo-700">AI 老师解析</span>
-                      </div>
-
-                      {/* Save to Notebook Button */}
-                      <button
-                        onClick={handleSaveToNotebook}
-                        disabled={isSaving || isSaved}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${isSaved
-                          ? 'bg-emerald-100 text-emerald-700 cursor-default'
-                          : isSaving
-                            ? 'bg-indigo-100 text-indigo-500 cursor-wait'
-                            : 'bg-white/70 text-indigo-600 hover:bg-white hover:shadow-sm border border-indigo-200'
-                          }`}
-                      >
-                        {isSaved ? (
-                          <>
-                            <BookmarkCheck className="w-4 h-4" />
-                            已收藏
-                          </>
-                        ) : isSaving ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            保存中...
-                          </>
-                        ) : (
-                          <>
-                            <Bookmark className="w-4 h-4" />
-                            收藏
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Translation */}
-                    <div className="mb-4">
-                      <div className="text-sm font-semibold text-indigo-700 mb-1.5">
-                        题干翻译
-                      </div>
-                      <div className="text-gray-700 leading-relaxed bg-white/60 p-3 rounded-lg">
-                        {aiAnalysis.translation}
-                      </div>
-                    </div>
-
-                    {/* Key Point */}
-                    <div className="mb-4">
-                      <div className="text-sm font-semibold text-indigo-700 mb-1.5">
-                        核心考点
-                      </div>
-                      <div className="inline-block bg-indigo-100 text-indigo-800 px-3 py-1.5 rounded-full text-sm font-medium">
-                        {aiAnalysis.keyPoint}
-                      </div>
-                    </div>
-
-                    {/* Analysis */}
-                    <div className="mb-4">
-                      <div className="text-sm font-semibold text-indigo-700 mb-1.5">
-                        正解分析
-                      </div>
-                      <div className="text-gray-700 leading-relaxed bg-white/60 p-3 rounded-lg">
-                        {aiAnalysis.analysis}
-                      </div>
-                    </div>
-
-                    {/* Wrong Options */}
-                    {aiAnalysis.wrongOptions && typeof aiAnalysis.wrongOptions === 'object' && Object.keys(aiAnalysis.wrongOptions).length > 0 && (
-                      <div>
-                        <div className="text-sm font-semibold text-indigo-700 mb-1.5">
-                          干扰项排除
-                        </div>
-                        <div className="space-y-2">
-                          {Object.entries(aiAnalysis.wrongOptions).map(([key, value]) => (
-                            <div key={key} className="bg-white/60 p-3 rounded-lg">
-                              <span className="font-medium text-gray-600">选项 {key}：</span>
-                              <span className="text-gray-700">{String(value)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <SanitizedAIAnalysisDisplay
+                    analysis={aiAnalysis}
+                    isSaving={isSaving}
+                    isSaved={isSaved}
+                    onSave={handleSaveToNotebook}
+                  />
                 )}
               </div>
             )}
@@ -729,3 +651,146 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
     );
   }
 );
+
+/**
+ * Robust component to display AI Analysis without crashing
+ * Prevents white screen issues by strictly sanitizing all inputs
+ * Handles cases where AI returns nested objects instead of strings
+ */
+const SanitizedAIAnalysisDisplay = ({
+  analysis,
+  isSaving,
+  isSaved,
+  onSave
+}: {
+  analysis: any,
+  isSaving: boolean,
+  isSaved: boolean,
+  onSave: () => void
+}) => {
+  // Helper to safely convert anything to string or return null
+  const safeString = (val: any): string | null => {
+    if (val === null || val === undefined) return null;
+    if (typeof val === 'string') return val;
+    if (typeof val === 'number') return String(val);
+    if (typeof val === 'boolean') return String(val);
+    if (typeof val === 'object') {
+      try {
+        // If it's a simple object with a 'text' property (common AI failure mode), use that
+        if (val.text && typeof val.text === 'string') return val.text;
+        return JSON.stringify(val);
+      } catch (e) {
+        return '[Complex Data]';
+      }
+    }
+    return String(val);
+  };
+
+  // Helper to safely extract wrong options
+  const safeWrongOptions = (opts: any): [string, string][] => {
+    if (!opts || typeof opts !== 'object') return [];
+    try {
+      return Object.entries(opts).map(([k, v]) => [String(k), safeString(v) || '']);
+    } catch (e) {
+      return [];
+    }
+  };
+
+  const translation = safeString(analysis.translation);
+  const keyPoint = safeString(analysis.keyPoint);
+  const analysisText = safeString(analysis.analysis);
+  const wrongOptions = safeWrongOptions(analysis.wrongOptions);
+
+  return (
+    <div className="mt-3 p-5 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl shadow-sm relative">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-indigo-600" />
+          <span className="font-bold text-indigo-700">AI 老师解析</span>
+        </div>
+
+        {/* Save to Notebook Button */}
+        <button
+          onClick={onSave}
+          disabled={isSaving || isSaved}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${isSaved
+            ? 'bg-emerald-100 text-emerald-700 cursor-default'
+            : isSaving
+              ? 'bg-indigo-100 text-indigo-500 cursor-wait'
+              : 'bg-white/70 text-indigo-600 hover:bg-white hover:shadow-sm border border-indigo-200'
+            }`}
+        >
+          {isSaved ? (
+            <>
+              <BookmarkCheck className="w-4 h-4" />
+              已收藏
+            </>
+          ) : isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              保存中...
+            </>
+          ) : (
+            <>
+              <Bookmark className="w-4 h-4" />
+              收藏
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Translation */}
+      {translation && (
+        <div className="mb-4">
+          <div className="text-sm font-semibold text-indigo-700 mb-1.5">
+            题干翻译
+          </div>
+          <div className="text-gray-700 leading-relaxed bg-white/60 p-3 rounded-lg">
+            {translation}
+          </div>
+        </div>
+      )}
+
+      {/* Key Point */}
+      {keyPoint && (
+        <div className="mb-4">
+          <div className="text-sm font-semibold text-indigo-700 mb-1.5">
+            核心考点
+          </div>
+          <div className="inline-block bg-indigo-100 text-indigo-800 px-3 py-1.5 rounded-full text-sm font-medium">
+            {keyPoint}
+          </div>
+        </div>
+      )}
+
+      {/* Analysis */}
+      {analysisText && (
+        <div className="mb-4">
+          <div className="text-sm font-semibold text-indigo-700 mb-1.5">
+            正解分析
+          </div>
+          <div className="text-gray-700 leading-relaxed bg-white/60 p-3 rounded-lg">
+            {analysisText}
+          </div>
+        </div>
+      )}
+
+      {/* Wrong Options */}
+      {wrongOptions.length > 0 && (
+        <div>
+          <div className="text-sm font-semibold text-indigo-700 mb-1.5">
+            干扰项排除
+          </div>
+          <div className="space-y-2">
+            {wrongOptions.map(([key, value]) => (
+              <div key={key} className="bg-white/60 p-3 rounded-lg">
+                <span className="font-medium text-gray-600">选项 {key}：</span>
+                <span className="text-gray-700">{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

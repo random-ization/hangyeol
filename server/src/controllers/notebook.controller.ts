@@ -7,7 +7,7 @@ import { saveNote, getNotes, getNoteDetail, deleteNote } from '../services/noteb
  */
 export const createNote = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user?.id;
+        const userId = (req as any).user?.userId;
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
@@ -37,7 +37,7 @@ export const createNote = async (req: Request, res: Response) => {
  */
 export const listNotes = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user?.id;
+        const userId = (req as any).user?.userId;
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
@@ -63,7 +63,7 @@ export const listNotes = async (req: Request, res: Response) => {
  */
 export const getNote = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user?.id;
+        const userId = (req as any).user?.userId;
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
@@ -93,7 +93,7 @@ export const getNote = async (req: Request, res: Response) => {
  */
 export const removeNote = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user?.id;
+        const userId = (req as any).user?.userId;
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });
         }

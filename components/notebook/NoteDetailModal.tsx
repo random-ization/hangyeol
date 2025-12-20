@@ -252,8 +252,8 @@ const NoteContent: React.FC<{ type: string; content: any }> = ({ type, content }
                                     <div
                                         key={idx}
                                         className={`p-3 rounded-lg border flex items-center gap-3 ${isCorrect
-                                                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                                                : 'bg-white border-slate-200 text-slate-600'
+                                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                            : 'bg-white border-slate-200 text-slate-600'
                                             }`}
                                     >
                                         <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${isCorrect ? 'bg-emerald-200 text-emerald-700' : 'bg-slate-100 text-slate-500'
@@ -275,61 +275,7 @@ const NoteContent: React.FC<{ type: string; content: any }> = ({ type, content }
 
                 {/* AI Analysis Section */}
                 {content.aiAnalysis ? (
-                    <div className="mt-6 pt-6 border-t border-slate-100">
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="p-1.5 bg-indigo-100 rounded text-indigo-600">
-                                <GraduationCap className="w-5 h-5" />
-                            </div>
-                            <h3 className="text-lg font-bold text-indigo-900">AI 老师解析</h3>
-                        </div>
-
-                        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border border-indigo-100 space-y-5">
-                            {/* Translation */}
-                            {content.aiAnalysis.translation && (
-                                <div>
-                                    <div className="text-xs font-bold text-indigo-700 uppercase mb-1.5">题干翻译</div>
-                                    <p className="text-slate-700 bg-white/60 p-3 rounded-lg text-sm leading-relaxed">
-                                        {content.aiAnalysis.translation}
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Key Point */}
-                            {content.aiAnalysis.keyPoint && (
-                                <div>
-                                    <div className="text-xs font-bold text-indigo-700 uppercase mb-1.5">核心考点</div>
-                                    <div className="inline-block bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
-                                        {content.aiAnalysis.keyPoint}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Detailed Analysis */}
-                            {content.aiAnalysis.analysis && (
-                                <div>
-                                    <div className="text-xs font-bold text-indigo-700 uppercase mb-1.5">正解分析</div>
-                                    <p className="text-slate-700 bg-white/60 p-3 rounded-lg text-sm leading-relaxed">
-                                        {content.aiAnalysis.analysis}
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Wrong Options Analysis */}
-                            {content.aiAnalysis.wrongOptions && Object.keys(content.aiAnalysis.wrongOptions).length > 0 && (
-                                <div>
-                                    <div className="text-xs font-bold text-indigo-700 uppercase mb-1.5">干扰项分析</div>
-                                    <div className="space-y-2">
-                                        {Object.entries(content.aiAnalysis.wrongOptions).map(([key, value]) => (
-                                            <div key={key} className="text-sm bg-white/40 p-2 rounded border border-indigo-50/50">
-                                                <span className="font-bold text-indigo-600 mr-2">{key}:</span>
-                                                <span className="text-slate-600">{(value as string)}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <SanitizedAIAnalysisContent analysis={content.aiAnalysis} />
                 ) : content.analysis ? (
                     /* Legacy analysis support */
                     <Section title="AI 解析">
@@ -370,5 +316,100 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
         {children}
     </div>
 );
+
+/**
+ * Robust component to display AI Analysis content safely
+ */
+const SanitizedAIAnalysisContent = ({ analysis }: { analysis: any }) => {
+    // Helper to safely convert anything to string or return null
+    const safeString = (val: any): string | null => {
+        if (val === null || val === undefined) return null;
+        if (typeof val === 'string') return val;
+        if (typeof val === 'number') return String(val);
+        if (typeof val === 'boolean') return String(val);
+        if (typeof val === 'object') {
+            try {
+                if (val.text && typeof val.text === 'string') return val.text;
+                return JSON.stringify(val);
+            } catch (e) {
+                return '[Complex Data]';
+            }
+        }
+        return String(val);
+    };
+
+    // Helper to safely extract wrong options
+    const safeWrongOptions = (opts: any): [string, string][] => {
+        if (!opts || typeof opts !== 'object') return [];
+        try {
+            return Object.entries(opts).map(([k, v]) => [String(k), safeString(v) || '']);
+        } catch (e) {
+            return [];
+        }
+    };
+
+    const translation = safeString(analysis.translation);
+    const keyPoint = safeString(analysis.keyPoint);
+    const analysisText = safeString(analysis.analysis);
+    const wrongOptions = safeWrongOptions(analysis.wrongOptions);
+
+    return (
+        <div className="mt-6 pt-6 border-t border-slate-100">
+            <div className="flex items-center gap-2 mb-4">
+                <div className="p-1.5 bg-indigo-100 rounded text-indigo-600">
+                    <GraduationCap className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-bold text-indigo-900">AI 老师解析</h3>
+            </div>
+
+            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border border-indigo-100 space-y-5">
+                {/* Translation */}
+                {translation && (
+                    <div>
+                        <div className="text-xs font-bold text-indigo-700 uppercase mb-1.5">题干翻译</div>
+                        <p className="text-slate-700 bg-white/60 p-3 rounded-lg text-sm leading-relaxed">
+                            {translation}
+                        </p>
+                    </div>
+                )}
+
+                {/* Key Point */}
+                {keyPoint && (
+                    <div>
+                        <div className="text-xs font-bold text-indigo-700 uppercase mb-1.5">核心考点</div>
+                        <div className="inline-block bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
+                            {keyPoint}
+                        </div>
+                    </div>
+                )}
+
+                {/* Detailed Analysis */}
+                {analysisText && (
+                    <div>
+                        <div className="text-xs font-bold text-indigo-700 uppercase mb-1.5">正解分析</div>
+                        <p className="text-slate-700 bg-white/60 p-3 rounded-lg text-sm leading-relaxed">
+                            {analysisText}
+                        </p>
+                    </div>
+                )}
+
+                {/* Wrong Options Analysis */}
+                {wrongOptions.length > 0 && (
+                    <div>
+                        <div className="text-xs font-bold text-indigo-700 uppercase mb-1.5">干扰项分析</div>
+                        <div className="space-y-2">
+                            {wrongOptions.map(([key, value]) => (
+                                <div key={key} className="text-sm bg-white/40 p-2 rounded border border-indigo-50/50">
+                                    <span className="font-bold text-indigo-600 mr-2">{key}:</span>
+                                    <span className="text-slate-600">{value}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
 
 export default NoteDetailModal;

@@ -116,6 +116,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({ canAccessContent, onShowUp
           />
           <Route path="/notebook" element={<NotebookPage />} />
 
+          <Route path="/youtube" element={<Navigate to="/youtube/search" replace />} />
           <Route path="/youtube/search" element={<YouTubeSearchPage />} />
           <Route path="/youtube/learn/:youtubeId" element={<YouTubeLearnPage />} />
         </Route>

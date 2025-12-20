@@ -11,7 +11,8 @@ import {
   User as UserIcon,
   Home,
   GraduationCap,
-  Sparkles
+  Sparkles,
+  BookOpen
 } from 'lucide-react';
 import { User as UserType, UserTier, Language } from '../types';
 import { getLabels } from '../utils/i18n';
@@ -55,6 +56,7 @@ const Layout: React.FC<LayoutProps> = ({
     { id: 'home', label: labels.home, icon: Home },
     { id: 'dashboard', label: labels.textbookLearning, icon: Library },
     { id: 'topik', label: labels.topik, icon: GraduationCap },
+    { id: 'notebook', label: labels.notebook || '笔记本', icon: BookOpen },
   ];
 
   if (user?.role === 'ADMIN') {

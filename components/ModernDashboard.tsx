@@ -300,12 +300,13 @@ export default function ModernDashboard() {
                     )}
 
                     {/* B. 核心功能入口 */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         {[
                             { icon: Target, label: t('dashboard.tools.topik_mock'), color: "text-rose-600 bg-rose-50", desc: t('dashboard.tools.mock_desc'), path: "/topik" },
                             { icon: BookOpen, label: t('dashboard.tools.flashcards'), color: "text-amber-600 bg-amber-50", desc: t('dashboard.tools.flashcards_desc'), path: "/dashboard" },
                             { icon: Clock, label: t('dashboard.tools.listening'), color: "text-blue-600 bg-blue-50", desc: t('dashboard.tools.listening_desc'), path: "/dashboard" },
                             { icon: BarChart3, label: t('dashboard.tools.mistakes'), color: "text-emerald-600 bg-emerald-50", desc: t('dashboard.tools.mistakes_desc'), path: "/dashboard" },
+                            { icon: Headphones, label: t('notebook') || '我的笔记', color: "text-indigo-600 bg-indigo-50", desc: "复习笔记", path: "/notebook" },
                         ].map((item, idx) => (
                             <div
                                 key={idx}

@@ -39,6 +39,7 @@ export interface TopikQuestionInput {
     options: string[];
     correctAnswer: number;
     type?: string;
+    language?: string; // 'zh' | 'ko' | 'en'
 }
 
 export interface TopikAnalysisResult {
@@ -55,7 +56,14 @@ export interface TopikAnalysisResult {
 export const analyzeTopikQuestion = async (
     input: TopikQuestionInput
 ): Promise<TopikAnalysisResult> => {
-    const { question, options, correctAnswer, type } = input;
+    const { question, options, correctAnswer, type, language = 'zh' } = input;
+
+    // Language mapping for prompt
+    const languageNames: Record<string, string> = {
+        'zh': 'Chinese (Simplified)',
+        'ko': 'Korean',
+        'en': 'English'
+    };
 
     // Step 1: 生成 hash
     const hash = generateHash(question, options);
@@ -99,13 +107,15 @@ ${optionsStr}
 Correct Answer: ${correctAnswer + 1}. ${correctAnswerText} (Explain why this is correct)
 Question Type: ${type || 'general'}
 
+IMPORTANT: All your output MUST be in ${languageNames[language] || 'Chinese (Simplified)'}.
+
 Output pure JSON with these keys:
-- translation: Chinese translation of the question
+- translation: Translation of the question into ${languageNames[language] || 'Chinese'}
 - keyPoint: Key grammar or vocabulary point being tested
 - analysis: Detailed explanation of why the correct answer is right
 - wrongOptions: Object with keys "1", "2", "3", "4" explaining why each wrong option is incorrect (skip the correct answer)
 
-IMPORTANT: Return ONLY valid JSON, no markdown formatting.`;
+IMPORTANT: Return ONLY valid JSON, no markdown formatting. All text values must be in ${languageNames[language] || 'Chinese'}.`;
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

@@ -159,6 +159,7 @@ export const api = {
     options: string[];
     correctAnswer: number;
     type?: string;
+    language?: string;
   }): Promise<{
     success: boolean;
     data: {

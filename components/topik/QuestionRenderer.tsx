@@ -79,11 +79,19 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
 
       try {
         const questionText = question.question || question.passage || '';
+        // Map language to API format: 'zh' | 'ko' | 'en'
+        const langMap: Record<string, string> = {
+          'zh-CN': 'zh',
+          'zh': 'zh',
+          'ko': 'ko',
+          'en': 'en'
+        };
         const response = await api.analyzeTopikQuestion({
           question: questionText,
           options: question.options,
           correctAnswer: correctAnswer ?? 0,
-          type: 'TOPIK_QUESTION'
+          type: 'TOPIK_QUESTION',
+          language: langMap[language] || 'zh'
         });
 
         if (response.success && response.data) {
@@ -97,7 +105,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
       } finally {
         setAiLoading(false);
       }
-    }, [question, correctAnswer, aiLoading, aiAnalysis]);
+    }, [question, correctAnswer, language, aiLoading, aiAnalysis]);
 
     // Helper for highlight styles
     // 高亮默认用色块背景，有笔记的用下划线区分
@@ -300,7 +308,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
                         <Sparkles className="w-4 h-4" />
                       )}
                       <span className="font-medium">
-                        {aiLoading ? '分析中...' : '✨ AI 老师解析'}
+                        {aiLoading ? '分析中...' : 'AI 老师解析'}
                       </span>
                     </button>
                   )}
@@ -322,8 +330,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
 
                       {/* Translation */}
                       <div className="mb-4">
-                        <div className="flex items-center gap-1.5 text-sm font-semibold text-indigo-700 mb-1.5">
-                          <span>🇨🇳</span> 题干翻译
+                        <div className="text-sm font-semibold text-indigo-700 mb-1.5">
+                          题干翻译
                         </div>
                         <div className="text-gray-700 leading-relaxed bg-white/60 p-3 rounded-lg">
                           {aiAnalysis.translation}
@@ -332,8 +340,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
 
                       {/* Key Point */}
                       <div className="mb-4">
-                        <div className="flex items-center gap-1.5 text-sm font-semibold text-indigo-700 mb-1.5">
-                          <span>🔑</span> 核心考点
+                        <div className="text-sm font-semibold text-indigo-700 mb-1.5">
+                          核心考点
                         </div>
                         <div className="inline-block bg-indigo-100 text-indigo-800 px-3 py-1.5 rounded-full text-sm font-medium">
                           {aiAnalysis.keyPoint}
@@ -342,8 +350,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
 
                       {/* Analysis */}
                       <div className="mb-4">
-                        <div className="flex items-center gap-1.5 text-sm font-semibold text-indigo-700 mb-1.5">
-                          <span>💡</span> 正解分析
+                        <div className="text-sm font-semibold text-indigo-700 mb-1.5">
+                          正解分析
                         </div>
                         <div className="text-gray-700 leading-relaxed bg-white/60 p-3 rounded-lg">
                           {aiAnalysis.analysis}
@@ -353,8 +361,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
                       {/* Wrong Options */}
                       {aiAnalysis.wrongOptions && Object.keys(aiAnalysis.wrongOptions).length > 0 && (
                         <div>
-                          <div className="flex items-center gap-1.5 text-sm font-semibold text-indigo-700 mb-1.5">
-                            <span>❌</span> 干扰项排除
+                          <div className="text-sm font-semibold text-indigo-700 mb-1.5">
+                            干扰项排除
                           </div>
                           <div className="space-y-2">
                             {Object.entries(aiAnalysis.wrongOptions).map(([key, value]) => (
@@ -486,7 +494,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
                       <Sparkles className="w-4 h-4" />
                     )}
                     <span className="font-medium">
-                      {aiLoading ? '分析中...' : '✨ AI 老师解析'}
+                      {aiLoading ? '分析中...' : 'AI 老师解析'}
                     </span>
                   </button>
                 )}
@@ -508,8 +516,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
 
                     {/* Translation */}
                     <div className="mb-4">
-                      <div className="flex items-center gap-1.5 text-sm font-semibold text-indigo-700 mb-1.5">
-                        <span>🇨🇳</span> 题干翻译
+                      <div className="text-sm font-semibold text-indigo-700 mb-1.5">
+                        题干翻译
                       </div>
                       <div className="text-gray-700 leading-relaxed bg-white/60 p-3 rounded-lg">
                         {aiAnalysis.translation}
@@ -518,8 +526,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
 
                     {/* Key Point */}
                     <div className="mb-4">
-                      <div className="flex items-center gap-1.5 text-sm font-semibold text-indigo-700 mb-1.5">
-                        <span>🔑</span> 核心考点
+                      <div className="text-sm font-semibold text-indigo-700 mb-1.5">
+                        核心考点
                       </div>
                       <div className="inline-block bg-indigo-100 text-indigo-800 px-3 py-1.5 rounded-full text-sm font-medium">
                         {aiAnalysis.keyPoint}
@@ -528,8 +536,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
 
                     {/* Analysis */}
                     <div className="mb-4">
-                      <div className="flex items-center gap-1.5 text-sm font-semibold text-indigo-700 mb-1.5">
-                        <span>💡</span> 正解分析
+                      <div className="text-sm font-semibold text-indigo-700 mb-1.5">
+                        正解分析
                       </div>
                       <div className="text-gray-700 leading-relaxed bg-white/60 p-3 rounded-lg">
                         {aiAnalysis.analysis}
@@ -539,8 +547,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
                     {/* Wrong Options */}
                     {aiAnalysis.wrongOptions && Object.keys(aiAnalysis.wrongOptions).length > 0 && (
                       <div>
-                        <div className="flex items-center gap-1.5 text-sm font-semibold text-indigo-700 mb-1.5">
-                          <span>❌</span> 干扰项排除
+                        <div className="text-sm font-semibold text-indigo-700 mb-1.5">
+                          干扰项排除
                         </div>
                         <div className="space-y-2">
                           {Object.entries(aiAnalysis.wrongOptions).map(([key, value]) => (

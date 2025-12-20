@@ -24,6 +24,10 @@ interface VideoSearchResult {
  * Search YouTube videos
  */
 export const searchYoutube = async (query: string): Promise<VideoSearchResult[]> => {
+    // DEBUG: Check if Key exists
+    console.log('[VideoService] Searching for:', query);
+    console.log('[VideoService] API Key configured:', !!process.env.YOUTUBE_API_KEY);
+
     try {
         const res = await youtube.search.list({
             part: ['snippet'],
@@ -42,9 +46,11 @@ export const searchYoutube = async (query: string): Promise<VideoSearchResult[]>
             channelTitle: item.snippet?.channelTitle || '',
             publishedAt: item.snippet?.publishedAt || ''
         }));
-    } catch (error) {
-        console.error('YouTube Search Error:', error);
-        throw new Error('Failed to search YouTube');
+    } catch (error: any) {
+        console.error('YouTube Search Error Full Object:', JSON.stringify(error, null, 2));
+        // Extract inner error message from Google API response if possible
+        const apiMessage = error.response?.data?.error?.message || error.message;
+        throw new Error(`YouTube API Error: ${apiMessage}`);
     }
 };
 

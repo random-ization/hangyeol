@@ -143,3 +143,29 @@ export const downloadJSON = async (key: string): Promise<any> => {
         req.end();
     });
 };
+
+/**
+ * 从 S3 删除文件
+ */
+export const deleteFile = async (key: string): Promise<void> => {
+    const { host, region, accessKey, secretKey } = getConfig();
+    const uri = `/${key}`;
+    const headers = signV4('DELETE', uri, host, region, accessKey, secretKey);
+
+    return new Promise((resolve, reject) => {
+        const req = https.request({
+            host,
+            path: uri,
+            method: 'DELETE',
+            headers
+        }, (res) => {
+            if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+                resolve();
+            } else {
+                reject(new Error(`S3 delete failed: ${res.statusCode}`));
+            }
+        });
+        req.on('error', reject);
+        req.end();
+    });
+};

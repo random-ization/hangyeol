@@ -9,6 +9,7 @@ import uploadRoutes from './routes/upload.routes';
 import dailyPhraseRoutes from './routes/dailyPhrase.routes';
 import annotationRoutes from './routes/annotation.routes';
 import aiRoutes from './routes/ai.routes';
+import notebookRoutes from './routes/notebook.routes';
 
 const app = express();
 
@@ -37,6 +38,8 @@ app.use('/api/annotations', annotationRoutes);  // 别名，兼容复数形式
 console.log('[Server] /api/annotations registered');
 app.use('/api/ai', aiRoutes);
 console.log('[Server] /api/ai registered');
+app.use('/api/notebook', notebookRoutes);
+console.log('[Server] /api/notebook registered');
 
 // Health Check
 app.get('/health', (req, res) => {

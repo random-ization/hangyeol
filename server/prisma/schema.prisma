@@ -52,6 +52,7 @@ model User {
   annotations        Annotation[]
   examHistory        ExamAttempt[]
   learningActivities LearningActivity[]
+  notebookEntries    NotebookEntry[]
 }
 
 model Institute {
@@ -223,4 +224,27 @@ model UserProgress {
   @@unique([userId, contentType, contentId])
   @@index([userId])
   @@index([assignedBy])
+}
+
+// 智能笔记本 - 内容存储在 S3，仅元数据在数据库
+model NotebookEntry {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type        String   // "VOCAB", "GRAMMAR", "MISTAKE"
+  title       String   // e.g., "가시다"
+  
+  // S3 Key path (e.g., "notebook/user_123/uuid.json")
+  storageKey  String   
+  
+  // Lightweight preview for List View (avoids fetching S3)
+  preview     String?  
+  
+  tags        String[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, type])
 }

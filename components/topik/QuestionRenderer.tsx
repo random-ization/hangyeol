@@ -672,7 +672,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
                     </div>
 
                     {/* Wrong Options */}
-                    {aiAnalysis.wrongOptions && Object.keys(aiAnalysis.wrongOptions).length > 0 && (
+                    {aiAnalysis.wrongOptions && typeof aiAnalysis.wrongOptions === 'object' && Object.keys(aiAnalysis.wrongOptions).length > 0 && (
                       <div>
                         <div className="text-sm font-semibold text-indigo-700 mb-1.5">
                           干扰项排除
@@ -681,7 +681,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
                           {Object.entries(aiAnalysis.wrongOptions).map(([key, value]) => (
                             <div key={key} className="bg-white/60 p-3 rounded-lg">
                               <span className="font-medium text-gray-600">选项 {key}：</span>
-                              <span className="text-gray-700">{value}</span>
+                              <span className="text-gray-700">{String(value)}</span>
                             </div>
                           ))}
                         </div>

@@ -97,8 +97,8 @@ export const analyzeTopikQuestion = async (
     console.log(`[AI] Has image: ${!!imageUrl}`);
 
     const ai = getGenAI();
-    // Use gemini-1.5-flash for best multimodal performance and speed
-    const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // Use gemini-2.5-flash-lite for multimodal support
+    const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
     const optionsStr = options.map((opt, i) => `${i + 1}. ${opt}`).join('\n');
     const correctAnswerText = options[correctAnswer] || options[0];

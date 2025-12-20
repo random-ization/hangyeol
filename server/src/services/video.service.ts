@@ -136,7 +136,16 @@ export const getVideoData = async (
         // Fetch raw transcript
         // Logic: Try to fetch manual captions first, then auto-gen
         // YoutubeTranscript fetches whatever is available.
-        const rawTranscripts = await YoutubeTranscript.fetchTranscript(youtubeId);
+        let rawTranscripts;
+        try {
+            rawTranscripts = await YoutubeTranscript.fetchTranscript(youtubeId);
+        } catch (e: any) {
+            console.error('[VideoService] Transcript fetch failed:', e.message);
+            if (e.message.includes('Transcript is disabled') || e.message.includes('Could not retrieve')) {
+                throw new Error('该视频未提供字幕，无法生成 AI 课程。请尝试搜索其他带有字幕（CC）的视频。');
+            }
+            throw e;
+        }
 
         if (!rawTranscripts || rawTranscripts.length === 0) {
             throw new Error('No transcripts available for this video');

@@ -16,7 +16,7 @@ export const search = async (req: Request, res: Response) => {
         res.json({ success: true, data: results });
     } catch (error: any) {
         console.error('Search controller error:', error);
-        res.status(500).json({ success: false, error: 'Failed to search videos' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to search videos' });
     }
 };
 

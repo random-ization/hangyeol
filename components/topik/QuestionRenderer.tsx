@@ -118,18 +118,23 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
 
     // Save to Notebook handler
     const [showSaveToast, setShowSaveToast] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
 
     const handleSaveToNotebook = useCallback(async () => {
       if (!aiAnalysis || isSaving || isSaved) return;
 
       setIsSaving(true);
+      setSaveError(null);
+
       try {
         const questionText = question.question || question.passage || '';
         const title = questionText.length > 30
           ? questionText.substring(0, 30) + '...'
           : questionText || `TOPIK Q${questionIndex + 1}`;
 
-        await api.saveNotebook({
+        console.log('[Save to Notebook] Saving...', { title, type: 'MISTAKE' });
+
+        const result = await api.saveNotebook({
           type: 'MISTAKE',
           title,
           content: {
@@ -147,13 +152,21 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
           tags: ['TOPIK', 'AI-Analysis', 'Review'],
         });
 
-        setIsSaved(true);
-        setShowSaveToast(true);
+        console.log('[Save to Notebook] Result:', result);
 
-        // Auto hide toast after 4 seconds
-        setTimeout(() => setShowSaveToast(false), 4000);
-      } catch (err) {
+        if (result?.success) {
+          setIsSaved(true);
+          setShowSaveToast(true);
+          // Auto hide toast after 4 seconds
+          setTimeout(() => setShowSaveToast(false), 4000);
+        } else {
+          throw new Error('Save failed: ' + JSON.stringify(result));
+        }
+      } catch (err: any) {
         console.error('[Save to Notebook] Error:', err);
+        setSaveError(err?.message || '保存失败，请重试');
+        setShowSaveToast(true);
+        setTimeout(() => setShowSaveToast(false), 4000);
       } finally {
         setIsSaving(false);
       }
@@ -681,23 +694,31 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
           </div>
         )}
 
-        {/* Save Success Toast */}
+        {/* Save Success/Error Toast */}
         {showSaveToast && (
           <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 duration-300">
-            <div className="bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-3">
-              <BookmarkCheck className="w-5 h-5" />
+            <div className={`${saveError ? 'bg-red-600' : 'bg-emerald-600'} text-white px-5 py-3 rounded-xl shadow-lg flex items-center gap-3`}>
+              {saveError ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <BookmarkCheck className="w-5 h-5" />
+              )}
               <div>
-                <p className="font-medium">已保存到笔记本</p>
-                <a
-                  href="/notebook"
-                  className="text-emerald-100 text-sm hover:text-white underline"
-                >
-                  查看我的笔记 →
-                </a>
+                <p className="font-medium">{saveError ? '保存失败' : '已保存到笔记本'}</p>
+                {saveError ? (
+                  <p className="text-red-100 text-sm">{saveError}</p>
+                ) : (
+                  <a
+                    href="/notebook"
+                    className="text-emerald-100 text-sm hover:text-white underline"
+                  >
+                    查看我的笔记 →
+                  </a>
+                )}
               </div>
               <button
-                onClick={() => setShowSaveToast(false)}
-                className="ml-2 p-1 hover:bg-emerald-500 rounded"
+                onClick={() => { setShowSaveToast(false); setSaveError(null); }}
+                className={`ml-2 p-1 ${saveError ? 'hover:bg-red-500' : 'hover:bg-emerald-500'} rounded`}
               >
                 <X className="w-4 h-4" />
               </button>

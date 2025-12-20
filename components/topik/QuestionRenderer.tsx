@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback, useState } from 'react';
 import { TopikQuestion, Language, Annotation } from '../../types';
-import { Volume2, Check, X, Sparkles, Loader2 } from 'lucide-react';
+import { Volume2, Check, X, Sparkles, Loader2, Bookmark, BookmarkCheck } from 'lucide-react';
 import { getLabels } from '../../utils/i18n';
 import { api } from '../../services/api';
 
@@ -70,6 +70,10 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
     const [aiLoading, setAiLoading] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
 
+    // Save to notebook state
+    const [isSaving, setIsSaving] = useState(false);
+    const [isSaved, setIsSaved] = useState(false);
+
     // AI Analysis handler
     const handleAIAnalysis = useCallback(async () => {
       if (aiLoading || aiAnalysis) return;
@@ -111,6 +115,43 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
         setAiLoading(false);
       }
     }, [question, correctAnswer, language, aiLoading, aiAnalysis]);
+
+    // Save to Notebook handler
+    const handleSaveToNotebook = useCallback(async () => {
+      if (!aiAnalysis || isSaving || isSaved) return;
+
+      setIsSaving(true);
+      try {
+        const questionText = question.question || question.passage || '';
+        const title = questionText.length > 30
+          ? questionText.substring(0, 30) + '...'
+          : questionText || `TOPIK Q${questionIndex + 1}`;
+
+        await api.saveNotebook({
+          type: 'MISTAKE',
+          title,
+          content: {
+            questionText,
+            options: question.options,
+            correctAnswer: correctAnswer ?? 0,
+            imageUrl: question.imageUrl || question.image,
+            aiAnalysis: {
+              translation: aiAnalysis.translation,
+              keyPoint: aiAnalysis.keyPoint,
+              analysis: aiAnalysis.analysis,
+              wrongOptions: aiAnalysis.wrongOptions,
+            },
+          },
+          tags: ['TOPIK', 'AI-Analysis', 'Review'],
+        });
+
+        setIsSaved(true);
+      } catch (err) {
+        console.error('[Save to Notebook] Error:', err);
+      } finally {
+        setIsSaving(false);
+      }
+    }, [aiAnalysis, isSaving, isSaved, question, questionIndex, correctAnswer]);
 
     // Helper for highlight styles
     // 高亮默认用色块背景，有笔记的用下划线区分
@@ -327,10 +368,41 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
 
                   {/* AI Analysis Card */}
                   {aiAnalysis && (
-                    <div className="mt-3 p-5 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl shadow-sm">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Sparkles className="w-5 h-5 text-indigo-600" />
-                        <span className="font-bold text-indigo-700">AI 老师解析</span>
+                    <div className="mt-3 p-5 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl shadow-sm relative">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-5 h-5 text-indigo-600" />
+                          <span className="font-bold text-indigo-700">AI 老师解析</span>
+                        </div>
+
+                        {/* Save to Notebook Button */}
+                        <button
+                          onClick={handleSaveToNotebook}
+                          disabled={isSaving || isSaved}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${isSaved
+                            ? 'bg-emerald-100 text-emerald-700 cursor-default'
+                            : isSaving
+                              ? 'bg-indigo-100 text-indigo-500 cursor-wait'
+                              : 'bg-white/70 text-indigo-600 hover:bg-white hover:shadow-sm border border-indigo-200'
+                            }`}
+                        >
+                          {isSaved ? (
+                            <>
+                              <BookmarkCheck className="w-4 h-4" />
+                              已收藏
+                            </>
+                          ) : isSaving ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              保存中...
+                            </>
+                          ) : (
+                            <>
+                              <Bookmark className="w-4 h-4" />
+                              收藏
+                            </>
+                          )}
+                        </button>
                       </div>
 
                       {/* Translation */}
@@ -513,10 +585,41 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = React.memo(
 
                 {/* AI Analysis Card */}
                 {aiAnalysis && (
-                  <div className="mt-3 p-5 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl shadow-sm">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Sparkles className="w-5 h-5 text-indigo-600" />
-                      <span className="font-bold text-indigo-700">AI 老师解析</span>
+                  <div className="mt-3 p-5 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl shadow-sm relative">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-indigo-600" />
+                        <span className="font-bold text-indigo-700">AI 老师解析</span>
+                      </div>
+
+                      {/* Save to Notebook Button */}
+                      <button
+                        onClick={handleSaveToNotebook}
+                        disabled={isSaving || isSaved}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${isSaved
+                            ? 'bg-emerald-100 text-emerald-700 cursor-default'
+                            : isSaving
+                              ? 'bg-indigo-100 text-indigo-500 cursor-wait'
+                              : 'bg-white/70 text-indigo-600 hover:bg-white hover:shadow-sm border border-indigo-200'
+                          }`}
+                      >
+                        {isSaved ? (
+                          <>
+                            <BookmarkCheck className="w-4 h-4" />
+                            已收藏
+                          </>
+                        ) : isSaving ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            保存中...
+                          </>
+                        ) : (
+                          <>
+                            <Bookmark className="w-4 h-4" />
+                            收藏
+                          </>
+                        )}
+                      </button>
                     </div>
 
                     {/* Translation */}

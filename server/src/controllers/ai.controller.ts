@@ -7,11 +7,12 @@ import { analyzeTopikQuestion, TopikQuestionInput } from '../services/ai.service
  */
 export const analyzeQuestion = async (req: Request, res: Response) => {
     try {
-        const { question, options, correctAnswer, type } = req.body;
+        const { question, options, correctAnswer, type, imageUrl } = req.body;
 
         // 验证必填字段
-        if (!question || typeof question !== 'string') {
-            return res.status(400).json({ error: 'question is required and must be a string' });
+        // 如果有图片，question 可以为空
+        if (!imageUrl && (!question || typeof question !== 'string')) {
+            return res.status(400).json({ error: 'question is required (unless imageUrl is provided) and must be a string' });
         }
 
         if (!Array.isArray(options) || options.length < 2) {
@@ -23,10 +24,11 @@ export const analyzeQuestion = async (req: Request, res: Response) => {
         }
 
         const input: TopikQuestionInput = {
-            question,
+            question: question || 'The question is in the image.',
             options,
             correctAnswer,
-            type: type || 'general'
+            type: type || 'general',
+            imageUrl
         };
 
         const result = await analyzeTopikQuestion(input);

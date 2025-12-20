@@ -85,7 +85,7 @@ export const analyzeTopikQuestion = async (
     console.log(`[AI] Cache miss, calling Gemini API for: ${hash}`);
 
     const ai = getGenAI();
-    const model = ai.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+    const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
     const optionsStr = options.map((opt, i) => `${i + 1}. ${opt}`).join('\n');
     const correctAnswerText = options[correctAnswer] || options[0];
@@ -118,6 +118,7 @@ IMPORTANT: Return ONLY valid JSON, no markdown formatting.`;
         analysisResult = JSON.parse(cleanJson);
     } catch (e) {
         console.error('[AI] Failed to parse Gemini response:', responseText);
+        console.error('[AI] Parse error:', e);
         throw new Error('Failed to parse AI response as JSON');
     }
 

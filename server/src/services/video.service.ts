@@ -137,14 +137,30 @@ export const getVideoData = async (
         // Logic: Try to fetch manual captions first, then auto-gen
         // YoutubeTranscript fetches whatever is available.
         let rawTranscripts;
-        try {
-            rawTranscripts = await YoutubeTranscript.fetchTranscript(youtubeId);
-        } catch (e: any) {
-            console.error('[VideoService] Transcript fetch failed:', e.message);
-            if (e.message.includes('Transcript is disabled') || e.message.includes('Could not retrieve')) {
+        let lastError;
+        // Try preferred languages first, then default
+        const attempts = [{ lang: 'ko' }, { lang: 'ko-KR' }, undefined];
+
+        for (const config of attempts) {
+            try {
+                rawTranscripts = await YoutubeTranscript.fetchTranscript(youtubeId, config);
+                if (rawTranscripts && rawTranscripts.length > 0) {
+                    console.log(`[VideoService] Successfully fetched transcript with config:`, config || 'default');
+                    break;
+                }
+            } catch (e: any) {
+                lastError = e;
+                // Don't log full stack for expected "not found" errors during trial
+                // console.log(`[VideoService] Attempt failed for ${JSON.stringify(config)}`);
+            }
+        }
+
+        if (!rawTranscripts || rawTranscripts.length === 0) {
+            console.error('[VideoService] All transcript fetch attempts failed:', lastError?.message);
+            if (lastError?.message?.includes('Transcript is disabled') || lastError?.message?.includes('Could not retrieve')) {
                 throw new Error('该视频未提供字幕，无法生成 AI 课程。请尝试搜索其他带有字幕（CC）的视频。');
             }
-            throw e;
+            throw lastError || new Error('No transcripts available for this video');
         }
 
         if (!rawTranscripts || rawTranscripts.length === 0) {

@@ -275,8 +275,24 @@ export const sendToS3WithCache = async (
     'Cache-Control': `public, max-age=${cacheMaxAge}, s-maxage=${cacheMaxAge}`
   };
 
-  const endpointUrl = new URL(process.env.SPACES_ENDPOINT || 'https://nyc3.digitaloceanspaces.com');
-  const region = endpointUrl.hostname.split('.')[0] || 'us-east-1';
+  // Robust region extraction
+  let region = 'us-east-1';
+  const endpointStr = process.env.SPACES_ENDPOINT || 'https://s3.us-west-1.amazonaws.com';
+
+  if (endpointStr.includes('digitaloceanspaces.com')) {
+    const match = endpointStr.match(/([a-z0-9-]+)\.digitaloceanspaces\.com/);
+    if (match) region = match[1];
+    else region = 'nyc3';
+  } else if (endpointStr.includes('amazonaws.com')) {
+    const match = endpointStr.match(/s3\.([a-z0-9-]+)\.amazonaws\.com/);
+    if (match) region = match[1];
+  } else {
+    // Direct region name or unknown host
+    try {
+      const url = new URL(endpointStr);
+      region = url.hostname.split('.')[0];
+    } catch (e) { }
+  }
 
   const { signature, amzDate, signedHeaders, credentialScope } = signV4(
     'PUT',

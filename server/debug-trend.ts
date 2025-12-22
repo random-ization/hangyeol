@@ -26,13 +26,17 @@ async function run() {
     console.log('\n2. Testing Trending (Force Refresh)...');
     try {
         const trending = await getTrending(true);
-        console.log(`   > External (Apple): ${trending.external.length}`);
-        console.log(`   > Internal (DB): ${trending.internal.length}`);
+        if (trending) {
+            console.log(`   > External (Apple): ${trending.external?.length}`);
+            console.log(`   > Internal (DB): ${trending.internal?.length}`);
 
-        if (trending.external.length === 0) {
-            console.log('   > ❌ EXTERNAL TRENDING IS EMPTY');
+            if (trending.external?.length === 0) {
+                console.log('   > ❌ EXTERNAL TRENDING IS EMPTY');
+            } else if (trending.external && trending.external.length > 0) {
+                console.log(`   > First External: ${trending.external[0].title} (Feed: ${trending.external[0].feedUrl})`);
+            }
         } else {
-            console.log(`   > First External: ${trending.external[0].title} (Feed: ${trending.external[0].feedUrl})`);
+            console.log('   > ❌ TRENDING IS NULL');
         }
     } catch (e: any) {
         console.error('   > ❌ Trending Error:', e.message);

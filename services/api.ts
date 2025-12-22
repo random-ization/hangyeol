@@ -399,6 +399,61 @@ export const api = {
       body: JSON.stringify({ youtubeId }),
     }),
 
+  // --- Podcast API ---
+  searchPodcasts: async (term: string) =>
+    request<any[]>(`/podcasts/search?term=${encodeURIComponent(term)}`),
+
+  getPodcastEpisodes: async (feedUrl: string) =>
+    request<any>(`/podcasts/episodes?feedUrl=${encodeURIComponent(feedUrl)}`),
+
+  getMyPodcastFeed: async () =>
+    request<{ channels: any[]; episodes: any[] }>('/podcasts/my-feed'),
+
+  getPodcastTrending: async () =>
+    request<{ external: any[]; internal: any[] }>('/podcasts/trending'),
+
+  getPodcastSubscriptions: async () =>
+    request<any[]>('/podcasts/subscriptions'),
+
+  togglePodcastSubscription: async (channel: {
+    itunesId: string;
+    title: string;
+    author: string;
+    feedUrl: string;
+    artworkUrl?: string;
+  }) =>
+    request<{ success: boolean; isSubscribed: boolean }>('/podcasts/subscribe', {
+      method: 'POST',
+      body: JSON.stringify({ channel }),
+    }),
+
+  trackPodcastView: async (episode: any) =>
+    request<{ success: boolean; views: number }>('/podcasts/view', {
+      method: 'POST',
+      body: JSON.stringify({ episode }),
+    }),
+
+  togglePodcastLike: async (episode: any) =>
+    request<{ success: boolean; isLiked: boolean }>('/podcasts/like', {
+      method: 'POST',
+      body: JSON.stringify({ episode }),
+    }),
+
+  // --- AI Sentence Analysis ---
+  analyzeSentence: async (sentence: string, context?: string, language?: string) =>
+    request<{
+      success: boolean;
+      data: {
+        vocabulary: { word: string; root: string; meaning: string; type: string }[];
+        grammar: { structure: string; explanation: string }[];
+        nuance: string;
+        cached?: boolean;
+      };
+    }>('/ai/analyze-sentence', {
+      method: 'POST',
+      body: JSON.stringify({ sentence, context, language }),
+    }),
+
   // 其余 api 方法按需添加，务必使用上面的 request(...) 以确保 Authorization 被正确注入
 };
 

@@ -28,6 +28,7 @@
     "react-konva": "^19.2.1",
     "react-router-dom": "^7.10.1",
     "react-youtube": "^10.1.0",
+    "swr": "^2.3.8",
     "xlsx": "latest"
   },
   "devDependencies": {

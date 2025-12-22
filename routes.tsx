@@ -22,6 +22,11 @@ const NotebookPage = lazy(() => import('./pages/NotebookPage'));
 const YouTubeSearchPage = lazy(() => import('./pages/YouTubeSearchPage'));
 const YouTubeLearnPage = lazy(() => import('./pages/YouTubeLearnPage'));
 
+// Podcast Pages
+const PodcastDashboard = lazy(() => import('./pages/PodcastDashboard'));
+const PodcastChannelPage = lazy(() => import('./pages/PodcastChannelPage'));
+const PodcastPlayerPage = lazy(() => import('./pages/PodcastPlayerPage'));
+
 // Loading fallback component
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-slate-100">
@@ -116,9 +121,15 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({ canAccessContent, onShowUp
           />
           <Route path="/notebook" element={<NotebookPage />} />
 
+          {/* YouTube Learning */}
           <Route path="/youtube" element={<Navigate to="/youtube/search" replace />} />
           <Route path="/youtube/search" element={<YouTubeSearchPage />} />
           <Route path="/youtube/learn/:youtubeId" element={<YouTubeLearnPage />} />
+
+          {/* Podcast Learning */}
+          <Route path="/podcasts" element={<PodcastDashboard />} />
+          <Route path="/podcasts/channel" element={<PodcastChannelPage />} />
+          <Route path="/podcasts/player" element={<PodcastPlayerPage />} />
         </Route>
 
         {/* === 管理员路由 (需要 Admin 权限) === */}

@@ -239,6 +239,98 @@ export const sendToS3 = async (key: string, body: Buffer, contentType: string) =
   });
 };
 
+/**
+ * Send to S3 with Cache-Control headers for CDN caching
+ * @param key - S3 key path
+ * @param body - File content buffer
+ * @param contentType - MIME type
+ * @param cacheMaxAge - Cache max-age in seconds (default 300 = 5 mins)
+ */
+export const sendToS3WithCache = async (
+  key: string,
+  body: Buffer,
+  contentType: string,
+  cacheMaxAge: number = 300
+): Promise<string> => {
+  const endpoint = process.env.SPACES_ENDPOINT!;
+  const bucket = process.env.SPACES_BUCKET!;
+  const host = `${bucket}.${new URL(endpoint).host}`;
+  const contentLength = body.length;
+
+  const headers: Record<string, string> = {
+    'Host': host,
+    'Content-Type': contentType,
+    'Content-Length': contentLength.toString(),
+    'x-amz-acl': 'public-read',
+    'Cache-Control': `public, max-age=${cacheMaxAge}, s-maxage=${cacheMaxAge}`
+  };
+
+  const endpointUrl = new URL(process.env.SPACES_ENDPOINT || 'https://nyc3.digitaloceanspaces.com');
+  const region = endpointUrl.hostname.split('.')[0] || 'us-east-1';
+
+  const { signature, amzDate, signedHeaders, credentialScope } = signV4(
+    'PUT',
+    `/${key}`,
+    '',
+    headers,
+    crypto.createHash('sha256').update(body).digest('hex'),
+    region,
+    's3'
+  );
+
+  const authHeader = `AWS4-HMAC-SHA256 Credential=${process.env.SPACES_KEY}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      host,
+      path: `/${key}`,
+      method: 'PUT',
+      headers: {
+        ...headers,
+        'X-Amz-Date': amzDate,
+        'Authorization': authHeader,
+        'X-Amz-Content-Sha256': crypto.createHash('sha256').update(body).digest('hex')
+      }
+    }, (res) => {
+      if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+        const cdnUrl = getCdnUrl();
+        resolve(`${cdnUrl}/${key}`);
+      } else {
+        let errBody = '';
+        res.on('data', c => errBody += c);
+        res.on('end', () => reject(new Error(`S3 Error ${res.statusCode}: ${errBody}`)));
+      }
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+};
+
+/**
+ * Upload JSON with CDN cache headers
+ * @param key - S3 key path (e.g. 'cache/trending.json')
+ * @param data - JSON data to upload
+ * @param cacheMaxAge - Cache max-age in seconds (default 300 = 5 mins)
+ * @returns CDN URL of the uploaded file
+ */
+export const uploadCachedJson = async (
+  key: string,
+  data: any,
+  cacheMaxAge: number = 300
+): Promise<string> => {
+  const jsonStr = JSON.stringify(data);
+  const buffer = Buffer.from(jsonStr, 'utf-8');
+  return sendToS3WithCache(key, buffer, 'application/json', cacheMaxAge);
+};
+
+/**
+ * Get CDN URL for a given S3 key
+ */
+export const getJsonCdnUrl = (key: string): string => {
+  return `${getCdnUrl()}/${key}`;
+};
+
 // Alias for internal use
 const sendToSpacesNative = sendToS3;
 

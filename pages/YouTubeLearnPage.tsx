@@ -1,8 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import YouTube, { YouTubeProps } from 'react-youtube';
-import { ArrowLeft, BookOpen, Clock, Globe, Languages, Loader2, PlayCircle, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookOpen, Clock, Loader2, Sparkles, Search } from 'lucide-react';
 import { api } from '../services/api';
+import AnalysisSheet from '../components/AnalysisSheet';
+
+interface AnalysisData {
+    vocabulary: { word: string; root: string; meaning: string; type: string }[];
+    grammar: { structure: string; explanation: string }[];
+    nuance: string;
+    cached?: boolean;
+}
 
 const YouTubeLearnPage: React.FC = () => {
     const { youtubeId } = useParams<{ youtubeId: string }>();
@@ -10,17 +18,22 @@ const YouTubeLearnPage: React.FC = () => {
     const playerRef = useRef<any>(null);
 
     const [loading, setLoading] = useState(true);
-    const [videoData, setVideoData] = useState<any>(null); // video metadata
-    const [transcript, setTranscript] = useState<any>(null); // { segments, vocabulary, summary ... }
+    const [videoData, setVideoData] = useState<any>(null);
+    const [transcript, setTranscript] = useState<any>(null);
     const [currentTime, setCurrentTime] = useState(0);
     const [error, setError] = useState<string | null>(null);
+
+    // AI Analysis State
+    const [analysisOpen, setAnalysisOpen] = useState(false);
+    const [analyzingSentence, setAnalyzingSentence] = useState('');
+    const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
+    const [analysisLoading, setAnalysisLoading] = useState(false);
 
     // Initial Fetch
     useEffect(() => {
         if (!youtubeId) return;
         const fetchLesson = async () => {
             try {
-                // Call importVideo again to get data (it handles finding existing DB records)
                 const res = await api.importVideo(youtubeId);
                 if (res.success) {
                     setVideoData(res.data.video);
@@ -50,15 +63,41 @@ const YouTubeLearnPage: React.FC = () => {
         playerRef.current = event.target;
     };
 
-    // Helper: Seek video when clicking transcript
-    // Since we don't have exact timestamps from the AI prompt (simplified version),
-    // we can't seek accurately to sentence level yet.
-    // Ideally, we'd map AI segments back to original youtube-transcript timestamps.
-    // FOR NOW: Let's assume we can't seek directly to "text segments" unless we kept timestamps.
-    // IMPROVEMENT for future: Pass timestamps to AI prompt or keep index map.
     const handleSeek = (seconds: number) => {
         if (playerRef.current) {
             playerRef.current.seekTo(seconds, true);
+            playerRef.current.playVideo();
+        }
+    };
+
+    // AI Deep Dive: Analyze a sentence
+    const handleAnalyzeSentence = async (sentence: string) => {
+        // Pause video
+        if (playerRef.current) {
+            playerRef.current.pauseVideo();
+        }
+
+        setAnalyzingSentence(sentence);
+        setAnalysisOpen(true);
+        setAnalysisLoading(true);
+        setAnalysisData(null);
+
+        try {
+            const res = await api.analyzeSentence(sentence);
+            if (res.success) {
+                setAnalysisData(res.data);
+            }
+        } catch (err) {
+            console.error('Failed to analyze sentence:', err);
+        } finally {
+            setAnalysisLoading(false);
+        }
+    };
+
+    const closeAnalysis = () => {
+        setAnalysisOpen(false);
+        // Resume video
+        if (playerRef.current) {
             playerRef.current.playVideo();
         }
     };
@@ -88,10 +127,6 @@ const YouTubeLearnPage: React.FC = () => {
         );
     }
 
-    // Determine current active segment (approximate if we don't have timestamps)
-    // For this MVP without timestamps in `segments`, we can't highlight automatically.
-    // Displaying them as a readable article/script.
-
     return (
         <div className="h-screen flex flex-col bg-white overflow-hidden font-sans">
             {/* Header */}
@@ -105,7 +140,6 @@ const YouTubeLearnPage: React.FC = () => {
                 <h1 className="text-lg font-bold text-slate-800 line-clamp-1 flex-1">
                     {videoData.title}
                 </h1>
-                {/* Status Badge */}
                 {transcript?.isPreview && (
                     <span className="ml-4 px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full uppercase tracking-wider">
                         Preview Mode
@@ -124,7 +158,7 @@ const YouTubeLearnPage: React.FC = () => {
                                 width: '100%',
                                 height: '100%',
                                 playerVars: {
-                                    autoplay: 1, // Auto-play
+                                    autoplay: 1,
                                     modestbranding: 1,
                                     rel: 0,
                                 },
@@ -137,13 +171,12 @@ const YouTubeLearnPage: React.FC = () => {
 
                 {/* Right: Transcript & AI Analysis */}
                 <div className="w-full md:w-1/3 border-l border-slate-200 bg-slate-50 flex flex-col overflow-hidden">
-                    {/* Tabs / Toggle (Optional) */}
+                    {/* Tabs */}
                     <div className="flex-none p-4 pb-0">
                         <div className="bg-white rounded-lg shadow-sm p-1 border border-slate-200 flex">
                             <button className="flex-1 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-md shadow-sm">
                                 字幕 & 翻译
                             </button>
-                            {/* Future: Add 'Vocabulary' Tab */}
                         </div>
                     </div>
 
@@ -177,17 +210,25 @@ const YouTubeLearnPage: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Transcript Segments */}
+                        {/* Transcript Segments with AI Deep Dive Button */}
                         {transcript?.segments?.length > 0 ? (
                             <div className="space-y-4 pt-2">
                                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">双语字幕</h3>
                                 {transcript.segments.map((seg: any, i: number) => (
                                     <div
                                         key={i}
-                                        className={`p-4 rounded-xl border transition-all duration-200 bg-white border-slate-200 hover:shadow-md cursor-default`}
+                                        className="p-4 rounded-xl border transition-all duration-200 bg-white border-slate-200 hover:shadow-md group relative"
                                     >
-                                        <div className="text-slate-800 font-medium leading-relaxed mb-2">
-                                            {/* Highlight vocab if possible? For now just text */}
+                                        {/* AI Deep Dive Button */}
+                                        <button
+                                            onClick={() => handleAnalyzeSentence(seg.original)}
+                                            className="absolute top-3 right-3 p-1.5 rounded-lg bg-indigo-50 text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-indigo-100"
+                                            title="AI 精析"
+                                        >
+                                            <Search className="w-4 h-4" />
+                                        </button>
+
+                                        <div className="text-slate-800 font-medium leading-relaxed mb-2 pr-10">
                                             {seg.original}
                                         </div>
                                         <div className="text-sm text-indigo-600 leading-relaxed bg-indigo-50/50 p-2 rounded-lg">
@@ -225,6 +266,15 @@ const YouTubeLearnPage: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* AI Analysis Bottom Sheet */}
+            <AnalysisSheet
+                isOpen={analysisOpen}
+                onClose={closeAnalysis}
+                sentence={analyzingSentence}
+                analysis={analysisData}
+                loading={analysisLoading}
+            />
         </div>
     );
 };

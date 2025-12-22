@@ -13,7 +13,8 @@ import {
   GraduationCap,
   Sparkles,
   BookOpen,
-  Youtube
+  Youtube,
+  Headphones
 } from 'lucide-react';
 import { User as UserType, UserTier, Language } from '../types';
 import { getLabels } from '../utils/i18n';
@@ -58,7 +59,8 @@ const Layout: React.FC<LayoutProps> = ({
     { id: 'dashboard', label: labels.textbookLearning, icon: Library },
     { id: 'topik', label: labels.topik, icon: GraduationCap },
     { id: 'notebook', label: labels.notebook || '笔记本', icon: BookOpen },
-    { id: 'youtube', label: 'YouTube AI', icon: Youtube },
+    { id: 'youtube', label: 'YouTube', icon: Youtube },
+    { id: 'podcasts', label: '播客', icon: Headphones },
   ];
 
   if (user?.role === 'ADMIN') {

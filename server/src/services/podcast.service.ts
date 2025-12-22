@@ -1,0 +1,517 @@
+import Parser from 'rss-parser';
+import axios from 'axios';
+import { PrismaClient } from '@prisma/client';
+import { uploadCachedJson, getJsonCdnUrl } from '../lib/storage';
+import { checkFileExists, downloadJSON } from './storage.service';
+
+const prisma = new PrismaClient();
+const parser = new Parser();
+
+// Cache keys for S3
+const TRENDING_CACHE_KEY = 'cache/podcast-trending.json';
+const TRENDING_CACHE_TTL = 5 * 60; // 5 minutes
+
+// ============================================
+// Types
+// ============================================
+
+interface PodcastSearchResult {
+    id: string;
+    title: string;
+    author: string;
+    feedUrl: string;
+    artwork: string;
+    description: string;
+}
+
+interface PodcastEpisode {
+    title: string;
+    audioUrl: string | undefined;
+    pubDate: string | undefined;
+    duration: string | undefined;
+    description: string;
+}
+
+interface PodcastChannel {
+    title: string | undefined;
+    description: string | undefined;
+    image: string | undefined;
+    author: string | undefined;
+}
+
+interface PodcastFeed {
+    channel: PodcastChannel;
+    episodes: PodcastEpisode[];
+}
+
+interface ChannelInput {
+    itunesId: string;
+    title: string;
+    author: string;
+    feedUrl: string;
+    artworkUrl?: string;
+    description?: string;
+}
+
+interface EpisodeInput {
+    guid: string;
+    title: string;
+    audioUrl: string;
+    duration?: number;
+    pubDate?: string;
+    description?: string;
+    channel: ChannelInput;
+}
+
+// ============================================
+// Search & Feed Parsing
+// ============================================
+
+/**
+ * Search podcasts using iTunes API
+ */
+export const searchPodcasts = async (term: string): Promise<PodcastSearchResult[]> => {
+    console.log('[PodcastService] Searching for:', term);
+
+    try {
+        const url = 'https://itunes.apple.com/search';
+        const response = await axios.get(url, {
+            params: {
+                term,
+                media: 'podcast',
+                entity: 'podcast',
+                limit: 15
+            },
+            timeout: 10000
+        });
+
+        if (!response.data.results) return [];
+
+        return response.data.results.map((item: any) => ({
+            id: item.collectionId?.toString() || '',
+            title: item.collectionName || 'Unknown',
+            author: item.artistName || 'Unknown',
+            feedUrl: item.feedUrl || '',
+            artwork: item.artworkUrl600 || item.artworkUrl100 || '',
+            description: item.collectionName || ''
+        })).filter((p: PodcastSearchResult) => p.feedUrl);
+
+    } catch (error: any) {
+        console.error('[PodcastService] iTunes Search Error:', error?.message);
+        return [];
+    }
+};
+
+/**
+ * Get episodes from a podcast RSS feed
+ */
+export const getEpisodes = async (feedUrl: string): Promise<PodcastFeed> => {
+    console.log('[PodcastService] Parsing RSS:', feedUrl);
+
+    try {
+        const feed = await parser.parseURL(feedUrl);
+
+        const episodes: PodcastEpisode[] = feed.items.slice(0, 20).map(item => ({
+            title: item.title || 'Untitled Episode',
+            audioUrl: item.enclosure?.url,
+            pubDate: item.pubDate,
+            duration: (item as any).itunes?.duration || (item as any)['itunes:duration'],
+            description: item.contentSnippet || item.content || ''
+        }));
+
+        const validEpisodes = episodes.filter(ep => ep.audioUrl);
+
+        return {
+            channel: {
+                title: feed.title,
+                description: feed.description,
+                image: feed.image?.url || (feed as any).itunes?.image,
+                author: (feed as any).itunes?.author
+            },
+            episodes: validEpisodes
+        };
+
+    } catch (error: any) {
+        console.error('[PodcastService] RSS Parse Error:', error?.message);
+        throw new Error('FAILED_TO_PARSE_RSS');
+    }
+};
+
+// ============================================
+// Subscription Management
+// ============================================
+
+/**
+ * Toggle subscription to a podcast channel
+ * @returns true if now subscribed, false if unsubscribed
+ */
+export const toggleSubscription = async (userId: string, channel: ChannelInput): Promise<boolean> => {
+    console.log(`[PodcastService] Toggle subscription for user ${userId} to channel ${channel.itunesId}`);
+
+    // 1. Upsert the channel (create if not exists)
+    const podcastChannel = await prisma.podcastChannel.upsert({
+        where: { itunesId: channel.itunesId },
+        update: {
+            title: channel.title,
+            author: channel.author,
+            feedUrl: channel.feedUrl,
+            artworkUrl: channel.artworkUrl,
+            description: channel.description
+        },
+        create: {
+            itunesId: channel.itunesId,
+            title: channel.title,
+            author: channel.author,
+            feedUrl: channel.feedUrl,
+            artworkUrl: channel.artworkUrl,
+            description: channel.description
+        }
+    });
+
+    // 2. Check current subscription status
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+            subscribedChannels: {
+                where: { id: podcastChannel.id }
+            }
+        }
+    });
+
+    const isCurrentlySubscribed = user?.subscribedChannels && user.subscribedChannels.length > 0;
+
+    // 3. Toggle subscription
+    if (isCurrentlySubscribed) {
+        // Unsubscribe
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                subscribedChannels: {
+                    disconnect: { id: podcastChannel.id }
+                }
+            }
+        });
+        console.log('[PodcastService] Unsubscribed');
+        return false;
+    } else {
+        // Subscribe
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                subscribedChannels: {
+                    connect: { id: podcastChannel.id }
+                }
+            }
+        });
+        console.log('[PodcastService] Subscribed');
+        return true;
+    }
+};
+
+/**
+ * Get user's subscribed channels
+ */
+export const getSubscribedChannels = async (userId: string) => {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+            subscribedChannels: true
+        }
+    });
+
+    return user?.subscribedChannels || [];
+};
+
+// ============================================
+// My Feed (Aggregated from subscriptions)
+// ============================================
+
+/**
+ * Get user's personalized feed from all subscribed podcasts
+ * Fetches latest episodes in parallel from each channel's RSS
+ */
+export const getMyFeed = async (userId: string) => {
+    console.log(`[PodcastService] Getting feed for user ${userId}`);
+
+    // 1. Get subscribed channels
+    const channels = await getSubscribedChannels(userId);
+
+    if (channels.length === 0) {
+        return { channels: [], episodes: [] };
+    }
+
+    // 2. Fetch latest episodes from each channel in parallel
+    const feedPromises = channels.map(async (channel) => {
+        try {
+            const feed = await parser.parseURL(channel.feedUrl);
+            // Get latest 3 episodes from each channel
+            return feed.items.slice(0, 3).map(item => ({
+                channelId: channel.id,
+                channelTitle: channel.title,
+                channelArtwork: channel.artworkUrl,
+                guid: item.guid || item.link || item.title,
+                title: item.title || 'Untitled',
+                audioUrl: item.enclosure?.url,
+                pubDate: item.pubDate ? new Date(item.pubDate) : null,
+                duration: (item as any).itunes?.duration,
+                description: item.contentSnippet || ''
+            }));
+        } catch (error) {
+            console.error(`[PodcastService] Failed to fetch feed for ${channel.title}:`, error);
+            return [];
+        }
+    });
+
+    const allEpisodes = (await Promise.all(feedPromises)).flat();
+
+    // 3. Sort by pubDate descending
+    allEpisodes.sort((a, b) => {
+        if (!a.pubDate) return 1;
+        if (!b.pubDate) return -1;
+        return b.pubDate.getTime() - a.pubDate.getTime();
+    });
+
+    // 4. Filter episodes with audio and limit to 30
+    const validEpisodes = allEpisodes.filter(ep => ep.audioUrl).slice(0, 30);
+
+    return {
+        channels,
+        episodes: validEpisodes
+    };
+};
+
+// ============================================
+// Trending (Hybrid: External + Internal)
+// ============================================
+
+/**
+ * Get trending podcasts with S3 CDN caching
+ * Combines Apple Top Charts (external) with internal view-based ranking
+ * Cache: 5 minutes on CDN
+ */
+export const getTrending = async (forceRefresh: boolean = false) => {
+    console.log('[PodcastService] Getting trending podcasts');
+
+    // Try to get from cache first (unless force refresh)
+    if (!forceRefresh) {
+        try {
+            const exists = await checkFileExists(TRENDING_CACHE_KEY);
+            if (exists) {
+                console.log('[PodcastService] Using cached trending data');
+                const cached = await downloadJSON(TRENDING_CACHE_KEY);
+                // Check if cache is still valid (less than 5 mins old)
+                if (cached._cachedAt) {
+                    const age = Date.now() - cached._cachedAt;
+                    if (age < TRENDING_CACHE_TTL * 1000) {
+                        return { external: cached.external, internal: cached.internal };
+                    }
+                }
+            }
+        } catch (err) {
+            console.log('[PodcastService] Cache miss or error, fetching fresh data');
+        }
+    }
+
+    // Fetch fresh data
+    const [external, internal] = await Promise.all([
+        getAppleTopCharts(),
+        getInternalTrending()
+    ]);
+
+    const result = { external, internal };
+
+    // Save to S3 cache (async, don't block response)
+    try {
+        const cacheData = {
+            ...result,
+            _cachedAt: Date.now()
+        };
+        await uploadCachedJson(TRENDING_CACHE_KEY, cacheData, TRENDING_CACHE_TTL);
+        console.log('[PodcastService] Trending data cached to S3');
+    } catch (err) {
+        console.error('[PodcastService] Failed to cache trending:', err);
+    }
+
+    return result;
+};
+
+/**
+ * Fetch Apple Top Charts (Korea / Education category)
+ */
+async function getAppleTopCharts(): Promise<PodcastSearchResult[]> {
+    try {
+        // Apple RSS Generator for Top Podcasts in Korea
+        // Genre 1304 = Education
+        const url = 'https://rss.applemarketingtools.com/api/v2/kr/podcasts/top/25/podcasts.json';
+        const response = await axios.get(url, { timeout: 10000 });
+
+        if (!response.data?.feed?.results) return [];
+
+        return response.data.feed.results.slice(0, 10).map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            author: item.artistName,
+            feedUrl: '', // Apple RSS doesn't include feedUrl
+            artwork: item.artworkUrl100?.replace('100x100', '600x600') || '',
+            description: item.name
+        }));
+    } catch (error: any) {
+        console.error('[PodcastService] Apple Charts Error:', error?.message);
+        return [];
+    }
+}
+
+/**
+ * Get internally trending episodes based on views
+ */
+async function getInternalTrending() {
+    try {
+        const episodes = await prisma.podcastEpisode.findMany({
+            orderBy: { views: 'desc' },
+            take: 10,
+            include: {
+                channel: true
+            }
+        });
+
+        return episodes.map(ep => ({
+            id: ep.id,
+            guid: ep.guid,
+            title: ep.title,
+            audioUrl: ep.audioUrl,
+            views: ep.views,
+            likes: ep.likes,
+            channel: {
+                id: ep.channel.id,
+                title: ep.channel.title,
+                artwork: ep.channel.artworkUrl
+            }
+        }));
+    } catch (error: any) {
+        console.error('[PodcastService] Internal Trending Error:', error?.message);
+        return [];
+    }
+}
+
+// ============================================
+// View & Like Tracking
+// ============================================
+
+/**
+ * Track episode view (upsert channel -> upsert episode -> increment views)
+ */
+export const trackView = async (episode: EpisodeInput) => {
+    console.log(`[PodcastService] Tracking view for episode: ${episode.title}`);
+
+    // 1. Upsert channel
+    const channel = await prisma.podcastChannel.upsert({
+        where: { itunesId: episode.channel.itunesId },
+        update: {},
+        create: {
+            itunesId: episode.channel.itunesId,
+            title: episode.channel.title,
+            author: episode.channel.author,
+            feedUrl: episode.channel.feedUrl,
+            artworkUrl: episode.channel.artworkUrl
+        }
+    });
+
+    // 2. Upsert episode and increment views
+    const updatedEpisode = await prisma.podcastEpisode.upsert({
+        where: { guid: episode.guid },
+        update: {
+            views: { increment: 1 }
+        },
+        create: {
+            guid: episode.guid,
+            title: episode.title,
+            audioUrl: episode.audioUrl,
+            duration: episode.duration,
+            pubDate: episode.pubDate ? new Date(episode.pubDate) : null,
+            description: episode.description,
+            channelId: channel.id,
+            views: 1
+        }
+    });
+
+    return updatedEpisode;
+};
+
+/**
+ * Toggle like on an episode
+ * @returns true if now liked, false if unliked
+ */
+export const toggleLike = async (userId: string, episode: EpisodeInput): Promise<boolean> => {
+    console.log(`[PodcastService] Toggle like for user ${userId} on episode ${episode.guid}`);
+
+    // 1. Upsert channel
+    const channel = await prisma.podcastChannel.upsert({
+        where: { itunesId: episode.channel.itunesId },
+        update: {},
+        create: {
+            itunesId: episode.channel.itunesId,
+            title: episode.channel.title,
+            author: episode.channel.author,
+            feedUrl: episode.channel.feedUrl,
+            artworkUrl: episode.channel.artworkUrl
+        }
+    });
+
+    // 2. Upsert episode
+    let podcastEpisode = await prisma.podcastEpisode.upsert({
+        where: { guid: episode.guid },
+        update: {},
+        create: {
+            guid: episode.guid,
+            title: episode.title,
+            audioUrl: episode.audioUrl,
+            duration: episode.duration,
+            pubDate: episode.pubDate ? new Date(episode.pubDate) : null,
+            description: episode.description,
+            channelId: channel.id
+        }
+    });
+
+    // 3. Check if already liked
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+            likedEpisodes: {
+                where: { id: podcastEpisode.id }
+            }
+        }
+    });
+
+    const isCurrentlyLiked = user?.likedEpisodes && user.likedEpisodes.length > 0;
+
+    // 4. Toggle like
+    if (isCurrentlyLiked) {
+        await prisma.$transaction([
+            prisma.user.update({
+                where: { id: userId },
+                data: {
+                    likedEpisodes: { disconnect: { id: podcastEpisode.id } }
+                }
+            }),
+            prisma.podcastEpisode.update({
+                where: { id: podcastEpisode.id },
+                data: { likes: { decrement: 1 } }
+            })
+        ]);
+        return false;
+    } else {
+        await prisma.$transaction([
+            prisma.user.update({
+                where: { id: userId },
+                data: {
+                    likedEpisodes: { connect: { id: podcastEpisode.id } }
+                }
+            }),
+            prisma.podcastEpisode.update({
+                where: { id: podcastEpisode.id },
+                data: { likes: { increment: 1 } }
+            })
+        ]);
+        return true;
+    }
+};

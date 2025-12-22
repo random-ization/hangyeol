@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { analyzeTopikQuestion, TopikQuestionInput } from '../services/ai.service';
+import { analyzeTopikQuestion, TopikQuestionInput, analyzeSentence, SentenceAnalysisInput } from '../services/ai.service';
 
 /**
  * POST /api/ai/analyze-question
@@ -44,6 +44,44 @@ export const analyzeQuestion = async (req: Request, res: Response) => {
         }
         const message = error instanceof Error ? error.message : 'Unknown error';
         res.status(500).json({
+            success: false,
+            error: message
+        });
+    }
+};
+
+/**
+ * POST /api/ai/analyze-sentence
+ * 分析韩语句子的词汇、语法和语感
+ */
+export const analyzeSentenceHandler = async (req: Request, res: Response) => {
+    try {
+        const { sentence, context, language } = req.body;
+
+        // Validate required field
+        if (!sentence || typeof sentence !== 'string' || sentence.trim().length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'sentence is required and must be a non-empty string'
+            });
+        }
+
+        const input: SentenceAnalysisInput = {
+            sentence: sentence.trim(),
+            context: context?.trim(),
+            language: language || 'zh'
+        };
+
+        const result = await analyzeSentence(input);
+
+        return res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        console.error('[AI Controller] Sentence analysis error:', error);
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return res.status(500).json({
             success: false,
             error: message
         });

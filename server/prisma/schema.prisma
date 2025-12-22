@@ -53,6 +53,10 @@ model User {
   examHistory        ExamAttempt[]
   learningActivities LearningActivity[]
   notebookEntries    NotebookEntry[]
+  
+  // Podcast relations
+  subscribedChannels PodcastChannel[]
+  likedEpisodes      PodcastEpisode[]
 }
 
 model Institute {
@@ -281,4 +285,50 @@ model Transcript {
   // Ensure we don't have duplicate transcript types for the same video
   @@unique([videoId, language, isAIProcessed])
   @@index([videoId])
+}
+
+// ============================================
+// Podcast Learning Models
+// ============================================
+
+model PodcastChannel {
+  id          String   @id @default(uuid())
+  itunesId    String   @unique // iTunes collectionId for syncing
+  title       String
+  author      String
+  feedUrl     String
+  artworkUrl  String?
+  description String?  @db.Text
+  isFeatured  Boolean  @default(false) // Admin control for Editor's Picks
+  
+  subscribers User[]
+  episodes    PodcastEpisode[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([isFeatured])
+}
+
+model PodcastEpisode {
+  id          String   @id @default(uuid())
+  guid        String   @unique // Unique identifier from RSS (usually URL or ID)
+  title       String
+  audioUrl    String
+  duration    Int?     // Duration in seconds
+  pubDate     DateTime?
+  description String?  @db.Text
+  
+  views       Int      @default(0)
+  likes       Int      @default(0)
+
+  channelId   String
+  channel     PodcastChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  
+  likedBy     User[]
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([channelId])
+  @@index([pubDate])
 }

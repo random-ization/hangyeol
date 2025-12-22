@@ -12,6 +12,7 @@ import aiRoutes from './routes/ai.routes';
 import notebookRoutes from './routes/notebook.routes';
 
 import videoRoutes from './routes/video.routes';
+import podcastRoutes from './routes/podcast.routes';
 
 const app = express();
 
@@ -44,6 +45,8 @@ app.use('/api/notebook', notebookRoutes);
 console.log('[Server] /api/notebook registered');
 app.use('/api/video', videoRoutes);
 console.log('[Server] /api/video registered');
+app.use('/api/podcasts', podcastRoutes);
+console.log('[Server] /api/podcasts registered');
 
 // Health Check
 app.get('/health', (req, res) => {

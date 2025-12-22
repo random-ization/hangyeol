@@ -3,6 +3,10 @@ import { checkFileExists, downloadJSON } from './storage.service';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import https from 'https';
 import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import ffmpeg from 'fluent-ffmpeg';
 
 // Initialize Gemini
 const getGenAI = () => {
@@ -31,22 +35,23 @@ export interface TranscriptResult {
 // Cache key prefix
 const TRANSCRIPT_CACHE_PREFIX = 'transcripts/';
 const TRANSCRIPT_CACHE_TTL = 86400; // 24 hours
+const MAX_SIZE_FOR_COMPRESSION = 20 * 1024 * 1024; // 20MB
 
 /**
- * Download audio from URL and return as base64
- * Supports both HTTP and HTTPS
+ * Download audio from URL to a temp file
  */
-const downloadAudioAsBase64 = async (url: string, maxSizeMB: number = 20): Promise<string> => {
+const downloadAudioToFile = async (url: string): Promise<string> => {
+    const tempDir = os.tmpdir();
+    const tempFile = path.join(tempDir, `podcast_${Date.now()}.mp3`);
+
     return new Promise((resolve, reject) => {
         const client = url.startsWith('https') ? https : http;
 
-        client.get(url, (res) => {
+        const handleResponse = (res: any) => {
             // Handle redirects
             if (res.statusCode === 301 || res.statusCode === 302) {
                 if (res.headers.location) {
-                    downloadAudioAsBase64(res.headers.location, maxSizeMB)
-                        .then(resolve)
-                        .catch(reject);
+                    client.get(res.headers.location, handleResponse).on('error', reject);
                     return;
                 }
             }
@@ -56,27 +61,57 @@ const downloadAudioAsBase64 = async (url: string, maxSizeMB: number = 20): Promi
                 return;
             }
 
-            const chunks: Buffer[] = [];
-            let totalSize = 0;
-            const maxSize = maxSizeMB * 1024 * 1024;
+            const fileStream = fs.createWriteStream(tempFile);
+            res.pipe(fileStream);
 
-            res.on('data', (chunk: Buffer) => {
-                totalSize += chunk.length;
-                if (totalSize > maxSize) {
-                    res.destroy();
-                    reject(new Error(`Audio file too large (>${maxSizeMB}MB)`));
-                    return;
-                }
-                chunks.push(chunk);
+            fileStream.on('finish', () => {
+                fileStream.close();
+                resolve(tempFile);
             });
 
-            res.on('end', () => {
-                const buffer = Buffer.concat(chunks);
-                resolve(buffer.toString('base64'));
+            fileStream.on('error', (err) => {
+                fs.unlink(tempFile, () => { }); // Cleanup on error
+                reject(err);
             });
+        };
 
-            res.on('error', reject);
-        }).on('error', reject);
+        client.get(url, handleResponse).on('error', reject);
+    });
+};
+
+/**
+ * Compress audio using FFmpeg for STT optimization
+ * Output: mono, 16kHz, 32kbps - optimized for speech recognition
+ */
+const compressAudio = async (inputPath: string): Promise<string> => {
+    const outputPath = inputPath.replace('.mp3', '_compressed.mp3');
+
+    return new Promise((resolve, reject) => {
+        ffmpeg(inputPath)
+            .audioChannels(1)      // Mono (halves size)
+            .audioFrequency(16000) // 16kHz (sufficient for speech)
+            .audioBitrate('32k')   // 32kbps (highly compressed)
+            .output(outputPath)
+            .on('end', () => {
+                console.log('[Transcript] Compression complete');
+                resolve(outputPath);
+            })
+            .on('error', (err) => {
+                console.error('[Transcript] Compression failed:', err.message);
+                reject(err);
+            })
+            .run();
+    });
+};
+
+/**
+ * Cleanup temp files
+ */
+const cleanupFiles = (...files: string[]) => {
+    files.forEach(file => {
+        if (file && fs.existsSync(file)) {
+            fs.unlinkSync(file);
+        }
     });
 };
 
@@ -99,10 +134,6 @@ const getMimeType = (url: string): string => {
 
 /**
  * Generate transcript for podcast episode using Gemini
- * 
- * @param audioUrl - URL of the audio file
- * @param episodeId - Unique episode identifier for caching
- * @param targetLanguage - Translation target language (default: Chinese)
  */
 export const generateTranscript = async (
     audioUrl: string,
@@ -124,29 +155,47 @@ export const generateTranscript = async (
         console.log(`[Transcript] Cache check failed, generating fresh`);
     }
 
-    // 2. Download audio
-    console.log(`[Transcript] Downloading audio from: ${audioUrl}`);
-    let audioBase64: string;
+    let originalFile: string = '';
+    let compressedFile: string = '';
+    let uploadFile: string = '';
+
     try {
-        audioBase64 = await downloadAudioAsBase64(audioUrl, 100); // 100MB limit for long podcasts
-    } catch (e: any) {
-        console.error(`[Transcript] Failed to download audio:`, e.message);
-        throw new Error('AUDIO_DOWNLOAD_FAILED');
-    }
+        // 2. Download audio to temp file
+        console.log(`[Transcript] Downloading audio from: ${audioUrl}`);
+        originalFile = await downloadAudioToFile(audioUrl);
 
-    // 3. Call Gemini with audio
-    console.log(`[Transcript] Calling Gemini for transcription...`);
-    const ai = getGenAI();
-    const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        // 3. Check file size and compress if needed
+        const stats = fs.statSync(originalFile);
+        const sizeMB = stats.size / (1024 * 1024);
+        console.log(`[Transcript] Downloaded file size: ${sizeMB.toFixed(2)}MB`);
 
-    const languageNames: Record<string, string> = {
-        'zh': 'Chinese (Simplified)',
-        'en': 'English',
-        'vi': 'Vietnamese'
-    };
-    const translationLang = languageNames[targetLanguage] || 'Chinese (Simplified)';
+        if (stats.size > MAX_SIZE_FOR_COMPRESSION) {
+            console.log(`[Transcript] File too large (${sizeMB.toFixed(2)}MB), compressing...`);
+            compressedFile = await compressAudio(originalFile);
+            uploadFile = compressedFile;
 
-    const prompt = `You are a professional audio transcription assistant. Transcribe this Korean podcast audio.
+            const compressedStats = fs.statSync(compressedFile);
+            console.log(`[Transcript] Compressed to: ${(compressedStats.size / (1024 * 1024)).toFixed(2)}MB`);
+        } else {
+            uploadFile = originalFile;
+        }
+
+        // 4. Read file as base64 and send to Gemini
+        const audioBuffer = fs.readFileSync(uploadFile);
+        const audioBase64 = audioBuffer.toString('base64');
+
+        console.log(`[Transcript] Calling Gemini for transcription...`);
+        const ai = getGenAI();
+        const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+        const languageNames: Record<string, string> = {
+            'zh': 'Chinese (Simplified)',
+            'en': 'English',
+            'vi': 'Vietnamese'
+        };
+        const translationLang = languageNames[targetLanguage] || 'Chinese (Simplified)';
+
+        const prompt = `You are a professional audio transcription assistant. Transcribe this Korean podcast audio.
 
 OUTPUT REQUIREMENTS:
 1. Return a JSON array of segments with TIMESTAMPS
@@ -169,50 +218,58 @@ IMPORTANT:
 - Korean in "text", ${translationLang} in "translation"
 - Return ONLY valid JSON, no explanation`;
 
-    try {
-        const mimeType = getMimeType(audioUrl);
-
-        const result = await model.generateContent([
-            {
-                inlineData: {
-                    mimeType,
-                    data: audioBase64
-                }
-            },
-            { text: prompt }
-        ]);
-
-        const responseText = result.response.text();
-        console.log(`[Transcript] Gemini response received, parsing...`);
-
-        // Parse JSON response
-        const cleanJson = responseText.replace(/```json\n?|\n?```/g, '').trim();
-        const transcriptData: TranscriptResult = JSON.parse(cleanJson);
-
-        // Validate
-        if (!transcriptData.segments || !Array.isArray(transcriptData.segments)) {
-            throw new Error('Invalid transcript format - missing segments array');
-        }
-
-        // 4. Save to S3 cache
         try {
-            await uploadCachedJson(cacheKey, transcriptData, TRANSCRIPT_CACHE_TTL);
-            console.log(`[Transcript] Saved to S3: ${cacheKey}`);
-        } catch (e) {
-            console.warn(`[Transcript] Failed to save to S3:`, e);
+            const mimeType = getMimeType(audioUrl);
+
+            const result = await model.generateContent([
+                {
+                    inlineData: {
+                        mimeType,
+                        data: audioBase64
+                    }
+                },
+                { text: prompt }
+            ]);
+
+            const responseText = result.response.text();
+            console.log(`[Transcript] Gemini response received, parsing...`);
+
+            // Parse JSON response
+            const cleanJson = responseText.replace(/```json\n?|\n?```/g, '').trim();
+            const transcriptData: TranscriptResult = JSON.parse(cleanJson);
+
+            // Validate
+            if (!transcriptData.segments || !Array.isArray(transcriptData.segments)) {
+                throw new Error('Invalid transcript format - missing segments array');
+            }
+
+            // 4. Save to S3 cache
+            try {
+                await uploadCachedJson(cacheKey, transcriptData, TRANSCRIPT_CACHE_TTL);
+                console.log(`[Transcript] Saved to S3: ${cacheKey}`);
+            } catch (e) {
+                console.warn(`[Transcript] Failed to save to S3:`, e);
+            }
+
+            return { ...transcriptData, cached: false };
+
+        } catch (e: any) {
+            console.error(`[Transcript] Gemini transcription failed:`, e.message);
+
+            // Check if it's a parsing error
+            if (e.message.includes('JSON')) {
+                throw new Error('TRANSCRIPT_PARSE_FAILED');
+            }
+
+            throw new Error('TRANSCRIPT_GENERATION_FAILED');
         }
-
-        return { ...transcriptData, cached: false };
-
     } catch (e: any) {
-        console.error(`[Transcript] Gemini transcription failed:`, e.message);
-
-        // Check if it's a parsing error
-        if (e.message.includes('JSON')) {
-            throw new Error('TRANSCRIPT_PARSE_FAILED');
-        }
-
-        throw new Error('TRANSCRIPT_GENERATION_FAILED');
+        console.error(`[Transcript] Failed:`, e.message);
+        throw e;
+    } finally {
+        // Cleanup temp files
+        cleanupFiles(originalFile, compressedFile);
+        console.log(`[Transcript] Cleaned up temp files`);
     }
 };
 

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { analyzeTopikQuestion, TopikQuestionInput, SentenceAnalysisInput } from '../services/ai.service';
-import { generateTranscript, getTranscriptFromCache, analyzeSentence } from '../services/transcript.service';
+import { generateTranscript, getTranscriptFromCache, analyzeSentence, deleteTranscriptCache } from '../services/transcript.service';
 
 /**
  * POST /api/ai/analyze-question
@@ -173,6 +173,37 @@ export const checkTranscriptHandler = async (req: Request, res: Response) => {
         return res.status(500).json({
             success: false,
             error: 'Failed to check transcript'
+        });
+    }
+};
+
+/**
+ * DELETE /api/ai/transcript/:episodeId
+ * Delete transcript from cache
+ */
+export const deleteTranscriptHandler = async (req: Request, res: Response) => {
+    try {
+        const { episodeId } = req.params;
+
+        if (!episodeId) {
+            return res.status(400).json({
+                success: false,
+                error: 'episodeId is required'
+            });
+        }
+
+        console.log(`[AI Controller] Deleting transcript cache for: ${episodeId}`);
+        await deleteTranscriptCache(episodeId);
+
+        return res.json({
+            success: true,
+            message: 'Transcript cache deleted'
+        });
+    } catch (error) {
+        console.error('[AI Controller] Delete transcript error:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Failed to delete transcript cache'
         });
     }
 };

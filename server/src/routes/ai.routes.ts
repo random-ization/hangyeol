@@ -3,7 +3,8 @@ import {
     analyzeQuestion,
     analyzeSentenceHandler,
     generateTranscriptHandler,
-    checkTranscriptHandler
+    checkTranscriptHandler,
+    deleteTranscriptHandler
 } from '../controllers/ai.controller';
 import { authenticate } from '../middleware/auth.middleware';
 
@@ -20,5 +21,8 @@ router.post('/transcript', authenticate, generateTranscriptHandler);
 
 // GET /api/ai/transcript/:episodeId - 检查字幕缓存
 router.get('/transcript/:episodeId', authenticate, checkTranscriptHandler);
+
+// DELETE /api/ai/transcript/:episodeId - 删除字幕缓存
+router.delete('/transcript/:episodeId', authenticate, deleteTranscriptHandler);
 
 export default router;

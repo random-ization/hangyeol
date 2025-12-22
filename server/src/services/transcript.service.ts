@@ -1,5 +1,5 @@
 import { uploadCachedJson } from '../lib/storage';
-import { checkFileExists, downloadJSON } from './storage.service';
+import { checkFileExists, downloadJSON, deleteFile } from './storage.service';
 import OpenAI from "openai";
 import https from 'https';
 import http from 'http';
@@ -8,10 +8,14 @@ import path from 'path';
 import os from 'os';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
+import { path as ffprobePath } from 'ffprobe-static';
 
-// Set ffmpeg path
+// Set ffmpeg and ffprobe paths
 if (ffmpegPath) {
     ffmpeg.setFfmpegPath(ffmpegPath);
+}
+if (ffprobePath) {
+    ffmpeg.setFfprobePath(ffprobePath);
 }
 
 // ============================================
@@ -358,4 +362,22 @@ export const getTranscriptFromCache = async (episodeId: string): Promise<Transcr
         }
     } catch (e) { /* ignore */ }
     return null;
+};
+
+/**
+ * Delete transcript from S3 cache
+ */
+export const deleteTranscriptCache = async (episodeId: string): Promise<boolean> => {
+    const cacheKey = `${TRANSCRIPT_CACHE_PREFIX}${episodeId}.json`;
+    try {
+        if (await checkFileExists(cacheKey)) {
+            console.log(`[Transcript] Deleting cache: ${cacheKey}`);
+            await deleteFile(cacheKey);
+            return true;
+        }
+        return false;
+    } catch (e) {
+        console.error(`[Transcript] Failed to delete cache:`, e);
+        throw e;
+    }
 };

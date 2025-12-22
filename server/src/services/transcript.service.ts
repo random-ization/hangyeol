@@ -128,7 +128,7 @@ export const generateTranscript = async (
     console.log(`[Transcript] Downloading audio from: ${audioUrl}`);
     let audioBase64: string;
     try {
-        audioBase64 = await downloadAudioAsBase64(audioUrl, 25); // 25MB limit
+        audioBase64 = await downloadAudioAsBase64(audioUrl, 100); // 100MB limit for long podcasts
     } catch (e: any) {
         console.error(`[Transcript] Failed to download audio:`, e.message);
         throw new Error('AUDIO_DOWNLOAD_FAILED');

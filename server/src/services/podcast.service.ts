@@ -11,6 +11,37 @@ const parser = new Parser();
 const TRENDING_CACHE_KEY = 'cache/podcast-trending.json';
 const TRENDING_CACHE_TTL = 5 * 60; // 5 minutes
 
+/**
+ * Parse duration string to seconds (Int)
+ * Handles formats like: "00:32:30", "32:30", "1950", "1950.0"
+ */
+const parseDuration = (duration: string | number | undefined): number | null => {
+    if (duration === undefined || duration === null) return null;
+
+    // If already a number
+    if (typeof duration === 'number') return Math.floor(duration);
+
+    // If it's a string number (e.g., "1950")
+    const numValue = parseInt(duration, 10);
+    if (!isNaN(numValue) && !duration.includes(':')) {
+        return numValue;
+    }
+
+    // Parse HH:MM:SS or MM:SS format
+    const parts = duration.split(':').map(p => parseInt(p, 10));
+    if (parts.some(isNaN)) return null;
+
+    if (parts.length === 3) {
+        // HH:MM:SS
+        return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    } else if (parts.length === 2) {
+        // MM:SS
+        return parts[0] * 60 + parts[1];
+    }
+
+    return null;
+};
+
 // ============================================
 // Types
 // ============================================
@@ -426,7 +457,7 @@ export const trackView = async (episode: EpisodeInput) => {
             guid: episode.guid,
             title: episode.title,
             audioUrl: episode.audioUrl,
-            duration: episode.duration,
+            duration: parseDuration(episode.duration),
             pubDate: episode.pubDate ? new Date(episode.pubDate) : null,
             description: episode.description,
             channelId: channel.id,
@@ -465,7 +496,7 @@ export const toggleLike = async (userId: string, episode: EpisodeInput): Promise
             guid: episode.guid,
             title: episode.title,
             audioUrl: episode.audioUrl,
-            duration: episode.duration,
+            duration: parseDuration(episode.duration),
             pubDate: episode.pubDate ? new Date(episode.pubDate) : null,
             description: episode.description,
             channelId: channel.id

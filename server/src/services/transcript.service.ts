@@ -203,8 +203,40 @@ const performStrictASR = async (filePath: string): Promise<TranscriptSegment[]> 
             timestamp_granularities: ["segment"]
         });
 
-        // 2. Format the output for Frontend
+        // Debug logging
+        console.log(`[ASR Debug] Raw Response Keys:`, Object.keys(response));
+        if (response.text) console.log(`[ASR Debug] Text length: ${response.text.length}`);
+
         if (!response.segments) {
+            console.log(`[ASR Debug] Full Response:`, JSON.stringify(response, null, 2));
+
+            // Fallback: If text exists, split it
+            if (response.text) {
+                console.warn("[ASR] Fallback: Segments missing, using text-based splitting.");
+                const text = response.text;
+                // Simple split by . ? ! \n
+                const sentences = text.match(/[^.!?\n]+[.!?\n]*(\s|$)/g) || [text];
+                const totalDuration = response.duration || (text.length * 0.2); // Estimate ~5 chars/sec if missing
+
+                let currentTime = 0;
+                const totalLength = text.length;
+
+                const fallbackSegments = sentences.map((s: string) => {
+                    const trimmed = s.trim();
+                    const duration = totalLength > 0 ? (trimmed.length / totalLength) * totalDuration : 2;
+                    const seg = {
+                        start: currentTime,
+                        end: currentTime + duration,
+                        text: trimmed,
+                        translation: ""
+                    };
+                    currentTime += duration;
+                    return seg;
+                }).filter((s: any) => s.text.length > 0);
+
+                return fallbackSegments;
+            }
+
             throw new Error("ASR output missing segments");
         }
 

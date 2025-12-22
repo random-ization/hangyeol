@@ -145,12 +145,14 @@ const PodcastPlayerPage: React.FC = () => {
             setTranscriptLoading(false);
             setIsGeneratingTranscript(false);
         }
-    }, [episode, getEpisodeId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Run only once on mount - episode data is stable from navigation state
 
-    // Load transcript on mount
+    // Load transcript on mount only
     useEffect(() => {
         loadTranscript();
-    }, [loadTranscript]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Empty deps - only run once on mount
 
     // Track view on mount
     useEffect(() => {

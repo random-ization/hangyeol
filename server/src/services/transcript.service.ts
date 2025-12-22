@@ -112,6 +112,17 @@ const compressAudio = async (inputPath: string): Promise<string> => {
             .run();
     });
 };
+/**
+ * Get audio duration using ffprobe
+ */
+const getAudioDuration = (filePath: string): Promise<number> => {
+    return new Promise((resolve, reject) => {
+        ffmpeg.ffprobe(filePath, (err, metadata) => {
+            if (err) return reject(err);
+            resolve(metadata.format.duration || 0);
+        });
+    });
+};
 
 const cleanupFiles = (...files: string[]) => {
     files.forEach(file => {
@@ -127,9 +138,9 @@ const cleanupFiles = (...files: string[]) => {
  * Step 1: Transcribe Audio (Returns Segments with Timestamps)
  * Provider: SiliconFlow (SenseVoiceSmall)
  */
-const performStrictASR = async (filePath: string): Promise<TranscriptSegment[]> => {
+const performStrictASR = async (filePath: string, maxDuration?: number): Promise<TranscriptSegment[]> => {
     const client = getAsrClient();
-    console.log(`[ASR] Transcribing with SiliconFlow (SenseVoice)...`);
+    console.log(`[ASR] Transcribing with SiliconFlow...`);
 
     try {
         const response: any = await client.audio.transcriptions.create({
@@ -175,14 +186,27 @@ const performStrictASR = async (filePath: string): Promise<TranscriptSegment[]> 
             throw new Error("ASR output missing segments");
         }
 
-        // Map to clean structure
-        console.log(`[ASR] Success! Generated ${response.segments.length} segments.`);
-        return response.segments.map((seg: any) => ({
+        let segments: TranscriptSegment[] = response.segments.map((seg: any) => ({
             start: seg.start,
             end: seg.end,
             text: seg.text.trim(),
             translation: ""
         }));
+
+        // 🔥 FILTER: Remove segments beyond actual duration (Hallucination Fix)
+        if (maxDuration) {
+            const originalCount = segments.length;
+            segments = segments.filter(req => req.start < maxDuration);
+
+            // Clamp the last segment
+            if (segments.length > 0) {
+                const last = segments[segments.length - 1];
+                if (last.end > maxDuration) last.end = maxDuration;
+            }
+            console.log(`[ASR] Duration Clamp: ${originalCount} -> ${segments.length} segments (Max: ${maxDuration}s)`);
+        }
+
+        return segments;
 
     } catch (error: any) {
         console.error("[ASR Failed]", error);
@@ -285,6 +309,10 @@ export const generateTranscript = async (
         console.log(`[Transcript] Downloading audio from: ${audioUrl}`);
         originalFile = await downloadAudioToFile(audioUrl);
 
+        // 🔍 PROBE DURATION 🔍
+        const originalDuration = await getAudioDuration(originalFile);
+        console.log(`[Transcript] Audio Duration: ${originalDuration}s`);
+
         // 3. Compress if size > 20MB
         const stats = fs.statSync(originalFile);
         const sizeMB = stats.size / (1024 * 1024);
@@ -297,13 +325,13 @@ export const generateTranscript = async (
             uploadFile = originalFile;
         }
 
-        // 4. Perform ASR (SiliconFlow)
-        const segments = await performStrictASR(uploadFile);
+        // 4. Perform ASR (SiliconFlow) - Pass Duration for clamping
+        const segments = await performStrictASR(uploadFile, originalDuration);
 
         const transcriptData: TranscriptResult = {
             segments: segments,
             language: 'ko',
-            duration: segments.length > 0 ? segments[segments.length - 1].end : 0,
+            duration: originalDuration, // Use authoritative duration
             cached: false
         };
 

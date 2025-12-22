@@ -38,6 +38,20 @@ interface AnalysisData {
     cached?: boolean;
 }
 
+interface PodcastEpisode {
+    id?: string;
+    guid?: string;
+    title: string;
+    audioUrl: string;
+    image?: string;
+    itunes?: { image?: string; duration?: string };
+    channelTitle?: string;
+    channelArtwork?: string;
+    pubDate?: string;
+    duration?: number | string;
+    description?: string;
+}
+
 // CDN Domain for transcript cache
 const CDN_DOMAIN = import.meta.env.VITE_CDN_URL || '';
 
@@ -96,6 +110,10 @@ const PodcastPlayerPage: React.FC = () => {
     const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
     const [analysisLoading, setAnalysisLoading] = useState(false);
 
+    // Playlist State
+    const [showPlaylist, setShowPlaylist] = useState(false);
+    const [playlist, setPlaylist] = useState<PodcastEpisode[]>([]);
+
     // --- Helpers ---
     const formatTime = (seconds: number) => {
         if (!seconds) return '00:00';
@@ -117,9 +135,24 @@ const PodcastPlayerPage: React.FC = () => {
 
     // --- Effects ---
 
-    // 1. Initial Load & Analytics
+    // 1. Initial Load & Analytics & Playlist
     useEffect(() => {
         loadTranscript();
+
+        // Load Playlist (Episodes from same channel)
+        if (channel.feedUrl) {
+            const fetchPlaylist = async () => {
+                try {
+                    const data = await api.getPodcastEpisodes(channel.feedUrl);
+                    if (data?.episodes) {
+                        setPlaylist(data.episodes);
+                    }
+                } catch (e) {
+                    console.error("Failed to load playlist", e);
+                }
+            };
+            fetchPlaylist();
+        }
 
         // Track View
         if (episode?.audioUrl) {
@@ -187,8 +220,11 @@ const PodcastPlayerPage: React.FC = () => {
     }, [currentTime, transcript]);
 
     useEffect(() => {
-        if (autoScroll && activeLineIndex !== -1 && activeLineRef.current) {
-            activeLineRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (autoScroll && activeLineIndex !== -1) {
+            const el = document.getElementById(`line-${activeLineIndex}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
     }, [activeLineIndex, autoScroll]);
 
@@ -256,6 +292,12 @@ const PodcastPlayerPage: React.FC = () => {
         }
     };
 
+    const playEpisode = (newEpisode: PodcastEpisode) => {
+        // Logic to switch episode - simplified for now, usually would involve navigation or state reset
+        navigate('/podcasts/player', { state: { episode: newEpisode, channel } });
+        window.location.reload(); // Force reload to reset hooks/state for new episode
+    };
+
     return (
         <div className="flex flex-col h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans">
             {/* Header - Fixed on Mobile, Part of layout on Desktop */}
@@ -264,8 +306,11 @@ const PodcastPlayerPage: React.FC = () => {
                     <ArrowLeft className="w-5 h-5" />
                 </button>
                 <span className="font-bold text-sm truncate max-w-[200px]">{episode.title}</span>
-                <button className="p-2 hover:bg-slate-100 rounded-full">
-                    <MoreHorizontal className="w-5 h-5" />
+                <button
+                    onClick={() => setShowPlaylist(true)}
+                    className="p-2 hover:bg-slate-100 rounded-full"
+                >
+                    <ListMusic className="w-5 h-5" />
                 </button>
             </header>
 
@@ -293,10 +338,6 @@ const PodcastPlayerPage: React.FC = () => {
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />
                             <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
-                            {/* CD Hole Effect (Optional style) */}
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-20 transition-opacity">
-                                <div className="w-8 h-8 bg-white/30 backdrop-blur-md rounded-full" />
-                            </div>
                         </div>
 
                         {/* Meta Info */}
@@ -348,17 +389,31 @@ const PodcastPlayerPage: React.FC = () => {
                 {/* Right Column: Transcript Stream */}
                 <main
                     ref={scrollRef}
-                    className="flex-1 overflow-y-auto scroll-smooth bg-slate-50/50 pb-[180px] md:pb-[140px]"
-                    onScroll={() => {
-                        // Optional: Detect user scroll to pause auto-scroll temporarily?
-                    }}
+                    className="flex-1 overflow-y-auto scroll-smooth bg-slate-50/50 pb-[180px] md:pb-[140px] relative"
                 >
+                    {/* Auto-Scroll Floating Toggle */}
+                    <div className="sticky top-4 right-4 z-20 flex justify-end px-4 pointer-events-none">
+                        <button
+                            onClick={() => setAutoScroll(!autoScroll)}
+                            className={`
+                                pointer-events-auto flex items-center gap-2 px-4 py-2 rounded-full shadow-lg backdrop-blur-md border transition-all
+                                ${autoScroll
+                                    ? 'bg-indigo-600/90 text-white border-indigo-500'
+                                    : 'bg-white/90 text-slate-600 border-slate-200 hover:bg-slate-50'
+                                }
+                            `}
+                        >
+                            <ListMusic className="w-4 h-4" />
+                            <span className="text-xs font-bold">{autoScroll ? '自动滚动: 开' : '自动滚动: 关'}</span>
+                        </button>
+                    </div>
+
                     <div className="max-w-3xl mx-auto p-4 md:p-8 lg:p-12 space-y-2">
                         {/* Loading State */}
                         {transcriptLoading && (
                             <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
                                 <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-                                <p className="text-slate-500 font-medium animate-pulse">AI 正在生成只能字幕...</p>
+                                <p className="text-slate-500 font-medium animate-pulse">AI 正在生成智能字幕...</p>
                                 {isGeneratingTranscript && (
                                     <span className="text-xs text-slate-400 bg-white px-3 py-1 rounded-full border border-slate-100 shadow-sm">
                                         首次生成约需 1 分钟
@@ -399,7 +454,6 @@ const PodcastPlayerPage: React.FC = () => {
                                 <div
                                     key={idx}
                                     id={`line-${idx}`}
-                                    ref={isActive ? activeLineRef : null}
                                     className={`
                                         group relative p-4 md:p-6 rounded-2xl transition-all duration-300 border-l-4
                                         ${isActive
@@ -454,7 +508,7 @@ const PodcastPlayerPage: React.FC = () => {
                                             </div>
 
                                             {/* Translation */}
-                                            {showTranslation && line.translation && (
+                                            {showTranslation && (
                                                 <p className={`
                                                         text-base leading-relaxed transition-colors border-l-2 pl-3
                                                         ${isActive
@@ -462,7 +516,7 @@ const PodcastPlayerPage: React.FC = () => {
                                                         : 'text-slate-500 border-slate-200'
                                                     }
                                                     `}>
-                                                    {line.translation}
+                                                    {line.translation || <span className="text-slate-300 italic text-sm">暂无翻译</span>}
                                                 </p>
                                             )}
                                         </div>
@@ -497,7 +551,7 @@ const PodcastPlayerPage: React.FC = () => {
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-safe">
                 <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-3">
 
-                    {/* Progress Slider (Top of bar) */}
+                    {/* Progress Slider */}
                     <div className="relative group mb-2 md:mb-4 pt-2">
                         <div
                             className="absolute -top-3 left-0 right-0 h-4 cursor-pointer z-10"
@@ -571,7 +625,7 @@ const PodcastPlayerPage: React.FC = () => {
                             </button>
                         </div>
 
-                        {/* Right: Tools / Volume (Hidden mobile) */}
+                        {/* Right: Tools / Volume */}
                         <div className="flex items-center justify-end gap-4 flex-1">
                             <div className="hidden md:flex items-center gap-2 group w-24">
                                 <Volume2 className="w-4 h-4 text-slate-400" />
@@ -587,9 +641,9 @@ const PodcastPlayerPage: React.FC = () => {
                                 />
                             </div>
                             <button
-                                onClick={() => setAutoScroll(!autoScroll)}
-                                className={`hidden md:block p-2 rounded-lg transition-colors ${autoScroll ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400 hover:text-slate-600'}`}
-                                title="Auto Scroll"
+                                onClick={() => setShowPlaylist(true)}
+                                className={`p-2 rounded-lg transition-colors ${showPlaylist ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400 hover:text-slate-600'}`}
+                                title="Playlist"
                             >
                                 <ListMusic className="w-5 h-5" />
                             </button>
@@ -612,6 +666,89 @@ const PodcastPlayerPage: React.FC = () => {
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
             />
+
+            {/* Playlist Drawer */}
+            <div className={`
+                fixed inset-y-0 right-0 w-full md:w-[400px] bg-white shadow-2xl z-[60] transform transition-transform duration-300 ease-in-out border-l border-slate-200
+                ${showPlaylist ? 'translate-x-0' : 'translate-x-full'}
+            `}>
+                <div className="flex flex-col h-full">
+                    <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50">
+                        <div className="flex items-center gap-2">
+                            <ListMusic className="w-5 h-5 text-indigo-600" />
+                            <h3 className="font-bold text-slate-800">播放列表</h3>
+                            <span className="text-xs font-medium px-2 py-0.5 bg-slate-200 text-slate-600 rounded-full">
+                                {playlist.length}
+                            </span>
+                        </div>
+                        <button
+                            onClick={() => setShowPlaylist(false)}
+                            className="p-2 hover:bg-slate-200 rounded-full text-slate-400 hover:text-slate-600"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                        {playlist.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-40 text-slate-400 space-y-2">
+                                <ListMusic className="w-8 h-8 opacity-20" />
+                                <p className="text-sm">暂无其他剧集</p>
+                            </div>
+                        ) : (
+                            playlist.map((ep) => {
+                                const isCurrent = ep.guid === episode.guid || ep.id === episode.id || ep.audioUrl === episode.audioUrl;
+                                return (
+                                    <button
+                                        key={ep.guid || ep.id}
+                                        onClick={() => playEpisode(ep)}
+                                        className={`
+                                            w-full text-left p-3 rounded-xl transition-all border
+                                            ${isCurrent
+                                                ? 'bg-indigo-50 border-indigo-100 ring-1 ring-indigo-200'
+                                                : 'bg-white border-transparent hover:bg-slate-50 hover:border-slate-100'
+                                            }
+                                        `}
+                                    >
+                                        <div className="flex gap-3">
+                                            <div className="relative flex-none w-12 h-12 rounded-lg overflow-hidden bg-slate-100">
+                                                <img
+                                                    src={ep.image || ep.itunes?.image || channel.artworkUrl}
+                                                    className="w-full h-full object-cover"
+                                                    alt=""
+                                                />
+                                                {isCurrent && (
+                                                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                                        <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className={`text-sm font-bold truncate mb-0.5 ${isCurrent ? 'text-indigo-900' : 'text-slate-700'}`}>
+                                                    {ep.title}
+                                                </h4>
+                                                <div className="flex items-center gap-2 text-xs text-slate-400">
+                                                    <span>{ep.pubDate ? new Date(ep.pubDate).toLocaleDateString() : ''}</span>
+                                                    <span>•</span>
+                                                    <span>{formatTime(typeof ep.duration === 'string' ? 0 : ep.duration || 0)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Backdrop for Playlist */}
+            {showPlaylist && (
+                <div
+                    className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-[55]"
+                    onClick={() => setShowPlaylist(false)}
+                />
+            )}
 
             {/* AI Analysis Modal/Sheet */}
             {showAnalysis && analyzingLine && (

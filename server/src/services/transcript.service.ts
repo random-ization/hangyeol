@@ -147,18 +147,69 @@ const performASR = async (filePath: string): Promise<any> => {
 }
 
 /**
+ * Helper: Split long segments into smaller chunks based on punctuation
+ * Linearly interpolates timestamps.
+ */
+const refineSegments = (segments: any[]): any[] => {
+    const refined: any[] = [];
+
+    segments.forEach(seg => {
+        const text = seg.text || "";
+        // If segment is short enough, keep it
+        if (text.length < 50 && (seg.end - seg.start) < 10) {
+            refined.push(seg);
+            return;
+        }
+
+        // Split by sentence ending punctuation
+        // Matches: . ? ! (and optionally " or ') followed by space or end of string
+        // Also handles Korean punctuation like 。(though rarely used in informal text, usually just space/newline)
+        const sentences = text.match(/[^.!?\n]+[.!?\n]*(\s|$)/g);
+
+        if (!sentences || sentences.length <= 1) {
+            refined.push(seg);
+            return;
+        }
+
+        const totalDuration = seg.end - seg.start;
+        const totalLength = text.length;
+        let currentTime = seg.start;
+
+        sentences.forEach((sentence: string) => {
+            const trimmed = sentence.trim();
+            if (!trimmed) return;
+
+            const sentenceDuration = (trimmed.length / totalLength) * totalDuration;
+
+            refined.push({
+                start: currentTime,
+                end: currentTime + sentenceDuration,
+                text: trimmed
+            });
+
+            currentTime += sentenceDuration;
+        });
+    });
+
+    return refined;
+};
+
+/**
  * Step 2: Translate and Refine using DeepSeek (LLM)
  */
 const translateSegments = async (segments: any[], targetLanguage: string = 'zh'): Promise<TranscriptSegment[]> => {
-    const client = getClient();
-    console.log(`[LLM] Translating ${segments.length} segments with DeepSeek...`);
+    // 1. Refine segments first (split long sentences)
+    const refinedSegments = refineSegments(segments);
 
-    const CHUNK_SIZE = 50;
+    const client = getClient();
+    console.log(`[LLM] Translating ${segments.length} original -> ${refinedSegments.length} refined segments...`);
+
+    const CHUNK_SIZE = 30;
     const results: TranscriptSegment[] = [];
 
-    for (let i = 0; i < segments.length; i += CHUNK_SIZE) {
-        const chunk = segments.slice(i, i + CHUNK_SIZE);
-        console.log(`[LLM] Processing chunk ${i / CHUNK_SIZE + 1}/${Math.ceil(segments.length / CHUNK_SIZE)}`);
+    for (let i = 0; i < refinedSegments.length; i += CHUNK_SIZE) {
+        const chunk = refinedSegments.slice(i, i + CHUNK_SIZE);
+        console.log(`[LLM] Processing chunk ${Math.floor(i / CHUNK_SIZE) + 1}/${Math.ceil(refinedSegments.length / CHUNK_SIZE)}`);
 
         const prompt = `You are a professional translator. 
         Translate the following Korean podcast transcript segments into ${targetLanguage === 'zh' ? 'Simplified Chinese (zh-CN)' : targetLanguage}.

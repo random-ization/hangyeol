@@ -9,20 +9,33 @@ import os from 'os';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
 
-// Set ffmpeg path for fluent-ffmpeg (using bundled binary)
+// Set ffmpeg path
 if (ffmpegPath) {
     ffmpeg.setFfmpegPath(ffmpegPath);
 }
 
-// Initialize SiliconFlow Client (OpenAI Compatible)
-const getClient = () => {
+// ============================================
+// 1. Initialization (Hybrid Strategy)
+// ============================================
+
+// Client 1: SiliconFlow for SenseVoice (Fast ASR)
+const getAsrClient = () => {
     const apiKey = process.env.SILICONFLOW_API_KEY;
-    if (!apiKey) {
-        throw new Error('SILICONFLOW_API_KEY is not set');
-    }
+    if (!apiKey) throw new Error('SILICONFLOW_API_KEY is not set');
+
     return new OpenAI({
         apiKey: apiKey,
         baseURL: "https://api.siliconflow.cn/v1"
+    });
+};
+
+// Client 2: OpenAI Official for GPT-4o-mini (Smart Analysis)
+const getLlmClient = () => {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error('OPENAI_API_KEY is not set');
+
+    return new OpenAI({
+        apiKey: apiKey
     });
 };
 
@@ -41,65 +54,52 @@ export interface TranscriptResult {
     cached?: boolean;
 }
 
-// Cache key prefix
 const TRANSCRIPT_CACHE_PREFIX = 'transcripts/';
 const TRANSCRIPT_CACHE_TTL = 86400; // 24 hours
 const MAX_SIZE_FOR_COMPRESSION = 20 * 1024 * 1024; // 20MB
 
-/**
- * Download audio from URL to a temp file
- */
+// ============================================
+// 2. Helpers
+// ============================================
+
 const downloadAudioToFile = async (url: string): Promise<string> => {
     const tempDir = os.tmpdir();
     const tempFile = path.join(tempDir, `podcast_${Date.now()}.mp3`);
 
     return new Promise((resolve, reject) => {
         const client = url.startsWith('https') ? https : http;
-
         const handleResponse = (res: any) => {
-            // Handle redirects
             if (res.statusCode === 301 || res.statusCode === 302) {
                 if (res.headers.location) {
                     client.get(res.headers.location, handleResponse).on('error', reject);
                     return;
                 }
             }
-
             if (res.statusCode !== 200) {
-                reject(new Error(`Failed to download audio: ${res.statusCode} `));
+                reject(new Error(`Failed to download audio: ${res.statusCode}`));
                 return;
             }
-
             const fileStream = fs.createWriteStream(tempFile);
             res.pipe(fileStream);
-
-            fileStream.on('finish', () => {
-                fileStream.close();
-                resolve(tempFile);
-            });
-
-            fileStream.on('error', (err) => {
-                fs.unlink(tempFile, () => { }); // Cleanup on error
-                reject(err);
-            });
+            fileStream.on('finish', () => { fileStream.close(); resolve(tempFile); });
+            fileStream.on('error', (err) => { fs.unlink(tempFile, () => { }); reject(err); });
         };
-
         client.get(url, handleResponse).on('error', reject);
     });
 };
 
 /**
- * Compress audio using FFmpeg for STT optimization
- * Output: mono, 16kHz, 32kbps - optimized for speech recognition
+ * Compress audio to speed up upload.
+ * Target: 16k sample rate, 64k bitrate, Mono.
  */
 const compressAudio = async (inputPath: string): Promise<string> => {
-    const outputPath = inputPath.replace('.mp3', '_compressed.mp3');
+    const outputPath = inputPath.replace('.mp3', '_opt.mp3');
 
     return new Promise((resolve, reject) => {
         ffmpeg(inputPath)
-            .audioChannels(1)      // Mono (halves size)
-            .audioFrequency(16000) // 16kHz (sufficient for speech)
-            .audioBitrate('32k')   // 32kbps (highly compressed)
+            .audioChannels(1)
+            .audioFrequency(16000)
+            .audioBitrate('64k') // Updated to 64k as requested
             .output(outputPath)
             .on('end', () => {
                 console.log('[Transcript] Compression complete');
@@ -113,23 +113,90 @@ const compressAudio = async (inputPath: string): Promise<string> => {
     });
 };
 
-/**
- * Cleanup temp files
- */
 const cleanupFiles = (...files: string[]) => {
     files.forEach(file => {
-        if (file && fs.existsSync(file)) {
-            fs.unlinkSync(file);
-        }
+        if (file && fs.existsSync(file)) fs.unlinkSync(file);
     });
 };
 
+// ============================================
+// 3. Core Logic (Hybrid IO)
+// ============================================
+
 /**
- * On-Demand Analysis (Called when user clicks "Analyze" button)
+ * Step 1: Transcribe Audio (Returns Segments with Timestamps)
+ * Provider: SiliconFlow (SenseVoiceSmall)
+ */
+const performStrictASR = async (filePath: string): Promise<TranscriptSegment[]> => {
+    const client = getAsrClient();
+    console.log(`[ASR] Transcribing with SiliconFlow (SenseVoice)...`);
+
+    try {
+        const response: any = await client.audio.transcriptions.create({
+            file: fs.createReadStream(filePath),
+            model: "FunAudioLLM/SenseVoiceSmall",
+
+            // 🔥 CRITICAL SETTINGS 🔥
+            response_format: "verbose_json",
+            timestamp_granularities: ["segment"],
+            language: "ko" // Force Korean to prevent hallucinations
+        });
+
+        // Debug logging
+        // console.log(`[ASR Debug] Raw Keys:`, Object.keys(response));
+
+        if (!response.segments) {
+            console.warn(`[ASR] No segments returned. Checking fallback...`);
+
+            // Fallback: If text exists, split it
+            if (response.text) {
+                console.warn("[ASR] Fallback: Using text-based splitting.");
+                const text = response.text;
+                // Simple split by . ? ! \n
+                const sentences = text.match(/[^.!?\n]+[.!?\n]*(\s|$)/g) || [text];
+                const totalDuration = response.duration || (text.length * 0.2);
+
+                let currentTime = 0;
+                const totalLength = text.length;
+
+                return sentences.map((s: string) => {
+                    const trimmed = s.trim();
+                    const duration = totalLength > 0 ? (trimmed.length / totalLength) * totalDuration : 2;
+                    const seg = {
+                        start: currentTime,
+                        end: currentTime + duration,
+                        text: trimmed,
+                        translation: ""
+                    };
+                    currentTime += duration;
+                    return seg;
+                }).filter((s: any) => s.text.length > 0);
+            }
+            throw new Error("ASR output missing segments");
+        }
+
+        // Map to clean structure
+        console.log(`[ASR] Success! Generated ${response.segments.length} segments.`);
+        return response.segments.map((seg: any) => ({
+            start: seg.start,
+            end: seg.end,
+            text: seg.text.trim(),
+            translation: ""
+        }));
+
+    } catch (error: any) {
+        console.error("[ASR Failed]", error);
+        throw new Error(`ASR_FAILED: ${error.message}`);
+    }
+}
+
+/**
+ * Step 2: On-Demand Analysis (Called when user clicks "Analyze" button)
+ * Provider: OpenAI (GPT-4o-mini)
  */
 export const analyzeSentence = async (sentence: string, context: string = "", targetLanguage: string = "zh"): Promise<any> => {
-    const client = getClient();
-    console.log(`[LLM] Analyzing sentence: "${sentence.substring(0, 20)}..."`);
+    const client = getLlmClient();
+    console.log(`[LLM] Analyzing sentence with OpenAI (GPT-4o-mini)...`);
 
     const languageNames: Record<string, string> = {
         'zh': 'Chinese (Simplified)',
@@ -139,6 +206,7 @@ export const analyzeSentence = async (sentence: string, context: string = "", ta
     };
     const outputLanguage = languageNames[targetLanguage] || 'Chinese (Simplified)';
 
+    // Robust Prompt with Schema
     const prompt = `You are a professional Korean language tutor. Analyze the provided Korean sentence.
     
     Sentence: "${sentence}"
@@ -152,7 +220,7 @@ export const analyzeSentence = async (sentence: string, context: string = "", ta
           "word": "The word as it appears",
           "root": "Dictionary/Root form",
           "meaning": "Definition in ${outputLanguage}",
-          "type": "Noun/Verb/Adj/etc"
+          "type": "Noun"
         }
       ],
       "grammar": [
@@ -168,19 +236,20 @@ export const analyzeSentence = async (sentence: string, context: string = "", ta
 
     try {
         const completion = await client.chat.completions.create({
+            model: "gpt-4o-mini",
             messages: [
                 {
                     role: "system",
-                    content: "You are a helpful JSON translator and language expert."
+                    content: "You are a helpful Korean tutor. Output strict JSON."
                 },
                 { role: "user", content: prompt }
             ],
-            model: "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B",
-            response_format: { type: "json_object" }
+            response_format: { type: "json_object" },
+            temperature: 0.2
         });
 
         const content = completion.choices[0].message.content;
-        return content ? JSON.parse(content) : null;
+        return content ? JSON.parse(content) : {};
     } catch (e) {
         console.error(`[Analysis Failed]`, e);
         throw e;
@@ -188,76 +257,7 @@ export const analyzeSentence = async (sentence: string, context: string = "", ta
 };
 
 /**
- * Perform ASR with strictly formatted segments
- */
-const performStrictASR = async (filePath: string): Promise<TranscriptSegment[]> => {
-    const client = getClient();
-    console.log(`[ASR] Starting SenseVoice transcription...`);
-
-    try {
-        const response: any = await client.audio.transcriptions.create({
-            file: fs.createReadStream(filePath),
-            model: "FunAudioLLM/SenseVoiceSmall",
-            // 🔥 CRITICAL: Request detailed segments
-            response_format: "verbose_json",
-            timestamp_granularities: ["segment"]
-        });
-
-        // Debug logging
-        console.log(`[ASR Debug] Raw Response Keys:`, Object.keys(response));
-        if (response.text) console.log(`[ASR Debug] Text length: ${response.text.length}`);
-
-        if (!response.segments) {
-            console.log(`[ASR Debug] Full Response:`, JSON.stringify(response, null, 2));
-
-            // Fallback: If text exists, split it
-            if (response.text) {
-                console.warn("[ASR] Fallback: Segments missing, using text-based splitting.");
-                const text = response.text;
-                // Simple split by . ? ! \n
-                const sentences = text.match(/[^.!?\n]+[.!?\n]*(\s|$)/g) || [text];
-                const totalDuration = response.duration || (text.length * 0.2); // Estimate ~5 chars/sec if missing
-
-                let currentTime = 0;
-                const totalLength = text.length;
-
-                const fallbackSegments = sentences.map((s: string) => {
-                    const trimmed = s.trim();
-                    const duration = totalLength > 0 ? (trimmed.length / totalLength) * totalDuration : 2;
-                    const seg = {
-                        start: currentTime,
-                        end: currentTime + duration,
-                        text: trimmed,
-                        translation: ""
-                    };
-                    currentTime += duration;
-                    return seg;
-                }).filter((s: any) => s.text.length > 0);
-
-                return fallbackSegments;
-            }
-
-            throw new Error("ASR output missing segments");
-        }
-
-        const segments: TranscriptSegment[] = response.segments.map((seg: any) => ({
-            start: seg.start,
-            end: seg.end,
-            text: seg.text.trim(),
-            translation: "" // Initial translation is empty
-        }));
-
-        console.log(`[ASR] Success! Generated ${segments.length} segments.`);
-        return segments;
-
-    } catch (error: any) {
-        console.error("[ASR Failed]", error);
-        throw new Error(`ASR_FAILED: ${error.message}`);
-    }
-}
-
-/**
- * Generate transcript for podcast episode using SiliconFlow (ASR + LLM)
+ * Orchestrator: Generate transcript for podcast
  */
 export const generateTranscript = async (
     audioUrl: string,
@@ -269,15 +269,12 @@ export const generateTranscript = async (
     // 1. Check Use Cache
     const cacheKey = `${TRANSCRIPT_CACHE_PREFIX}${episodeId}.json`;
     try {
-        const exists = await checkFileExists(cacheKey);
-        if (exists) {
+        if (await checkFileExists(cacheKey)) {
             console.log(`[Transcript] Cache hit: ${cacheKey}`);
             const cached = await downloadJSON(cacheKey);
             return { ...cached, cached: true };
         }
-    } catch (e) {
-        console.log(`[Transcript] Cache check failed, generating fresh`);
-    }
+    } catch (e) { /* ignore */ }
 
     let originalFile: string = '';
     let compressedFile: string = '';
@@ -291,37 +288,27 @@ export const generateTranscript = async (
         // 3. Compress if size > 20MB
         const stats = fs.statSync(originalFile);
         const sizeMB = stats.size / (1024 * 1024);
-        console.log(`[Transcript] Downloaded file size: ${sizeMB.toFixed(2)}MB`);
 
         if (stats.size > MAX_SIZE_FOR_COMPRESSION) {
-            console.log(`[Transcript] File too large (${sizeMB.toFixed(2)}MB), compressing...`);
+            console.log(`[Transcript] File large (${sizeMB.toFixed(2)}MB), compressing...`);
             compressedFile = await compressAudio(originalFile);
             uploadFile = compressedFile;
-
-            const compressedStats = fs.statSync(compressedFile);
-            console.log(`[Transcript] Compressed to: ${(compressedStats.size / (1024 * 1024)).toFixed(2)}MB`);
         } else {
             uploadFile = originalFile;
         }
 
-        // 4. Perform Strict ASR (formatted segments)
-        // No full translation step - we rely on on-demand analysis
+        // 4. Perform ASR (SiliconFlow)
         const segments = await performStrictASR(uploadFile);
 
         const transcriptData: TranscriptResult = {
             segments: segments,
-            language: 'ko', // Audio is Korean
+            language: 'ko',
             duration: segments.length > 0 ? segments[segments.length - 1].end : 0,
             cached: false
         };
 
         // 5. Save to S3
-        try {
-            await uploadCachedJson(cacheKey, transcriptData, TRANSCRIPT_CACHE_TTL);
-            console.log(`[Transcript] Saved to S3: ${cacheKey}`);
-        } catch (e) {
-            console.warn(`[Transcript] Failed to save to S3:`, e);
-        }
+        uploadCachedJson(cacheKey, transcriptData, TRANSCRIPT_CACHE_TTL).catch(console.warn);
 
         return transcriptData;
 
@@ -333,19 +320,14 @@ export const generateTranscript = async (
     }
 };
 
-/**
- * Get transcript from cache only (for pre-loading check)
- */
+// Legacy support if needed
 export const getTranscriptFromCache = async (episodeId: string): Promise<TranscriptResult | null> => {
     const cacheKey = `${TRANSCRIPT_CACHE_PREFIX}${episodeId}.json`;
     try {
-        const exists = await checkFileExists(cacheKey);
-        if (exists) {
+        if (await checkFileExists(cacheKey)) {
             const cached = await downloadJSON(cacheKey);
             return { ...cached, cached: true };
         }
-    } catch (e) {
-        console.log(`[Transcript] Cache miss for: ${episodeId} `);
-    }
+    } catch (e) { /* ignore */ }
     return null;
 };

@@ -6,8 +6,15 @@ import { OAuth2Client } from 'google-auth-library';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 
+// Log on startup to verify environment variables are loaded
+console.log('[Google Auth] Client ID configured:', GOOGLE_CLIENT_ID ? `${GOOGLE_CLIENT_ID.substring(0, 20)}...` : 'MISSING!');
+console.log('[Google Auth] Client Secret configured:', GOOGLE_CLIENT_SECRET ? 'Yes' : 'MISSING!');
+
 // Create OAuth2 client
 const createOAuth2Client = (redirectUri?: string) => {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+        throw new Error('Google OAuth credentials not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables.');
+    }
     return new OAuth2Client(
         GOOGLE_CLIENT_ID,
         GOOGLE_CLIENT_SECRET,

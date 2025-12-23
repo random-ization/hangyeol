@@ -439,6 +439,9 @@ export const api = {
       body: JSON.stringify({ episode }),
     }),
 
+  getPodcastHistory: async () =>
+    request<any[]>('/podcasts/history'),
+
   // --- AI Sentence Analysis ---
   analyzeSentence: async (sentence: string, context?: string, language?: string) =>
     request<{

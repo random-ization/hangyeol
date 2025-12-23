@@ -61,6 +61,7 @@ interface PodcastEpisode {
     pubDate: string | undefined;
     duration: string | undefined;
     description: string;
+    guid?: string;
 }
 
 interface PodcastChannel {
@@ -142,12 +143,13 @@ export const getEpisodes = async (feedUrl: string): Promise<PodcastFeed> => {
     try {
         const feed = await parser.parseURL(feedUrl);
 
-        const episodes: PodcastEpisode[] = feed.items.slice(0, 20).map(item => ({
+        const episodes: PodcastEpisode[] = feed.items.slice(0, 50).map(item => ({
             title: item.title || 'Untitled Episode',
             audioUrl: item.enclosure?.url,
             pubDate: item.pubDate,
             duration: (item as any).itunes?.duration || (item as any)['itunes:duration'],
-            description: item.contentSnippet || item.content || ''
+            description: item.contentSnippet || item.content || '',
+            guid: item.guid || item.link || item.title
         }));
 
         const validEpisodes = episodes.filter(ep => ep.audioUrl);
@@ -612,26 +614,29 @@ export const toggleLike = async (userId: string, episode: EpisodeInput): Promise
  * Add or update listening history for a user
  */
 export const addToHistory = async (userId: string, episode: EpisodeInput) => {
-    // console.log(`[PodcastService] Adding history for user ${userId} - ${episode.title}`);
+    // Save to History Table
+    try {
+        await prisma.listeningHistory.upsert({
+            where: {
+                userId_episodeGuid: { userId, episodeGuid: episode.guid }
+            },
+            update: { playedAt: new Date() },
+            create: {
+                userId,
+                episodeGuid: episode.guid,
+                episodeTitle: episode.title,
+                episodeUrl: episode.audioUrl,
+                channelName: episode.channel?.title || 'Unknown',
+                channelImage: episode.channel?.artworkUrl || null,
+                playedAt: new Date()
+            }
+        });
+    } catch (e) {
+        console.error('[PodcastService] History save failed:', e);
+    }
 
-    return prisma.listeningHistory.upsert({
-        where: {
-            userId_episodeGuid: { userId, episodeGuid: episode.guid }
-        },
-        update: {
-            playedAt: new Date(),
-            // progress: episode.progress // future
-        },
-        create: {
-            userId,
-            episodeGuid: episode.guid,
-            episodeTitle: episode.title,
-            episodeUrl: episode.audioUrl,
-            channelName: episode.channel.title || 'Unknown',
-            channelImage: episode.channel.artworkUrl || null,
-            playedAt: new Date()
-        }
-    });
+    // Also track view count
+    return trackView(episode);
 };
 
 /**

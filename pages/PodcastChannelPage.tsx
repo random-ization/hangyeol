@@ -32,9 +32,9 @@ const PodcastChannelPage: React.FC = () => {
 
     // Get channel from navigation state or query params
     const stateChannel = (location.state as any)?.channel;
-    // 1. Get ID from URL params (Fix for refresh)
-    const channelId = stateChannel?.itunesId || stateChannel?.id || searchParams.get('id');
-    const feedUrl = stateChannel?.feedUrl || searchParams.get('feedUrl');
+    // 🔥 FIX: Prioritize URL params (survive page refresh)
+    const feedUrl = searchParams.get('feedUrl') || stateChannel?.feedUrl;
+    const channelId = searchParams.get('id') || stateChannel?.itunesId || stateChannel?.id;
 
     const [data, setData] = useState<FeedData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -78,7 +78,8 @@ const PodcastChannelPage: React.FC = () => {
             if (!user || !channelId) return;
             try {
                 const subs = await api.getPodcastSubscriptions();
-                setIsSubscribed(subs.some((c: any) => (c.itunesId || c.id) === channelId));
+                // Compare IDs (handle both string/number types)
+                setIsSubscribed(subs.some((c: any) => String(c.itunesId) === String(channelId) || String(c.id) === String(channelId)));
             } catch (err) {
                 console.error('Failed to check subscription:', err);
             }
@@ -87,34 +88,28 @@ const PodcastChannelPage: React.FC = () => {
     }, [user, channelId]);
 
     const handleToggleSubscribe = async () => {
-        // 🔥 FIX: Reconstruct channel object if state is missing
-        const targetChannel = stateChannel || (data?.channel && channelId && feedUrl ? {
+        if (!channelId || !data?.channel) {
+            console.error('Cannot subscribe: Missing channel info (ID or data)');
+            return;
+        }
+
+        // 构造完整的频道对象 (哪怕 state 丢了，我们也有 data 和 id)
+        const channelToSubscribe = {
             itunesId: channelId,
             title: data.channel.title || 'Unknown',
             author: data.channel.author || 'Unknown',
             feedUrl: feedUrl,
-            artworkUrl: data.channel.image,
+            artworkUrl: data.channel.image || stateChannel?.artworkUrl,
             description: data.channel.description
-        } : null);
+        };
 
-        if (!targetChannel) {
-            console.error('Cannot subscribe: Missing Channel Info (ID or FeedURL)');
-            return;
-        }
-
-        // Optimistic update
-        setIsSubscribed(!isSubscribed);
+        const oldState = isSubscribed;
+        setIsSubscribed(!oldState); // Optimistic UI
 
         try {
-            await api.togglePodcastSubscription({
-                itunesId: targetChannel.itunesId || targetChannel.id,
-                title: targetChannel.title,
-                author: targetChannel.author,
-                feedUrl: targetChannel.feedUrl,
-                artworkUrl: targetChannel.artworkUrl
-            });
+            await api.togglePodcastSubscription(channelToSubscribe);
         } catch (err) {
-            setIsSubscribed(!isSubscribed); // Rollback
+            setIsSubscribed(oldState); // Rollback
             console.error('Failed to toggle subscription:', err);
         }
     };
@@ -127,9 +122,12 @@ const PodcastChannelPage: React.FC = () => {
                     channelTitle: data?.channel.title,
                     channelArtwork: data?.channel.image
                 },
+                // 确保传递 channel 信息，包括 ID，以便播放器页也能订阅
                 channel: {
                     ...stateChannel,
-                    ...data?.channel
+                    ...data?.channel,
+                    itunesId: channelId,
+                    feedUrl: feedUrl
                 }
             }
         });

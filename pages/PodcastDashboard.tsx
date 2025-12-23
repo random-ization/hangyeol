@@ -184,9 +184,13 @@ const PodcastDashboard: React.FC = () => {
         return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
     };
 
-    // Navigate to channel detail
+    // Navigate to channel detail - 🔥 Include ID in URL for page refresh support
     const goToChannel = (channel: PodcastChannel) => {
-        navigate(`/podcasts/channel`, { state: { channel } });
+        const channelId = channel.itunesId || channel.id;
+        const params = new URLSearchParams();
+        if (channelId) params.set('id', channelId);
+        if (channel.feedUrl) params.set('feedUrl', channel.feedUrl);
+        navigate(`/podcasts/channel?${params.toString()}`, { state: { channel } });
     };
 
     // Navigate to player

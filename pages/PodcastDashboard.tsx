@@ -5,16 +5,6 @@ import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { clsx } from 'clsx';
 
-// Fix: Import types or use any for now to facilitate UI migration
-interface SearchHistoryItem {
-    type: 'term' | 'podcast';
-    value: string;
-    title?: string;
-    artwork?: string;
-    feedUrl?: string;
-    timestamp: number;
-}
-
 export default function PodcastDashboard() {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -22,14 +12,22 @@ export default function PodcastDashboard() {
     // State
     const [trending, setTrending] = useState<any[]>([]);
     const [subscriptions, setSubscriptions] = useState<any[]>([]);
+    const [history, setHistory] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         const loadData = async () => {
             try {
-                const res = await api.getPodcastTrending().catch(() => ({ external: [] }));
-                setTrending(res.external || []);
+                // Parallel fetch for better performance
+                const [trendingRes, historyRes] = await Promise.all([
+                    api.getPodcastTrending().catch(() => ({ external: [] })),
+                    user ? api.getPodcastHistory().catch(() => []) : Promise.resolve([])
+                ]);
+
+                setTrending(trendingRes.external || []);
+                setHistory(historyRes || []);
+
                 if (user) {
                     const subs = await api.getPodcastSubscriptions().catch(() => []);
                     setSubscriptions(subs || []);
@@ -49,6 +47,10 @@ export default function PodcastDashboard() {
             navigate(`/podcasts/search?q=${encodeURIComponent(searchTerm)}`);
         }
     };
+
+    // Determine featured content: Last played episode OR Top Trending
+    const lastPlayed = history.length > 0 ? history[0] : null;
+    const featuredPodcast = !lastPlayed && trending.length > 0 ? trending[0] : null;
 
     return (
         <div className="min-h-screen bg-[#F0F4F8] p-6 md:p-12 font-sans pb-32" style={{ backgroundImage: "radial-gradient(#cbd5e1 1.5px, transparent 1.5px)", backgroundSize: "24px 24px" }}>
@@ -97,68 +99,106 @@ export default function PodcastDashboard() {
                     <div className="lg:col-span-8 space-y-8">
 
                         {/* Featured Hero Card */}
-                        <div
-                            onClick={() => navigate('/podcasts/player?id=1482869150')} // Example ID
-                            className="bg-slate-900 rounded-[2rem] p-6 text-white border-2 border-slate-900 shadow-pop relative overflow-hidden group cursor-pointer bouncy flex flex-col md:flex-row items-center gap-6"
-                        >
-                            <div className="absolute right-[-20px] bottom-[-40px] opacity-20 group-hover:rotate-12 transition duration-500">
-                                <Disc size={200} />
-                            </div>
-                            <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-l from-indigo-900/50 to-transparent pointer-events-none"></div>
+                        {lastPlayed ? (
+                            <div
+                                onClick={() => navigate('/podcasts/player', {
+                                    state: {
+                                        episode: {
+                                            guid: lastPlayed.episodeGuid,
+                                            title: lastPlayed.episodeTitle,
+                                            audioUrl: lastPlayed.episodeUrl,
+                                            channel: { title: lastPlayed.channelName, artworkUrl: lastPlayed.channelImage }
+                                        }
+                                    }
+                                })}
+                                className="bg-slate-900 rounded-[2rem] p-6 text-white border-2 border-slate-900 shadow-pop relative overflow-hidden group cursor-pointer bouncy flex flex-col md:flex-row items-center gap-6"
+                            >
+                                <div className="absolute right-[-20px] bottom-[-40px] opacity-20 group-hover:rotate-12 transition duration-500">
+                                    <Disc size={200} />
+                                </div>
+                                <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-l from-indigo-900/50 to-transparent pointer-events-none"></div>
 
-                            <div className="w-28 h-28 rounded-2xl bg-indigo-500 border-2 border-white shadow-lg overflow-hidden shrink-0 z-10">
-                                <img src="https://is1-ssl.mzstatic.com/image/thumb/Podcasts113/v4/85/3e/16/853e164f-c760-466d-0e42-1262d8544078/mza_6371583091937920700.jpg/600x600bb.jpg" className="w-full h-full object-cover" alt="album art" />
-                            </div>
-                            <div className="z-10 flex-1 text-center md:text-left">
-                                <div className="text-xs font-bold text-green-400 mb-1 flex items-center justify-center md:justify-start gap-2 uppercase tracking-wider">
-                                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span> Continue Listening
+                                <div className="w-28 h-28 rounded-2xl bg-indigo-500 border-2 border-white shadow-lg overflow-hidden shrink-0 z-10">
+                                    <img src={lastPlayed.channelImage || "https://placehold.co/400x400/indigo/white?text=Pod"} className="w-full h-full object-cover" alt="album art" />
                                 </div>
-                                <h3 className="text-2xl font-black mb-1 line-clamp-1">Iyagi #142: Coffee Shop</h3>
-                                <p className="text-slate-400 text-sm mb-4">Talk To Me In Korean • 剩余 12:30</p>
-                                <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden max-w-md mx-auto md:mx-0">
-                                    <div className="bg-green-400 h-full w-[45%]"></div>
+                                <div className="z-10 flex-1 text-center md:text-left">
+                                    <div className="text-xs font-bold text-green-400 mb-1 flex items-center justify-center md:justify-start gap-2 uppercase tracking-wider">
+                                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span> Continue Listening
+                                    </div>
+                                    <h3 className="text-2xl font-black mb-1 line-clamp-1">{lastPlayed.episodeTitle}</h3>
+                                    <p className="text-slate-400 text-sm mb-4">{lastPlayed.channelName}</p>
+                                    <div className="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden max-w-md mx-auto md:mx-0">
+                                        <div className="bg-green-400 h-full w-[45%]"></div>
+                                    </div>
+                                </div>
+                                <div className="z-10 hidden md:flex w-12 h-12 bg-white rounded-full items-center justify-center text-black hover:scale-110 transition shadow-lg shrink-0">
+                                    <Play fill="currentColor" size={20} />
                                 </div>
                             </div>
-                            <div className="z-10 hidden md:flex w-12 h-12 bg-white rounded-full items-center justify-center text-black hover:scale-110 transition shadow-lg shrink-0">
-                                <Play fill="currentColor" size={20} />
+                        ) : featuredPodcast ? (
+                            <div
+                                onClick={() => navigate(`/podcasts/channel?id=${featuredPodcast.itunesId || featuredPodcast.id}`)}
+                                className="bg-slate-900 rounded-[2rem] p-6 text-white border-2 border-slate-900 shadow-pop relative overflow-hidden group cursor-pointer bouncy flex flex-col md:flex-row items-center gap-6"
+                            >
+                                <div className="absolute right-[-20px] bottom-[-40px] opacity-20 group-hover:rotate-12 transition duration-500">
+                                    <Disc size={200} />
+                                </div>
+                                <div className="w-28 h-28 rounded-2xl bg-indigo-500 border-2 border-white shadow-lg overflow-hidden shrink-0 z-10">
+                                    <img src={featuredPodcast.artworkUrl || featuredPodcast.artwork || "https://placehold.co/400x400/indigo/white?text=Pod"} className="w-full h-full object-cover" alt="album art" />
+                                </div>
+                                <div className="z-10 flex-1 text-center md:text-left">
+                                    <div className="text-xs font-bold text-yellow-400 mb-1 flex items-center justify-center md:justify-start gap-2 uppercase tracking-wider">
+                                        <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span> Featured Podcast
+                                    </div>
+                                    <h3 className="text-2xl font-black mb-1 line-clamp-1">{featuredPodcast.title}</h3>
+                                    <p className="text-slate-400 text-sm">{featuredPodcast.author}</p>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="bg-slate-800 rounded-[2rem] p-8 text-center text-slate-400">
+                                <p>开始探索播客吧！您的收听历史和推荐将显示在这里。</p>
+                            </div>
+                        )}
 
                         {/* Recent History (Horizontal Scroll) */}
-                        <div>
-                            <h3 className="font-black text-xl mb-4 flex items-center gap-2 text-slate-900"><HistoryIcon size={20} /> 收听历史</h3>
-                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                                {/* History Item 1 */}
-                                <div className="min-w-[220px] bg-white p-3 rounded-[1.5rem] border-2 border-slate-900 shadow-sm hover:shadow-pop transition cursor-pointer">
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <img src="https://picsum.photos/100/100?random=1" className="w-10 h-10 rounded-lg border border-slate-200" alt="cover" />
-                                        <div className="overflow-hidden">
-                                            <div className="text-xs font-bold text-slate-400 truncate">SpongeMind</div>
-                                            <div className="text-xs font-bold text-slate-900 truncate">Ep. 42 Bilingual</div>
+                        {history.length > 0 && (
+                            <div>
+                                <h3 className="font-black text-xl mb-4 flex items-center gap-2 text-slate-900"><HistoryIcon size={20} /> 收听历史</h3>
+                                <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                                    {history.map((record) => (
+                                        <div
+                                            key={record.id}
+                                            onClick={() => navigate('/podcasts/player', {
+                                                state: {
+                                                    episode: {
+                                                        guid: record.episodeGuid,
+                                                        title: record.episodeTitle,
+                                                        audioUrl: record.episodeUrl,
+                                                        channel: { title: record.channelName, artworkUrl: record.channelImage }
+                                                    }
+                                                }
+                                            })}
+                                            className="min-w-[220px] max-w-[220px] bg-white p-3 rounded-[1.5rem] border-2 border-slate-900 shadow-sm hover:shadow-pop transition cursor-pointer"
+                                        >
+                                            <div className="flex items-center gap-3 mb-3">
+                                                <img src={record.channelImage || "https://placehold.co/100x100"} className="w-10 h-10 rounded-lg border border-slate-200 object-cover" alt="cover" />
+                                                <div className="overflow-hidden flex-1">
+                                                    <div className="text-xs font-bold text-slate-900 truncate">{record.episodeTitle}</div>
+                                                    <div className="text-xs font-bold text-slate-400 truncate">{record.channelName}</div>
+                                                </div>
+                                            </div>
+                                            <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+                                                {/* Mock progress for now, could be real if backend supported it */}
+                                                <div className="bg-indigo-500 h-full w-[70%]"></div>
+                                            </div>
+                                            <div className="text-[10px] text-slate-400 font-bold mt-1 text-right">
+                                                {new Date(record.playedAt).toLocaleDateString()}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
-                                        <div className="bg-indigo-500 h-full w-[90%]"></div>
-                                    </div>
-                                    <div className="text-[10px] text-slate-400 font-bold mt-1 text-right">已听完</div>
-                                </div>
-
-                                {/* History Item 2 */}
-                                <div className="min-w-[220px] bg-white p-3 rounded-[1.5rem] border-2 border-slate-900 shadow-sm hover:shadow-pop transition cursor-pointer">
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <img src="https://picsum.photos/100/100?random=2" className="w-10 h-10 rounded-lg border border-slate-200" alt="cover" />
-                                        <div className="overflow-hidden">
-                                            <div className="text-xs font-bold text-slate-400 truncate">TTMIK</div>
-                                            <div className="text-xs font-bold text-slate-900 truncate">Iyagi #141</div>
-                                        </div>
-                                    </div>
-                                    <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
-                                        <div className="bg-indigo-500 h-full w-[20%]"></div>
-                                    </div>
-                                    <div className="text-[10px] text-slate-400 font-bold mt-1 text-right">2天前</div>
+                                    ))}
                                 </div>
                             </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* Right Column (Community Charts) */}
@@ -180,13 +220,13 @@ export default function PodcastDashboard() {
                                 </div>
                             ))}
 
-                            {/* Mock Data if trending empty */}
-                            {!trending.length && [1, 2, 3].map(i => (
-                                <div key={i} className="flex items-center gap-4 group cursor-pointer hover:bg-slate-50 p-2 rounded-xl transition">
-                                    <div className="font-black text-slate-300 text-xl w-6 text-center">{i}</div>
-                                    <div className="w-12 h-12 rounded-lg bg-slate-200 border border-slate-200" />
-                                    <div className="flex-1 min-w-0">
-                                        <div className="h-4 w-24 bg-slate-200 rounded mb-1"></div>
+                            {/* Show skeleton if loading */}
+                            {loading && !trending.length && [1, 2, 3].map(i => (
+                                <div key={i} className="flex items-center gap-4 p-2 rounded-xl animate-pulse">
+                                    <div className="w-6 h-6 bg-slate-200 rounded-full"></div>
+                                    <div className="w-12 h-12 bg-slate-200 rounded-lg" />
+                                    <div className="flex-1 min-w-0 space-y-2">
+                                        <div className="h-4 w-24 bg-slate-200 rounded"></div>
                                         <div className="h-3 w-16 bg-slate-100 rounded"></div>
                                     </div>
                                 </div>

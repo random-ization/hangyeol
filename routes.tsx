@@ -55,6 +55,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({ canAccessContent, onShowUp
         <Route path="/" element={<Landing language={language} onLanguageChange={setLanguage} />} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/register" element={<AuthPage />} />
+        <Route path="/auth" element={<AuthPage />} /> {/* Google OAuth callback */}
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />

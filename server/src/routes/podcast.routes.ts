@@ -5,17 +5,17 @@ import { authenticate } from '../middleware/auth.middleware';
 const router = Router();
 
 // ============================================
-// Public Routes
+// Public Routes (no auth required - can browse without login)
 // ============================================
 
 // Search podcasts via iTunes API
-router.get('/search', authenticate, podcastController.searchPodcasts);
+router.get('/search', podcastController.searchPodcasts);
 
 // Get episodes from RSS feed
-router.get('/episodes', authenticate, podcastController.getEpisodes);
+router.get('/episodes', podcastController.getEpisodes);
 
-// Get trending podcasts (public-ish, but authenticated for consistency)
-router.get('/trending', authenticate, podcastController.getTrending);
+// Get trending podcasts
+router.get('/trending', podcastController.getTrending);
 
 // ============================================
 // User-Specific Routes (require auth)

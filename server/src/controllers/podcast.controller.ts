@@ -56,7 +56,7 @@ export const getEpisodes = async (req: Request, res: Response) => {
  */
 export const toggleSubscription = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user?.id;
+        const userId = (req as any).user?.userId || (req as any).user?.id;
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
@@ -86,7 +86,7 @@ export const toggleSubscription = async (req: Request, res: Response) => {
  */
 export const getSubscriptions = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user?.id;
+        const userId = (req as any).user?.userId || (req as any).user?.id;
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
@@ -105,7 +105,7 @@ export const getSubscriptions = async (req: Request, res: Response) => {
  */
 export const getMyFeed = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user?.id;
+        const userId = (req as any).user?.userId || (req as any).user?.id;
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
@@ -203,7 +203,7 @@ export const trackView = async (req: Request, res: Response) => {
  */
 export const toggleLike = async (req: Request, res: Response) => {
     try {
-        const userId = (req as any).user?.id;
+        const userId = (req as any).user?.userId || (req as any).user?.id;
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });
         }

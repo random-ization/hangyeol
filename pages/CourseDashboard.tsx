@@ -2,11 +2,12 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Book, BookOpen, Headphones, Sparkles,
-    ChevronLeft, Bookmark, AlertCircle, ChevronRight
+    Bookmark, AlertCircle, ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLearning } from '../contexts/LearningContext';
 import { useData } from '../contexts/DataContext';
+import BackButton from '../components/ui/BackButton';
 
 export default function CourseDashboard() {
     const navigate = useNavigate();
@@ -73,17 +74,16 @@ export default function CourseDashboard() {
         <div className="max-w-7xl mx-auto px-6 py-8 animate-in fade-in duration-500">
             {/* Header */}
             <div className="mb-10">
-                <button
-                    onClick={() => navigate('/courses')}
-                    className="flex items-center text-slate-400 hover:text-indigo-600 transition-colors mb-2 text-sm font-bold"
-                >
-                    <ChevronLeft size={16} className="mr-1" />
-                    切换课程
-                </button>
-                <h1 className="text-3xl font-black text-slate-800 flex items-baseline gap-3">
-                    {instituteName} <span className="text-indigo-600">Level {selectedLevel || 1}</span>
-                </h1>
-                <p className="text-slate-500 font-medium mt-1">Continue where you left off in your curriculum.</p>
+                <div className="flex items-start gap-4 mb-4">
+                    <BackButton onClick={() => navigate('/courses')} />
+                    <div>
+                        <p className="text-sm font-bold text-slate-400 mb-1">{instituteName}</p>
+                        <h1 className="text-3xl font-black text-slate-800">
+                            第 {selectedLevel || 1} 级
+                        </h1>
+                    </div>
+                </div>
+                <p className="text-slate-500 font-medium">选择一个模块继续学习</p>
             </div>
 
             {/* Modules Grid */}

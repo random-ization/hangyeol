@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { Language } from '../types';
 import { getLabels } from '../utils/i18n';
 import { api } from '../services/api';
 import { Loading } from '../components/common/Loading';
 import { FileText, Calendar, User } from 'lucide-react';
+import BackButton from '../components/ui/BackButton';
 
 interface LegalDocumentPageProps {
   language: Language;
@@ -21,6 +22,7 @@ interface LegalDocument {
 
 const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({ language, documentType }) => {
   const labels = getLabels(language);
+  const navigate = useNavigate();
   const [document, setDocument] = useState<LegalDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -75,6 +77,11 @@ const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({ language, documen
 
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Back Button */}
+      <div className="mb-6">
+        <BackButton onClick={() => navigate(-1)} />
+      </div>
+
       {/* Header */}
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
         <div className="flex items-center gap-3 mb-4">

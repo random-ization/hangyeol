@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import NoteCard from '../components/notebook/NoteCard';
 import { AnimatePresence, motion } from 'framer-motion';
+import BackButton from '../components/ui/BackButton';
 
 export default function NotebookPage() {
     const { user } = useAuth();
@@ -24,6 +25,7 @@ export default function NotebookPage() {
     return (
         <div className="space-y-10 pb-20 animate-in fade-in duration-500">
             <div className="flex items-center gap-4">
+                <BackButton onClick={() => navigate('/dashboard')} />
                 <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Memo.png" className="w-14 h-14" alt="memo" />
                 <div>
                     <h1 className="text-4xl font-black font-display text-slate-900">单词仓库</h1>

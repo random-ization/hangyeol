@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { SubscriptionType } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../hooks/useTranslation';
+import BackButton from '../components/ui/BackButton';
 
 const SubscriptionPage: React.FC = () => {
     const { user } = useAuth();
@@ -126,6 +127,11 @@ const SubscriptionPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-7xl mx-auto">
+                {/* Back Button */}
+                <div className="mb-8">
+                    <BackButton onClick={() => navigate(-1)} />
+                </div>
+
                 <div className="text-center">
                     <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white sm:text-4xl">
                         {labels.pricing?.title || "Invest in your Korean Fluency"}

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Language, SubscriptionType } from '../types';
 import { getLabels } from '../utils/i18n';
 import { useApp } from '../contexts/AppContext';
@@ -12,6 +12,7 @@ import {
   User as UserIcon, Camera, Lock, BarChart3, Calendar,
   Trophy, TrendingUp, Activity, CheckCircle, XCircle, Crown, Clock, Mail
 } from 'lucide-react';
+import BackButton from '../components/ui/BackButton';
 
 interface ProfileProps {
   language: Language;
@@ -19,6 +20,7 @@ interface ProfileProps {
 
 const Profile: React.FC<ProfileProps> = ({ language }) => {
   const { user, updateUser } = useApp();
+  const navigate = useNavigate();
   const labels = getLabels(language);
   const { toasts, success, error, removeToast } = useToast();
 
@@ -117,6 +119,11 @@ const Profile: React.FC<ProfileProps> = ({ language }) => {
   return (
     <div className="max-w-[1000px] mx-auto pb-20">
       <ToastContainer toasts={toasts} onClose={removeToast} />
+
+      {/* Back Button */}
+      <div className="mb-6">
+        <BackButton onClick={() => navigate('/dashboard')} />
+      </div>
 
       {/* Header Profile Card */}
       <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm mb-8 flex flex-col md:flex-row items-center gap-8">

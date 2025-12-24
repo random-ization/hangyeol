@@ -60,7 +60,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({ canAccessContent, onShowUp
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/courses" element={<CoursesOverview />} />
         <Route
           path="/terms"
           element={<LegalDocumentPage language={language} documentType="terms" />}
@@ -89,6 +88,9 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({ canAccessContent, onShowUp
             />
             <Route path="/dashboard/course" element={<CourseDashboard />} />
             <Route path="/dashboard/:moduleParam" element={<ModulePage />} />
+            {/* Courses (教材选择) */}
+            <Route path="/courses" element={<CoursesOverview />} />
+            <Route path="/course/:instituteId" element={<CourseDashboard />} />
             <Route
               path="/topik"
               element={

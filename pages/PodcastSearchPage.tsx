@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Search, ArrowLeft, Podcast, Loader2 } from 'lucide-react';
+import { Search, Podcast, Loader2 } from 'lucide-react';
 import { api } from '../services/api';
 import { PodcastChannel } from '../types';
+import BackButton from '../components/ui/BackButton';
 
 export default function PodcastSearchPage() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -47,14 +48,10 @@ export default function PodcastSearchPage() {
 
                 {/* Header & Search */}
                 <div className="space-y-6">
-                    <button
-                        onClick={() => navigate('/podcasts')}
-                        className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-bold transition"
-                    >
-                        <ArrowLeft size={20} /> 返回播客中心
-                    </button>
-
-                    <h1 className="text-3xl font-black text-slate-900">搜索播客</h1>
+                    <div className="flex items-center gap-4">
+                        <BackButton onClick={() => navigate('/podcasts')} />
+                        <h1 className="text-3xl font-black text-slate-900">搜索播客</h1>
+                    </div>
 
                     <form onSubmit={handleSearchSubmit} className="relative group">
                         <input

@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Play, Clock, Heart, Share2, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import BackButton from '../components/ui/BackButton';
 
 interface Episode {
     title: string;
@@ -224,12 +225,9 @@ const PodcastChannelPage: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60" />
 
                 {/* Back Button */}
-                <button
-                    onClick={() => navigate(-1)}
-                    className="absolute top-4 left-4 z-20 p-2 bg-black/30 backdrop-blur rounded-full hover:bg-black/50 transition-colors"
-                >
-                    <ArrowLeft className="w-5 h-5" />
-                </button>
+                <div className="absolute top-4 left-4 z-20">
+                    <BackButton onClick={() => navigate(-1)} className="bg-black/30 backdrop-blur border-white/20 hover:bg-black/50" />
+                </div>
 
                 {/* Share Button */}
                 <button className="absolute top-4 right-4 z-20 p-2 bg-black/30 backdrop-blur rounded-full hover:bg-black/50 transition-colors">

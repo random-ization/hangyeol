@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { Target, Clock, Users, ArrowRight, Archive } from 'lucide-react';
 import { clsx } from 'clsx';
+import BackButton from '../components/ui/BackButton';
 
 interface TopikPageProps {
   canAccessContent: (content: any) => boolean;
@@ -59,11 +60,12 @@ const TopikPage: React.FC<TopikPageProps> = ({ canAccessContent, onShowUpgradePr
       <div className="max-w-7xl mx-auto space-y-12">
 
         <div className="flex items-center gap-4 mb-4">
-          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Activities/Trophy.png" className="w-14 h-14 animate-bounce-slow" alt="trophy" />
+          <BackButton onClick={() => navigate('/dashboard')} />
           <div>
             <h2 className="text-4xl font-black font-display text-slate-900 tracking-tight">考试中心</h2>
             <p className="text-slate-500 font-bold">真题实战模拟</p>
           </div>
+          <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Activities/Trophy.png" className="w-14 h-14 animate-bounce-slow" alt="trophy" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

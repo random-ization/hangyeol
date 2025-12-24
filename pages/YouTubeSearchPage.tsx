@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Loader2, PlayCircle, Clock, Users, Play } from 'lucide-react';
 import { api } from '../services/api';
 import { clsx } from 'clsx';
+import BackButton from '../components/ui/BackButton';
 
 const YouTubeSearchPage: React.FC = () => {
     const navigate = useNavigate();
@@ -47,11 +48,12 @@ const YouTubeSearchPage: React.FC = () => {
 
                 {/* 1. Header */}
                 <div className="flex items-center gap-4 mb-4">
-                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Television.png" className="w-14 h-14 animate-bounce-slow" alt="TV" />
+                    <BackButton onClick={() => navigate('/dashboard')} />
                     <div>
                         <h2 className="text-4xl font-black font-display text-slate-900 tracking-tight">视频中心</h2>
                         <p className="text-slate-500 font-bold">精选 YouTube 内容</p>
                     </div>
+                    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Television.png" className="w-14 h-14 animate-bounce-slow" alt="TV" />
                 </div>
 
                 {/* 2. Search & Filters */}

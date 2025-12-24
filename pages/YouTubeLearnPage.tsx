@@ -4,6 +4,7 @@ import YouTube, { YouTubeProps } from 'react-youtube';
 import { ArrowLeft, BookOpen, Clock, Loader2, Sparkles, Search } from 'lucide-react';
 import { api } from '../services/api';
 import AnalysisSheet from '../components/AnalysisSheet';
+import BackButton from '../components/ui/BackButton';
 
 interface AnalysisData {
     vocabulary: { word: string; root: string; meaning: string; type: string }[];
@@ -130,18 +131,15 @@ const YouTubeLearnPage: React.FC = () => {
     return (
         <div className="h-screen flex flex-col bg-white overflow-hidden font-sans">
             {/* Header */}
-            <header className="flex-none h-16 border-b border-slate-100 flex items-center px-6 bg-white z-10">
-                <button
-                    onClick={() => navigate('/youtube/search')}
-                    className="mr-4 p-2 hover:bg-slate-50 rounded-full transition-colors"
-                >
-                    <ArrowLeft className="w-5 h-5 text-slate-500" />
-                </button>
-                <h1 className="text-lg font-bold text-slate-800 line-clamp-1 flex-1">
-                    {videoData.title}
-                </h1>
+            <header className="flex-none h-20 border-b border-slate-100 flex items-center px-6 bg-white z-10 gap-4">
+                <BackButton onClick={() => navigate('/youtube/search')} />
+                <div className="flex-1 min-w-0">
+                    <h1 className="text-lg font-bold text-slate-800 line-clamp-1">
+                        {videoData.title}
+                    </h1>
+                </div>
                 {transcript?.isPreview && (
-                    <span className="ml-4 px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full uppercase tracking-wider">
+                    <span className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full uppercase tracking-wider">
                         Preview Mode
                     </span>
                 )}

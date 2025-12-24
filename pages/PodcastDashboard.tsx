@@ -4,6 +4,7 @@ import { Play, Mic, Library, Search, Disc, History as HistoryIcon } from 'lucide
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { clsx } from 'clsx';
+import BackButton from '../components/ui/BackButton';
 
 export default function PodcastDashboard() {
     const navigate = useNavigate();
@@ -60,11 +61,12 @@ export default function PodcastDashboard() {
                 {/* 1. Header Section */}
                 <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-6">
                     <div className="flex items-center gap-4">
-                        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Headphone.png" className="w-14 h-14 animate-bounce-slow" alt="headphone" />
+                        <BackButton onClick={() => navigate('/dashboard')} />
                         <div>
                             <h2 className="text-4xl font-black font-display text-slate-900 tracking-tight">播客中心</h2>
                             <p className="text-slate-500 font-bold">听力磨耳朵</p>
                         </div>
+                        <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Headphone.png" className="w-14 h-14 animate-bounce-slow" alt="headphone" />
                     </div>
                     <button
                         onClick={() => navigate('/podcasts/subscriptions')}

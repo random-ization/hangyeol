@@ -22,6 +22,7 @@ import {
     RefreshCw
 } from 'lucide-react';
 import { api } from '../services/api';
+import BackButton from '../components/ui/BackButton';
 
 // Types
 interface TranscriptLine {
@@ -506,13 +507,9 @@ const PodcastPlayerPage: React.FC = () => {
                     <div className="p-6 md:p-8 flex flex-col items-center md:items-start text-center md:text-left h-full overflow-y-auto">
 
                         {/* Desktop Back Button */}
-                        <button
-                            onClick={() => navigate(-1)}
-                            className="hidden md:flex items-center gap-2 text-slate-500 hover:text-indigo-600 mb-6 transition-colors"
-                        >
-                            <ArrowLeft className="w-4 h-4" />
-                            <span className="text-sm font-medium">Back to Feed</span>
-                        </button>
+                        <div className="hidden md:block mb-6">
+                            <BackButton onClick={() => navigate(-1)} />
+                        </div>
 
                         {/* Cover Art */}
                         <div className="relative group w-48 h-48 md:w-64 md:h-64 rounded-2xl shadow-xl overflow-hidden mb-6 flex-shrink-0">

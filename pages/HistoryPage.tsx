@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { useNavigate } from 'react-router-dom';
-import { Play, Calendar, ArrowLeft } from 'lucide-react';
+import { Play, Calendar } from 'lucide-react';
 import { ListeningHistoryItem } from '../types';
 import { PODCAST_MESSAGES } from '../constants/podcast-messages';
+import BackButton from '../components/ui/BackButton';
 
 export default function HistoryPage() {
     const [history, setHistory] = useState<ListeningHistoryItem[]>([]);
@@ -23,10 +24,8 @@ export default function HistoryPage() {
 
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
-            <div className="bg-white p-4 sticky top-0 z-10 border-b flex items-center gap-3">
-                <button onClick={() => navigate(-1)} className="p-1 hover:bg-slate-100 rounded-full">
-                    <ArrowLeft className="w-5 h-5" />
-                </button>
+            <div className="bg-white p-4 sticky top-0 z-10 border-b flex items-center gap-4">
+                <BackButton onClick={() => navigate(-1)} />
                 <h1 className="text-xl font-bold">{PODCAST_MESSAGES.HISTORY_TITLE}</h1>
             </div>
 

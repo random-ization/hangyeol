@@ -12,7 +12,7 @@ export default function Sidebar() {
     const { logout, user } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
-    const [collapsed, setCollapsed] = useState(false);
+    const [collapsed, setCollapsed] = useState(true);
 
     // Get user initials for avatar fallback
     const getInitials = (name?: string) => {

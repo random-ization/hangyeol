@@ -9,6 +9,7 @@ import { useLearning } from '../contexts/LearningContext';
 import { useData } from '../contexts/DataContext';
 import { LearningModuleType, TextbookContent } from '../types';
 import { getLabels } from '../utils/i18n';
+import BackButton from '../components/ui/BackButton';
 
 const ModulePage: React.FC = () => {
   const { user, language, saveWord, recordMistake, saveAnnotation } = useAuth();
@@ -104,13 +105,10 @@ const ModulePage: React.FC = () => {
   }
 
   return (
-    <div>
-      <button
-        onClick={handleBack}
-        className="mb-4 text-sm text-slate-500 hover:text-indigo-600 flex items-center"
-      >
-        ← {labels.backCurr}
-      </button>
+    <div className="p-6">
+      <div className="mb-6">
+        <BackButton onClick={handleBack} />
+      </div>
       {currentModule === LearningModuleType.VOCABULARY && (
         <VocabModule
           course={currentCourse}

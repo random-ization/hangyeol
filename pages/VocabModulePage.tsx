@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-    ChevronLeft, ChevronDown, ChevronRight, Volume2, Check, X, Star
+    ChevronLeft, ChevronDown, ChevronRight, Volume2, Check, X, Star, Eye, EyeOff, Play, Square
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLearning } from '../contexts/LearningContext';
@@ -9,6 +9,7 @@ import { useData } from '../contexts/DataContext';
 import { VocabularyItem } from '../types';
 import VocabQuiz from '../src/features/vocab/components/VocabQuiz';
 import VocabMatch from '../src/features/vocab/components/VocabMatch';
+import { updateVocabProgress } from '../src/services/vocabApi';
 
 interface ExtendedVocabItem extends VocabularyItem {
     id: string;
@@ -50,9 +51,39 @@ export default function VocabModulePage() {
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    // Parse words
-    const parseWords = useCallback(() => {
+    // Quick Study (速记) mode states
+    const [redSheetActive, setRedSheetActive] = useState(true); // 默认开启
+    const [isAudioLooping, setIsAudioLooping] = useState(false);
+    const audioLoopRef = useRef<boolean>(false);
+
+    // Parse words from API or Legacy
+    const parseWords = useCallback(async () => {
         setLoading(true);
+        const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:3001';
+
+        try {
+            // 1. Try fetching from Admin/DB API first
+            const res = await fetch(`${API_URL}/api/vocab/words?courseId=${instituteId}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success && data.words.length > 0) {
+                    const apiWords: ExtendedVocabItem[] = data.words.map((w: any) => ({
+                        ...w,
+                        korean: w.word,
+                        english: w.meaning,
+                        unit: w.unitId, // Remap unitId to unit
+                        mastered: false
+                    }));
+                    setAllWords(apiWords);
+                    setLoading(false);
+                    return;
+                }
+            }
+        } catch (err) {
+            console.warn('API fetch failed, falling back to legacy:', err);
+        }
+
+        // 2. Fallback to Legacy textbookContexts
         const combined: ExtendedVocabItem[] = [];
         const level = selectedLevel || 1;
         const prefix = `${instituteId}-${level}-`;
@@ -75,38 +106,11 @@ export default function VocabModulePage() {
             }
         });
 
-        // Mock data if empty
-        if (combined.length === 0) {
-            const mockWords: ExtendedVocabItem[] = [
-                // Unit 1: 名词 (Nouns)
-                { id: '1-0', unit: 1, korean: '학교', english: '学校', partOfSpeech: 'NOUN', hanja: '學校', tips: { synonyms: ['학원'], nuance: '指正规教育机构，从小学到大学' }, exampleSentence: '학교에 가요.', exampleTranslation: '去学校。' },
-                { id: '1-1', unit: 1, korean: '선생님', english: '老师', partOfSpeech: 'NOUN', hanja: '先生님', tips: { nuance: '尊称，可用于任何教导者' }, exampleSentence: '선생님이 가르쳐요.', exampleTranslation: '老师在教。' },
-                { id: '1-2', unit: 1, korean: '학생', english: '学生', partOfSpeech: 'NOUN', hanja: '學生', exampleSentence: '저는 학생이에요.', exampleTranslation: '我是学生。' },
-                { id: '1-3', unit: 1, korean: '친구', english: '朋友', partOfSpeech: 'NOUN', hanja: '親舊', tips: { synonyms: ['동료', '벗'], antonyms: ['적'] }, exampleSentence: '친구를 만나요.', exampleTranslation: '见朋友。' },
-                { id: '1-4', unit: 1, korean: '가족', english: '家人', partOfSpeech: 'NOUN', hanja: '家族', exampleSentence: '가족이 좋아요.', exampleTranslation: '喜欢家人。' },
-                // Unit 2: 名词 (Food/Drink)
-                { id: '2-0', unit: 2, korean: '사과', english: '苹果', partOfSpeech: 'NOUN', hanja: '沙果', exampleSentence: '사과를 먹어요.', exampleTranslation: '吃苹果。' },
-                { id: '2-1', unit: 2, korean: '물', english: '水', partOfSpeech: 'NOUN', tips: { synonyms: ['음료수'], nuance: '纯净水，与음료수(饮料)不同' }, exampleSentence: '물을 마셔요.', exampleTranslation: '喝水。' },
-                { id: '2-2', unit: 2, korean: '밥', english: '饭', partOfSpeech: 'NOUN', tips: { nuance: '可指米饭，也泛指任何一餐' }, exampleSentence: '밥을 먹어요.', exampleTranslation: '吃饭。' },
-                { id: '2-3', unit: 2, korean: '커피', english: '咖啡', partOfSpeech: 'NOUN', exampleSentence: '커피를 마셔요.', exampleTranslation: '喝咖啡。' },
-                { id: '2-4', unit: 2, korean: '빵', english: '面包', partOfSpeech: 'NOUN', exampleSentence: '빵을 먹어요.', exampleTranslation: '吃面包。' },
-                // Unit 3: 动词 (Verbs)
-                { id: '3-0', unit: 3, korean: '가다', english: '去', partOfSpeech: 'VERB_INTRANSITIVE', tips: { antonyms: ['오다'], nuance: '自动词，表示离开说话者位置' }, exampleSentence: '집에 가요.', exampleTranslation: '回家。' },
-                { id: '3-1', unit: 3, korean: '오다', english: '来', partOfSpeech: 'VERB_INTRANSITIVE', tips: { antonyms: ['가다'], nuance: '自动词，表示向说话者位置移动' }, exampleSentence: '여기 오세요.', exampleTranslation: '请过来。' },
-                { id: '3-2', unit: 3, korean: '먹다', english: '吃', partOfSpeech: 'VERB_TRANSITIVE', tips: { synonyms: ['드시다'], nuance: '드시다是敬语形式' }, exampleSentence: '점심을 먹어요.', exampleTranslation: '吃午饭。' },
-                { id: '3-3', unit: 3, korean: '마시다', english: '喝', partOfSpeech: 'VERB_TRANSITIVE', exampleSentence: '차를 마셔요.', exampleTranslation: '喝茶。' },
-                { id: '3-4', unit: 3, korean: '보다', english: '看', partOfSpeech: 'VERB_TRANSITIVE', tips: { nuance: '也可表示"见面"，如 친구를 보다' }, exampleSentence: '영화를 봐요.', exampleTranslation: '看电影。' },
-                // Unit 4: 形容词 (Adjectives)
-                { id: '4-0', unit: 4, korean: '크다', english: '大', partOfSpeech: 'ADJECTIVE', tips: { antonyms: ['작다'] }, exampleSentence: '방이 커요.', exampleTranslation: '房间大。' },
-                { id: '4-1', unit: 4, korean: '작다', english: '小', partOfSpeech: 'ADJECTIVE', tips: { antonyms: ['크다'] }, exampleSentence: '가방이 작아요.', exampleTranslation: '包小。' },
-                { id: '4-2', unit: 4, korean: '좋다', english: '好', partOfSpeech: 'ADJECTIVE', hanja: '좋다', tips: { antonyms: ['나쁘다', '싫다'], nuance: '싫다侧重于主观不喜欢' }, exampleSentence: '날씨가 좋아요.', exampleTranslation: '天气好。' },
-                { id: '4-3', unit: 4, korean: '나쁘다', english: '坏', partOfSpeech: 'ADJECTIVE', tips: { antonyms: ['좋다'] }, exampleSentence: '기분이 나빠요.', exampleTranslation: '心情不好。' },
-                { id: '4-4', unit: 4, korean: '예쁘다', english: '漂亮', partOfSpeech: 'ADJECTIVE', tips: { synonyms: ['아름답다', '멋있다'], nuance: '예쁘다常用于形容可爱、精致的美' }, exampleSentence: '꽃이 예뻐요.', exampleTranslation: '花很漂亮。' },
-            ];
-            combined.push(...mockWords);
+        // Mock data logic removed (it was only for testing)
+        if (combined.length > 0) {
+            setAllWords(combined);
         }
 
-        setAllWords(combined);
         setLoading(false);
     }, [instituteId, selectedLevel, textbookContexts]);
 
@@ -134,13 +138,70 @@ export default function VocabModulePage() {
         [filteredWords]
     );
 
-    const handleKnow = () => { if (currentCard) setMasteredIds(prev => new Set([...prev, currentCard.id])); goToNext(); };
-    const handleDontKnow = () => { goToNext(); };
+    const handleKnow = async () => {
+        if (currentCard) {
+            setMasteredIds(prev => new Set([...prev, currentCard.id]));
+            // Call SRS API if user is logged in and word has database ID
+            if (user?.id && currentCard.id && !currentCard.id.includes('-')) {
+                try {
+                    await updateVocabProgress(user.id, currentCard.id, 5);
+                } catch (err) {
+                    console.warn('Failed to update progress:', err);
+                }
+            }
+        }
+        goToNext();
+    };
+    const handleDontKnow = async () => {
+        if (user?.id && currentCard?.id && !currentCard.id.includes('-')) {
+            try {
+                await updateVocabProgress(user.id, currentCard.id, 0);
+            } catch (err) {
+                console.warn('Failed to update progress:', err);
+            }
+        }
+        goToNext();
+    };
     const goToNext = () => { setIsFlipped(false); if (cardIndex < filteredWords.length - 1) setCardIndex(cardIndex + 1); };
     const goToPrev = () => { setIsFlipped(false); if (cardIndex > 0) setCardIndex(cardIndex - 1); };
     const flipCard = () => { setIsFlipped(!isFlipped); };
     const toggleStar = (id: string) => { setStarredIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; }); };
     const speakWord = (text: string) => { if ('speechSynthesis' in window) { const u = new SpeechSynthesisUtterance(text); u.lang = 'ko-KR'; u.rate = 0.8; speechSynthesis.speak(u); } };
+
+    // Audio loop for Quick Study mode (1.5s gap between words)
+    const playAudioLoop = async () => {
+        if (isAudioLooping) {
+            audioLoopRef.current = false;
+            setIsAudioLooping(false);
+            speechSynthesis.cancel();
+            return;
+        }
+
+        audioLoopRef.current = true;
+        setIsAudioLooping(true);
+
+        for (const word of filteredWords) {
+            if (!audioLoopRef.current) break;
+
+            // Speak word
+            await new Promise<void>(resolve => {
+                const u = new SpeechSynthesisUtterance(word.korean);
+                u.lang = 'ko-KR';
+                u.rate = 0.8;
+                u.onend = () => resolve();
+                u.onerror = () => resolve();
+                speechSynthesis.speak(u);
+            });
+
+            if (!audioLoopRef.current) break;
+
+            // Wait 1.5 seconds
+            await new Promise(r => setTimeout(r, 1500));
+        }
+
+        audioLoopRef.current = false;
+        setIsAudioLooping(false);
+    };
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -156,7 +217,7 @@ export default function VocabModulePage() {
         { id: 'flashcard', label: '单词卡', emoji: '🎴' },
         { id: 'quiz', label: '测试', emoji: '⚡️' },
         { id: 'match', label: '配对', emoji: '🧩' },
-        { id: 'list', label: '列表', emoji: '📝' },
+        { id: 'list', label: '速记', emoji: '📝' },
     ];
 
     if (loading) {
@@ -266,20 +327,20 @@ export default function VocabModulePage() {
                                 <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center backface-hidden rotate-y-180 bg-green-50/50 p-6 overflow-y-auto">
                                     {/* POS Badge */}
                                     {currentCard?.partOfSpeech && (
-                                        <div className={`mb-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${currentCard.partOfSpeech === 'VERB_TRANSITIVE' ? 'bg-blue-100 text-blue-700' :
-                                            currentCard.partOfSpeech === 'VERB_INTRANSITIVE' ? 'bg-red-100 text-red-700' :
-                                                currentCard.partOfSpeech === 'ADJECTIVE' ? 'bg-purple-100 text-purple-700' :
-                                                    currentCard.partOfSpeech === 'NOUN' ? 'bg-green-100 text-green-700' :
-                                                        currentCard.partOfSpeech === 'ADVERB' ? 'bg-orange-100 text-orange-700' :
+                                        <div className={`mb-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${currentCard.partOfSpeech === 'VERB_T' ? 'bg-red-100 text-red-700' :
+                                            currentCard.partOfSpeech === 'VERB_I' ? 'bg-orange-100 text-orange-700' :
+                                                currentCard.partOfSpeech === 'ADJ' ? 'bg-purple-100 text-purple-700' :
+                                                    currentCard.partOfSpeech === 'NOUN' ? 'bg-blue-100 text-blue-700' :
+                                                        currentCard.partOfSpeech === 'ADV' ? 'bg-green-100 text-green-700' :
                                                             currentCard.partOfSpeech === 'PARTICLE' ? 'bg-gray-100 text-gray-700' :
                                                                 'bg-slate-100 text-slate-700'
                                             }`}>
-                                            {currentCard.partOfSpeech === 'VERB_TRANSITIVE' ? 'v.t. 他动词' :
-                                                currentCard.partOfSpeech === 'VERB_INTRANSITIVE' ? 'v.i. 自动词' :
-                                                    currentCard.partOfSpeech === 'ADJECTIVE' ? 'adj. 形容词' :
+                                            {currentCard.partOfSpeech === 'VERB_T' ? 'v.t. 他动词' :
+                                                currentCard.partOfSpeech === 'VERB_I' ? 'v.i. 自动词' :
+                                                    currentCard.partOfSpeech === 'ADJ' ? 'adj. 形容词' :
                                                         currentCard.partOfSpeech === 'NOUN' ? 'n. 名词' :
-                                                            currentCard.partOfSpeech === 'ADVERB' ? 'adv. 副词' :
-                                                                currentCard.partOfSpeech === 'PARTICLE' ? 'particle 助词' :
+                                                            currentCard.partOfSpeech === 'ADV' ? 'adv. 副词' :
+                                                                currentCard.partOfSpeech === 'PARTICLE' ? '助词' :
                                                                     currentCard.partOfSpeech}
                                         </div>
                                     )}
@@ -345,27 +406,48 @@ export default function VocabModulePage() {
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex justify-between gap-4 mt-6 px-8">
-                        <button onClick={handleDontKnow} className="flex-1 py-3 bg-white border-2 border-red-200 text-red-500 rounded-xl font-black shadow-sm hover:border-red-500 hover:shadow-md active:translate-y-1 transition-all">
-                            ✕ 不认识
+                    {/* Action Buttons - SRS */}
+                    <div className="flex justify-center gap-6 mt-6 px-8">
+                        <button onClick={handleDontKnow} className="flex-1 max-w-[180px] py-4 bg-red-50 border-2 border-red-500 text-red-600 rounded-2xl font-black text-lg shadow-[4px_4px_0px_0px_rgba(220,38,38,0.5)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(220,38,38,0.5)] active:translate-y-0 active:shadow-none transition-all">
+                            ✕ 忘了
                         </button>
-                        <button onClick={handleKnow} className="flex-1 py-3 bg-white border-2 border-green-200 text-green-600 rounded-xl font-black shadow-sm hover:border-green-500 hover:shadow-md active:translate-y-1 transition-all">
-                            ✓ 认识
+                        <button onClick={handleKnow} className="flex-1 max-w-[180px] py-4 bg-green-50 border-2 border-green-500 text-green-600 rounded-2xl font-black text-lg shadow-[4px_4px_0px_0px_rgba(34,197,94,0.5)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(34,197,94,0.5)] active:translate-y-0 active:shadow-none transition-all">
+                            ✓ 记住
                         </button>
                     </div>
                 </div>
             )}
 
-            {/* Quick Learn List Mode */}
+            {/* Quick Learn List Mode (速记) */}
             {viewMode === 'list' && (
                 <div className="w-full max-w-4xl">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-2xl font-black text-slate-900">
-                            快速学习 <span className="text-slate-400 text-lg font-normal ml-2">({filteredWords.length})</span>
+                            速记 <span className="text-slate-400 text-lg font-normal ml-2">({filteredWords.length})</span>
                         </h3>
-                        <div className="text-xs font-bold bg-green-100 text-green-700 px-3 py-1 rounded-full border border-green-200">
-                            点击例句揭示单词
+                        <div className="flex items-center gap-2">
+                            {/* Red Sheet Toggle */}
+                            <button
+                                onClick={() => setRedSheetActive(!redSheetActive)}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 font-bold text-sm transition-all ${redSheetActive
+                                    ? 'bg-red-50 border-red-400 text-red-600'
+                                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400'
+                                    }`}
+                            >
+                                {redSheetActive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                红膜
+                            </button>
+                            {/* Audio Loop */}
+                            <button
+                                onClick={playAudioLoop}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-xl border-2 font-bold text-sm transition-all ${isAudioLooping
+                                    ? 'bg-green-50 border-green-400 text-green-600 animate-pulse'
+                                    : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400'
+                                    }`}
+                            >
+                                {isAudioLooping ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                                {isAudioLooping ? '停止' : '连播'}
+                            </button>
                         </div>
                     </div>
 
@@ -395,8 +477,8 @@ export default function VocabModulePage() {
                                     key={word.id}
                                     onClick={handleReveal}
                                     className={`bg-white rounded-2xl border-2 p-5 cursor-pointer transition-all ${isRevealed
-                                            ? 'border-green-300 bg-green-50/50'
-                                            : 'border-slate-200 hover:border-slate-400 hover:shadow-md'
+                                        ? 'border-green-300 bg-green-50/50'
+                                        : 'border-slate-200 hover:border-slate-400 hover:shadow-md'
                                         }`}
                                 >
                                     <div className="flex items-start justify-between gap-4">
@@ -407,19 +489,23 @@ export default function VocabModulePage() {
                                                     }`}>
                                                     {word.korean}
                                                 </span>
-                                                {isRevealed && (
-                                                    <span className="text-slate-500 text-lg">{word.english}</span>
-                                                )}
+                                                {/* Meaning with red sheet support */}
+                                                <span className={`text-slate-500 text-lg transition-all ${redSheetActive && !isRevealed
+                                                    ? 'blur-sm hover:blur-none select-none'
+                                                    : ''
+                                                    }`}>
+                                                    {word.english}
+                                                </span>
                                                 {word.partOfSpeech && isRevealed && (
-                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${word.partOfSpeech === 'VERB_TRANSITIVE' ? 'bg-blue-100 text-blue-700' :
-                                                            word.partOfSpeech === 'VERB_INTRANSITIVE' ? 'bg-red-100 text-red-700' :
-                                                                word.partOfSpeech === 'ADJECTIVE' ? 'bg-purple-100 text-purple-700' :
-                                                                    word.partOfSpeech === 'NOUN' ? 'bg-green-100 text-green-700' :
-                                                                        'bg-slate-100 text-slate-700'
+                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${word.partOfSpeech === 'VERB_T' ? 'bg-red-100 text-red-700' :
+                                                        word.partOfSpeech === 'VERB_I' ? 'bg-orange-100 text-orange-700' :
+                                                            word.partOfSpeech === 'ADJ' ? 'bg-purple-100 text-purple-700' :
+                                                                word.partOfSpeech === 'NOUN' ? 'bg-blue-100 text-blue-700' :
+                                                                    'bg-slate-100 text-slate-700'
                                                         }`}>
-                                                        {word.partOfSpeech === 'VERB_TRANSITIVE' ? 'v.t.' :
-                                                            word.partOfSpeech === 'VERB_INTRANSITIVE' ? 'v.i.' :
-                                                                word.partOfSpeech === 'ADJECTIVE' ? 'adj.' :
+                                                        {word.partOfSpeech === 'VERB_T' ? 'v.t.' :
+                                                            word.partOfSpeech === 'VERB_I' ? 'v.i.' :
+                                                                word.partOfSpeech === 'ADJ' ? 'adj.' :
                                                                     word.partOfSpeech === 'NOUN' ? 'n.' :
                                                                         word.partOfSpeech}
                                                     </span>
@@ -441,8 +527,8 @@ export default function VocabModulePage() {
 
                                         {/* Status Indicator */}
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl transition-all ${isRevealed
-                                                ? 'bg-green-500 text-white'
-                                                : 'bg-slate-100 text-slate-400'
+                                            ? 'bg-green-500 text-white'
+                                            : 'bg-slate-100 text-slate-400'
                                             }`}>
                                             {isRevealed ? '✓' : '?'}
                                         </div>

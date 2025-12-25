@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Settings, LogOut, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Settings, LogOut, ShieldCheck, ChevronLeft, ChevronRight, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Helper for 3D Icons
@@ -111,6 +111,14 @@ export default function Sidebar() {
                         >
                             <ShieldCheck size={20} className="shrink-0" />
                             {!collapsed && <span>管理后台</span>}
+                        </NavLink>
+                        <NavLink
+                            to="/admin/vocab"
+                            title={collapsed ? '词汇库' : undefined}
+                            className={`flex items-center ${collapsed ? 'justify-center px-3' : 'gap-4 px-5'} py-3 rounded-[1.5rem] text-slate-900 bg-slate-100 border-2 border-slate-200 hover:bg-slate-200 font-bold transition-all mt-2`}
+                        >
+                            <FileSpreadsheet size={20} className="shrink-0" />
+                            {!collapsed && <span>词汇库</span>}
                         </NavLink>
                     </>
                 )}

@@ -1,0 +1,290 @@
+import React, { useState, useRef } from 'react';
+import { Upload, FileUp, Check, X, AlertTriangle, FileSpreadsheet, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { useAuth } from '../../contexts/AuthContext';
+import toast from 'react-hot-toast';
+
+interface ImportedVocab {
+    unit: number;
+    word: string;
+    meaning: string;
+    description: string; // example
+    partOfSpeech?: string;
+    hanja?: string;
+    exampleSentence?: string;
+    exampleMeaning?: string;
+    // Preview only fields
+    synonyms?: string[];
+    antonyms?: string[];
+    nuance?: string;
+    tips?: any; // The final constructed JSON
+    status: 'pending' | 'success' | 'error';
+    errorMsg?: string;
+}
+
+const API_Base = (import.meta as any).env.VITE_API_URL || 'http://localhost:3001';
+
+export default function VocabImporter() {
+    const { user } = useAuth();
+    const [file, setFile] = useState<File | null>(null);
+    const [previewData, setPreviewData] = useState<ImportedVocab[]>([]);
+    const [courseId, setCourseId] = useState('yonsei-1');
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const uploadedFile = e.target.files?.[0];
+        if (!uploadedFile) return;
+
+        setFile(uploadedFile);
+        parseExcel(uploadedFile);
+    };
+
+    const parseCommaList = (text: any): string[] => {
+        if (!text || typeof text !== 'string') return [];
+        return text.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+    };
+
+    const mapPOS = (pos: string): string => {
+        if (!pos) return 'NOUN';
+        const p = pos.trim();
+        if (p === '名词' || p === '代词') return 'NOUN';
+        if (p === '动词' || p === '自动词' || p === '他动词') return 'VERB';
+        if (p === '形容词') return 'ADJ';
+        if (p === '副词') return 'ADV';
+        if (p === '助词') return 'PARTICLE';
+        return 'NOUN'; // Default
+    };
+
+    const parseExcel = async (file: File) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = e.target?.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(sheet) as any[];
+
+                const parsed: ImportedVocab[] = jsonData.map((row: any) => {
+                    const synonyms = parseCommaList(row['Synonyms'] || row['近义词']);
+                    const antonyms = parseCommaList(row['Antonyms'] || row['反义词']);
+                    const nuance = row['Note'] || row['备注'] || '';
+
+                    const tipsObj = {
+                        synonyms: synonyms.length ? synonyms : undefined,
+                        antonyms: antonyms.length ? antonyms : undefined,
+                        nuance: nuance || undefined
+                    };
+
+                    return {
+                        unit: parseInt(row['Unit'] || row['单元'] || '0'),
+                        word: row['Word'] || row['单词'] || '',
+                        meaning: row['Meaning'] || row['释义'] || '',
+                        description: '',
+                        partOfSpeech: mapPOS(row['POS'] || row['词性']),
+                        hanja: row['Hanja'] || row['汉字'] || '',
+                        exampleSentence: row['Example (Kr)'] || row['例句(韩)'] || '',
+                        exampleMeaning: row['Example (Cn)'] || row['例句(中)'] || '',
+                        synonyms,
+                        antonyms,
+                        nuance,
+                        tips: tipsObj,
+                        status: 'pending' as const
+                    };
+                }).filter(item => item.word && item.meaning);
+
+                setPreviewData(parsed);
+                toast.success(`解析了 ${parsed.length} 个单词`);
+            } catch (err) {
+                console.error('Parse Error', err);
+                toast.error('解析 Excel 失败，请检查格式');
+            }
+        };
+        reader.readAsBinaryString(file);
+    };
+
+    const handleDownloadTemplate = () => {
+        const headers = [
+            '单元', '单词', '词性', '释义', '汉字',
+            '例句(韩)', '例句(中)', '近义词', '反义词', '备注'
+        ];
+        const sample = [
+            {
+                '单元': 1, '单词': '학교', '词性': '名词', '释义': '学校', '汉字': '學校',
+                '例句(韩)': '학교에 가요.', '例句(中)': '去学校。',
+                '近义词': '', '反义词': '', '备注': ''
+            }
+        ];
+
+        const ws = XLSX.utils.json_to_sheet(sample, { header: headers });
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Template");
+        XLSX.writeFile(wb, "vocab_template.xlsx");
+    };
+
+    const handleSubmit = async () => {
+        if (!previewData.length) return;
+        setIsUploading(true);
+
+        // Prepare payload
+        const payload = {
+            items: previewData.map(item => ({
+                courseId,
+                unitId: item.unit,
+                word: item.word,
+                meaning: item.meaning,
+                partOfSpeech: item.partOfSpeech,
+                hanja: item.hanja,
+                exampleSentence: item.exampleSentence,
+                exampleMeaning: item.exampleMeaning,
+                tips: item.tips
+            }))
+        };
+
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_Base}/api/admin/vocab/bulk`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                toast.success(`成功导入 ${data.results.success} 个单词`);
+                if (data.results.failed > 0) {
+                    toast.error(`${data.results.failed} 个导入失败，查看控制台`);
+                    console.error('Import Errors:', data.results.errors);
+                }
+                setPreviewData([]);
+                setFile(null);
+            } else {
+                toast.error(data.error || '导入失败');
+            }
+        } catch (err) {
+            console.error('Submit Error', err);
+            toast.error('网络请求失败');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    return (
+        <div className="flex flex-col h-full bg-slate-50">
+            {/* Header Controls */}
+            <div className="p-6 bg-white border-b border-slate-200 flex items-center justify-between">
+                <div className="flex gap-4 items-center">
+                    <select
+                        value={courseId}
+                        onChange={(e) => setCourseId(e.target.value)}
+                        className="px-4 py-2 rounded-xl border-2 border-slate-200 font-bold bg-white"
+                    >
+                        <option value="yonsei-1">Yonsei 1 (延世1)</option>
+                        <option value="yonsei-2">Yonsei 2 (延世2)</option>
+                        <option value="super-korean">Super Korean</option>
+                    </select>
+
+                    <button
+                        onClick={handleDownloadTemplate}
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-slate-100 rounded-xl font-bold transition-colors text-slate-500 text-sm"
+                    >
+                        <Download className="w-4 h-4" />
+                        下载模版
+                    </button>
+
+                    <div className="h-6 w-px bg-slate-200 mx-2" />
+
+                    <div className="text-sm text-slate-500 font-medium">
+                        预览: {previewData.length} 个
+                    </div>
+                </div>
+
+                <div className="flex gap-4">
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-slate-100 rounded-xl font-bold transition-colors text-slate-700"
+                    >
+                        <Upload className="w-5 h-5" />
+                        上传 Excel
+                    </button>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept=".xlsx, .xls"
+                        onChange={handleFileUpload}
+                    />
+
+                    {previewData.length > 0 && (
+                        <button
+                            onClick={handleSubmit}
+                            disabled={isUploading}
+                            className={`flex items-center gap-2 px-6 py-2 bg-slate-900 text-white rounded-xl font-black shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] hover:translate-y-px hover:shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition-all ${isUploading ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
+                        >
+                            {isUploading ? '导入中...' : '确认导入'}
+                            <FileUp className="w-5 h-5" />
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Preview Table */}
+            <div className="flex-1 overflow-auto p-6">
+                {!previewData.length ? (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-300 rounded-3xl bg-slate-50/50">
+                        <FileSpreadsheet className="w-16 h-16 mb-4 opacity-50" />
+                        <p className="font-bold text-lg">请上传 Excel 文件</p>
+                        <p className="text-sm mt-2 text-slate-500">支持中文表头: 单元, 单词, 词性, 释义, 汉字, 例句(韩), 例句(中), 近义词, 反义词, 备注</p>
+                    </div>
+                ) : (
+                    <table className="w-full text-left border-collapse">
+                        <thead className="sticky top-0 bg-slate-50 z-10">
+                            <tr className="text-slate-500 text-sm border-b-2 border-slate-200">
+                                <th className="p-3 font-bold w-12">Unit</th>
+                                <th className="p-3 font-bold w-32">Word</th>
+                                <th className="p-3 font-bold w-16">POS</th>
+                                <th className="p-3 font-bold">Meaning</th>
+                                <th className="p-3 font-bold">Example</th>
+                                <th className="p-3 font-bold w-32 text-xs">Synonyms</th>
+                                <th className="p-3 font-bold w-32 text-xs">Antonyms</th>
+                                <th className="p-3 font-bold w-32 text-xs">Note</th>
+                                <th className="p-3 font-bold w-12">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                            {previewData.map((row, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50 group transition-colors">
+                                    <td className="p-3 font-bold text-slate-400">{row.unit}</td>
+                                    <td className="p-3">
+                                        <div className="font-black text-slate-900">{row.word}</div>
+                                        {row.hanja && <div className="text-xs text-slate-400">{row.hanja}</div>}
+                                    </td>
+                                    <td className="p-3">
+                                        <span className="px-2 py-0.5 rounded bg-slate-100 text-xs font-bold text-slate-600">
+                                            {row.partOfSpeech}
+                                        </span>
+                                    </td>
+                                    <td className="p-3 text-slate-700">{row.meaning}</td>
+                                    <td className="p-3 text-slate-500 text-sm truncate max-w-[200px]" title={row.exampleSentence}>
+                                        {row.exampleSentence || '-'}
+                                    </td>
+                                    <td className="p-3 text-xs text-slate-500">{row.synonyms?.join(', ')}</td>
+                                    <td className="p-3 text-xs text-slate-500">{row.antonyms?.join(', ')}</td>
+                                    <td className="p-3 text-xs text-slate-500 truncate max-w-[100px]" title={row.nuance}>{row.nuance}</td>
+                                    <td className="p-3">
+                                        <Check className="w-5 h-5 text-slate-200 group-hover:text-green-500" />
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
+        </div>
+    );
+}

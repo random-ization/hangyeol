@@ -133,7 +133,18 @@ export enum LearningModuleType {
   GRAMMAR = 'GRAMMAR',
 }
 
-export type PartOfSpeech = 'NOUN' | 'PRONOUN' | 'ADJECTIVE' | 'VERB_TRANSITIVE' | 'VERB_INTRANSITIVE' | 'ADVERB' | 'PARTICLE';
+export type PartOfSpeech = 'NOUN' | 'VERB_T' | 'VERB_I' | 'ADJ' | 'ADV' | 'PARTICLE';
+
+// SRS Learning System Types
+export type WordStatus = 'NEW' | 'LEARNING' | 'REVIEW' | 'MASTERED';
+
+export interface UserWordProgress {
+  id: string;
+  status: WordStatus;
+  interval: number;
+  streak: number;
+  nextReviewAt: string | null;
+}
 
 export interface VocabTips {
   synonyms?: string[];
@@ -142,15 +153,24 @@ export interface VocabTips {
 }
 
 export interface VocabularyItem {
-  korean: string;
-  english: string;
-  pos?: string; // Part of Speech (e.g. Noun, Verb, etc.) - legacy field
-  partOfSpeech?: PartOfSpeech; // Detailed POS enum
-  hanja?: string; // e.g., "學校" for "학교"
-  tips?: VocabTips; // Learning tips (synonyms, antonyms, nuance)
-  exampleSentence: string;
-  exampleTranslation: string;
-  unit?: number; // Optional reference
+  id?: string;
+  korean: string;       // Legacy field alias for 'word'
+  english: string;      // Legacy field alias for 'meaning'
+  word?: string;        // Database field
+  meaning?: string;     // Database field
+  pronunciation?: string;
+  audioUrl?: string;
+  pos?: string;         // Legacy field
+  partOfSpeech?: PartOfSpeech;
+  hanja?: string;
+  tips?: VocabTips;
+  exampleSentence?: string;
+  exampleTranslation?: string; // Legacy alias
+  exampleMeaning?: string;     // Database field
+  unit?: number;
+  courseId?: string;
+  unitId?: string;
+  progress?: UserWordProgress | null; // SRS progress
 }
 
 export interface ReadingContent {

@@ -57,6 +57,11 @@ function VocabQuizComponent({ words, onComplete }: VocabQuizProps) {
     const [writingState, setWritingState] = useState<WritingState>('INPUT');
     const inputRef = useRef<HTMLInputElement>(null);
 
+    // Wrong words tracking for session retry
+    const [wrongWords, setWrongWords] = useState<VocabItem[]>([]);
+    const [masteredWordIds, setMasteredWordIds] = useState<Set<string>>(new Set()); // Words answered correctly
+    const [currentBatchNum, setCurrentBatchNum] = useState(1);
+
     // Timer cleanup
     const timersRef = useRef<NodeJS.Timeout[]>([]);
     useEffect(() => {
@@ -109,6 +114,40 @@ function VocabQuizComponent({ words, onComplete }: VocabQuizProps) {
         return generated;
     };
 
+    // Generate questions from specific word list (for retry round)
+    const generateQuestionsFromWords = (retryWords: VocabItem[], currentSettings: QuizSettings) => {
+        if (retryWords.length === 0) return [];
+        const shuffledWords = shuffleArray(retryWords);
+        const generated: QuizQuestion[] = [];
+
+        shuffledWords.forEach((targetWord, idx) => {
+            let questionType: QuestionType;
+            if (currentSettings.multipleChoice && currentSettings.writingMode) {
+                questionType = idx % 2 === 0 ? 'MULTIPLE_CHOICE' : 'WRITING';
+            } else if (currentSettings.writingMode) {
+                questionType = 'WRITING';
+            } else {
+                questionType = 'MULTIPLE_CHOICE';
+            }
+
+            const direction = questionType === 'MULTIPLE_CHOICE'
+                ? currentSettings.mcDirection
+                : currentSettings.writingDirection;
+
+            if (questionType === 'MULTIPLE_CHOICE') {
+                // Use all words as pool for distractors
+                const others = words.filter(w => w.id !== targetWord.id);
+                const distractors = shuffleArray(others).slice(0, 3);
+                const options = shuffleArray([targetWord, ...distractors]);
+                const correctIndex = options.findIndex(o => o.id === targetWord.id);
+                generated.push({ type: 'MULTIPLE_CHOICE', targetWord, direction, options, correctIndex });
+            } else {
+                generated.push({ type: 'WRITING', targetWord, direction });
+            }
+        });
+        return generated;
+    };
+
     // Initial load
     const hasInitRef = useRef(false);
     useEffect(() => {
@@ -145,12 +184,21 @@ function VocabQuizComponent({ words, onComplete }: VocabQuizProps) {
             if (isCorrect) {
                 setOptionStates(prev => prev.map((_, i) => i === index ? 'correct' : 'normal'));
                 setCorrectCount(c => c + 1);
+                // Mark as mastered
+                setMasteredWordIds(prev => new Set([...prev, currentQuestion.targetWord.id]));
             } else {
                 setOptionStates(prev => prev.map((_, i) => {
                     if (i === index) return 'wrong';
                     if (i === currentQuestion.correctIndex) return 'correct';
                     return 'normal';
                 }));
+                // Add to wrong words for retry
+                setWrongWords(prev => {
+                    if (!prev.find(w => w.id === currentQuestion.targetWord.id)) {
+                        return [...prev, currentQuestion.targetWord];
+                    }
+                    return prev;
+                });
             }
             const timer2 = setTimeout(() => nextQuestion(), 1000);
             timersRef.current.push(timer2);
@@ -172,8 +220,17 @@ function VocabQuizComponent({ words, onComplete }: VocabQuizProps) {
         if (isCorrect) {
             setWritingState('CORRECT');
             setCorrectCount(c => c + 1);
+            // Mark as mastered
+            setMasteredWordIds(prev => new Set([...prev, currentQuestion.targetWord.id]));
         } else {
             setWritingState('WRONG');
+            // Add to wrong words for retry
+            setWrongWords(prev => {
+                if (!prev.find(w => w.id === currentQuestion.targetWord.id)) {
+                    return [...prev, currentQuestion.targetWord];
+                }
+                return prev;
+            });
         }
         const timer = setTimeout(() => nextQuestion(), 1500);
         timersRef.current.push(timer);
@@ -181,6 +238,33 @@ function VocabQuizComponent({ words, onComplete }: VocabQuizProps) {
 
     const nextQuestion = () => {
         if (questionIndex >= totalQuestions - 1) {
+            // End of current batch - check for wrong words and remaining words
+            const remainingNewWords = words.filter(w => !masteredWordIds.has(w.id) && !wrongWords.find(ww => ww.id === w.id));
+
+            if (wrongWords.length > 0 || remainingNewWords.length > 0) {
+                // Mix wrong words with new unseen words for next batch
+                const batchSize = 20;
+                const wrongToInclude = [...wrongWords];
+                const newWordsNeeded = Math.max(0, batchSize - wrongToInclude.length);
+                const newWordsToAdd = shuffleArray(remainingNewWords).slice(0, newWordsNeeded);
+
+                const nextBatchWords = shuffleArray([...wrongToInclude, ...newWordsToAdd]);
+
+                if (nextBatchWords.length > 0) {
+                    const nextQuestions = generateQuestionsFromWords(nextBatchWords, settings);
+                    setQuestions(nextQuestions);
+                    setQuestionIndex(0);
+                    setOptionStates(['normal', 'normal', 'normal', 'normal']);
+                    setIsLocked(false);
+                    setWritingInput('');
+                    setWritingState('INPUT');
+                    setWrongWords([]); // Clear wrong words for fresh tracking
+                    setCurrentBatchNum(b => b + 1);
+                    return;
+                }
+            }
+
+            // All words mastered!
             setGameState('COMPLETE');
             onComplete?.({ correct: correctCount, total: totalQuestions });
         } else {
@@ -201,6 +285,9 @@ function VocabQuizComponent({ words, onComplete }: VocabQuizProps) {
         setIsLocked(false);
         setWritingInput('');
         setWritingState('INPUT');
+        setWrongWords([]);
+        setMasteredWordIds(new Set());
+        setCurrentBatchNum(1);
         setGameState('PLAYING');
     };
 
@@ -326,7 +413,14 @@ function VocabQuizComponent({ words, onComplete }: VocabQuizProps) {
                 {/* Progress with Settings Button */}
                 <div className="mb-8">
                     <div className="flex justify-between items-center text-xs font-bold text-slate-400 mb-1">
-                        <span>进度</span>
+                        <div className="flex items-center gap-2">
+                            <span>进度</span>
+                            {currentBatchNum > 1 && (
+                                <span className="px-2 py-0.5 bg-orange-100 text-orange-600 rounded-full text-[10px]">
+                                    第 {currentBatchNum} 轮
+                                </span>
+                            )}
+                        </div>
                         <div className="flex items-center gap-2">
                             <span>{questionIndex + 1} / {totalQuestions}</span>
                             <button onClick={() => setShowSettings(true)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">

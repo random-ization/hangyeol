@@ -13,6 +13,7 @@ import notebookRoutes from './routes/notebook.routes';
 
 import videoRoutes from './routes/video.routes';
 import podcastRoutes from './routes/podcast.routes';
+import vocabRoutes from './routes/vocab.routes';
 
 const app = express();
 
@@ -47,6 +48,8 @@ app.use('/api/video', videoRoutes);
 console.log('[Server] /api/video registered');
 app.use('/api/podcasts', podcastRoutes);
 console.log('[Server] /api/podcasts registered');
+app.use('/api/vocab', vocabRoutes);
+console.log('[Server] /api/vocab registered');
 
 // Health Check
 app.get('/health', (req, res) => {

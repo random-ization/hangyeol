@@ -13,6 +13,7 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const CourseDashboard = lazy(() => import('./pages/CourseDashboard'));
 const ModulePage = lazy(() => import('./pages/ModulePage'));
+const VocabModulePage = lazy(() => import('./pages/VocabModulePage'));
 const TopikPage = lazy(() => import('./pages/TopikPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const LegalDocumentPage = lazy(() => import('./pages/LegalDocumentPage'));
@@ -91,6 +92,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({ canAccessContent, onShowUp
             {/* Courses (教材选择) */}
             <Route path="/courses" element={<CoursesOverview />} />
             <Route path="/course/:instituteId" element={<CourseDashboard />} />
+            <Route path="/course/:instituteId/vocab" element={<VocabModulePage />} />
+            <Route path="/course/:instituteId/:moduleParam" element={<ModulePage />} />
             <Route
               path="/topik"
               element={

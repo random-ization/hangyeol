@@ -197,19 +197,47 @@ const FlashcardView: React.FC<FlashcardViewProps> = React.memo(
             </div>
 
             {/* Back */}
-            <div className="absolute w-full h-full backface-hidden rotate-y-180 bg-white rounded-2xl shadow-xl border-b-4 border-emerald-100 flex flex-col items-center justify-center p-8 text-center">
+            <div className="absolute w-full h-full backface-hidden rotate-y-180 bg-white rounded-2xl shadow-xl border-b-4 border-emerald-100 flex flex-col items-center justify-center p-6 text-center overflow-y-auto">
+              {/* POS Badge */}
+              {currentCard.partOfSpeech && (
+                <div className={`mb-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${currentCard.partOfSpeech === 'VERB_TRANSITIVE' ? 'bg-blue-100 text-blue-700' :
+                    currentCard.partOfSpeech === 'VERB_INTRANSITIVE' ? 'bg-red-100 text-red-700' :
+                      currentCard.partOfSpeech === 'ADJECTIVE' ? 'bg-purple-100 text-purple-700' :
+                        currentCard.partOfSpeech === 'NOUN' ? 'bg-green-100 text-green-700' :
+                          currentCard.partOfSpeech === 'ADVERB' ? 'bg-orange-100 text-orange-700' :
+                            currentCard.partOfSpeech === 'PARTICLE' ? 'bg-gray-100 text-gray-700' :
+                              'bg-slate-100 text-slate-700'
+                  }`}>
+                  {currentCard.partOfSpeech === 'VERB_TRANSITIVE' ? 'v.t. 他动词' :
+                    currentCard.partOfSpeech === 'VERB_INTRANSITIVE' ? 'v.i. 自动词' :
+                      currentCard.partOfSpeech === 'ADJECTIVE' ? 'adj. 形容词' :
+                        currentCard.partOfSpeech === 'NOUN' ? 'n. 名词' :
+                          currentCard.partOfSpeech === 'ADVERB' ? 'adv. 副词' :
+                            currentCard.partOfSpeech === 'PARTICLE' ? 'particle 助词' :
+                              currentCard.partOfSpeech}
+                </div>
+              )}
+
               {settings.flashcard.cardFront === 'KOREAN' ? (
                 <>
-                  <div className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-4">
+                  <div className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">
                     {labels.definition}
                   </div>
-                  <p className="text-3xl font-medium text-indigo-600 mb-6">{currentCard.english}</p>
+                  <p className="text-3xl font-medium text-indigo-600 mb-2">{currentCard.english}</p>
+                  {/* Hanja */}
+                  {currentCard.hanja && (
+                    <p className="text-lg text-slate-500 mb-4">漢字: {currentCard.hanja}</p>
+                  )}
                 </>
               ) : (
                 <>
-                  <h3 className="text-5xl font-bold text-indigo-600 mb-4">{currentCard.korean}</h3>
+                  <h3 className="text-5xl font-bold text-indigo-600 mb-2">{currentCard.korean}</h3>
+                  {/* Hanja */}
+                  {currentCard.hanja && (
+                    <p className="text-lg text-slate-500 mb-2">漢字: {currentCard.hanja}</p>
+                  )}
                   <div
-                    className="mb-6 p-2 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 inline-block"
+                    className="mb-4 p-2 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 inline-block"
                     onClick={e => {
                       e.stopPropagation();
                       speak(currentCard.korean);
@@ -221,9 +249,31 @@ const FlashcardView: React.FC<FlashcardViewProps> = React.memo(
                 </>
               )}
 
+              {/* Tips Section (Yellow Background) */}
+              {currentCard.tips && (currentCard.tips.synonyms || currentCard.tips.antonyms || currentCard.tips.nuance) && (
+                <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg w-full max-w-lg mb-3">
+                  {currentCard.tips.synonyms && currentCard.tips.synonyms.length > 0 && (
+                    <p className="text-sm text-yellow-800 mb-1">
+                      <span className="font-bold">≈</span> {currentCard.tips.synonyms.join(', ')}
+                    </p>
+                  )}
+                  {currentCard.tips.antonyms && currentCard.tips.antonyms.length > 0 && (
+                    <p className="text-sm text-yellow-800 mb-1">
+                      <span className="font-bold">≠</span> {currentCard.tips.antonyms.join(', ')}
+                    </p>
+                  )}
+                  {currentCard.tips.nuance && (
+                    <p className="text-sm text-yellow-700">
+                      <span className="mr-1">💡</span>{currentCard.tips.nuance}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Example Sentence (Slate Background) */}
               {currentCard.exampleSentence && (
-                <div className="bg-slate-50 p-4 rounded-lg w-full max-w-lg">
-                  <p className="text-slate-800 text-lg mb-1">{currentCard.exampleSentence}</p>
+                <div className="bg-slate-50 p-3 rounded-lg w-full max-w-lg">
+                  <p className="text-slate-800 text-base mb-1">{currentCard.exampleSentence}</p>
                   {currentCard.exampleTranslation && (
                     <p className="text-slate-500 text-sm">{currentCard.exampleTranslation}</p>
                   )}

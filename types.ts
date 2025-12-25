@@ -133,10 +133,21 @@ export enum LearningModuleType {
   GRAMMAR = 'GRAMMAR',
 }
 
+export type PartOfSpeech = 'NOUN' | 'PRONOUN' | 'ADJECTIVE' | 'VERB_TRANSITIVE' | 'VERB_INTRANSITIVE' | 'ADVERB' | 'PARTICLE';
+
+export interface VocabTips {
+  synonyms?: string[];
+  antonyms?: string[];
+  nuance?: string;
+}
+
 export interface VocabularyItem {
   korean: string;
   english: string;
-  pos?: string; // Part of Speech (e.g. Noun, Verb, etc.)
+  pos?: string; // Part of Speech (e.g. Noun, Verb, etc.) - legacy field
+  partOfSpeech?: PartOfSpeech; // Detailed POS enum
+  hanja?: string; // e.g., "學校" for "학교"
+  tips?: VocabTips; // Learning tips (synonyms, antonyms, nuance)
   exampleSentence: string;
   exampleTranslation: string;
   unit?: number; // Optional reference

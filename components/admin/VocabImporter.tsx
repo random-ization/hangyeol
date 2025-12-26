@@ -1,7 +1,9 @@
-import React, { useState, useRef } from 'react';
-import { Upload, FileUp, Check, X, AlertTriangle, FileSpreadsheet, Download } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, FileUp, Check, X, AlertTriangle, FileSpreadsheet, Download, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../../services/api';
+import { Institute } from '../../types';
 import toast from 'react-hot-toast';
 
 interface ImportedVocab {
@@ -28,9 +30,33 @@ export default function VocabImporter() {
     const { user } = useAuth();
     const [file, setFile] = useState<File | null>(null);
     const [previewData, setPreviewData] = useState<ImportedVocab[]>([]);
-    const [courseId, setCourseId] = useState('yonsei-1');
+    const [courseId, setCourseId] = useState('');
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Textbooks from API
+    const [textbooks, setTextbooks] = useState<Institute[]>([]);
+    const [loadingTextbooks, setLoadingTextbooks] = useState(true);
+
+    // Load textbooks on mount
+    useEffect(() => {
+        const loadTextbooks = async () => {
+            try {
+                const data = await api.getInstitutes();
+                setTextbooks(data || []);
+                // Set default to first textbook
+                if (data && data.length > 0) {
+                    setCourseId(data[0].id);
+                }
+            } catch (error) {
+                console.error('Failed to load textbooks:', error);
+                toast.error('加载教材列表失败');
+            } finally {
+                setLoadingTextbooks(false);
+            }
+        };
+        loadTextbooks();
+    }, []);
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const uploadedFile = e.target.files?.[0];
@@ -181,11 +207,22 @@ export default function VocabImporter() {
                     <select
                         value={courseId}
                         onChange={(e) => setCourseId(e.target.value)}
-                        className="px-4 py-2 rounded-xl border-2 border-slate-200 font-bold bg-white"
+                        className="px-4 py-2 rounded-xl border-2 border-slate-200 font-bold bg-white min-w-[200px]"
+                        disabled={loadingTextbooks}
                     >
-                        <option value="yonsei-1">Yonsei 1 (延世1)</option>
-                        <option value="yonsei-2">Yonsei 2 (延世2)</option>
-                        <option value="super-korean">Super Korean</option>
+                        {loadingTextbooks ? (
+                            <option value="">加载中...</option>
+                        ) : textbooks.length === 0 ? (
+                            <option value="">暂无教材</option>
+                        ) : (
+                            textbooks.map(tb => (
+                                <option key={tb.id} value={tb.id}>
+                                    {tb.name}
+                                    {tb.displayLevel ? ` ${tb.displayLevel}` : ''}
+                                    {tb.volume ? ` ${tb.volume}` : ''}
+                                </option>
+                            ))
+                        )}
                     </select>
 
                     <button

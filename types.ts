@@ -124,6 +124,7 @@ export interface Institute {
   publisher?: string; // University/Publisher name for filtering (e.g., "延世大学")
   displayLevel?: string; // Display level like "一级", "1급", "Level 1"
   volume?: string; // Volume like "上册", "下册", "A", "B"
+  totalUnits?: number; // Total number of units in this textbook (e.g., 10)
 }
 
 export enum LearningModuleType {
@@ -411,3 +412,22 @@ export interface SentenceAnalysis {
   nuance: string;
   cached?: boolean;
 }
+
+// Grammar Training Module Types
+export interface GrammarPointData {
+  id: string;
+  title: string;
+  summary: string;
+  type: string; // "ENDING", "PARTICLE", etc.
+  explanation: string;
+  construction: Record<string, string>; // e.g., { noun: "...", verb: "..." }
+  examples: { kr: string; cn: string; audio?: string }[];
+  status?: 'NEW' | 'LEARNING' | 'MASTERED';
+}
+
+export interface UnitGrammarData {
+  unitId: number;
+  unitTitle: string;
+  grammarPoints: GrammarPointData[];
+}
+

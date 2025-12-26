@@ -89,6 +89,7 @@ export const CreateInstituteSchema = z.object({
   publisher: z.string().optional().nullable(),
   displayLevel: z.string().optional().nullable(),
   volume: z.string().optional().nullable(),
+  totalUnits: z.number().int().optional().nullable(),
 });
 
 export const SaveContentSchema = z.object({

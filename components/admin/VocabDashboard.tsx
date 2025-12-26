@@ -4,6 +4,8 @@ import {
     ChevronLeft, ChevronRight, Mic, Sparkles, Loader2
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../../services/api';
+import { Institute } from '../../types';
 import toast from 'react-hot-toast';
 
 const API_Base = (import.meta as any).env.VITE_API_URL || 'http://localhost:3001';
@@ -28,11 +30,34 @@ export default function VocabDashboard() {
     const [generatingId, setGeneratingId] = useState<string | null>(null);
 
     // Filters
-    const [courseId, setCourseId] = useState('yonsei-1');
+    const [courseId, setCourseId] = useState('');
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [search, setSearch] = useState('');
     const [missingAudioOnly, setMissingAudioOnly] = useState(false);
+
+    // Textbooks from API
+    const [textbooks, setTextbooks] = useState<Institute[]>([]);
+    const [loadingTextbooks, setLoadingTextbooks] = useState(true);
+
+    // Load textbooks on mount
+    useEffect(() => {
+        const loadTextbooks = async () => {
+            try {
+                const data = await api.getInstitutes();
+                setTextbooks(data || []);
+                if (data && data.length > 0) {
+                    setCourseId(data[0].id);
+                }
+            } catch (error) {
+                console.error('Failed to load textbooks:', error);
+                toast.error('加载教材列表失败');
+            } finally {
+                setLoadingTextbooks(false);
+            }
+        };
+        loadTextbooks();
+    }, []);
 
     const fetchWords = useCallback(async () => {
         setLoading(true);
@@ -122,11 +147,22 @@ export default function VocabDashboard() {
                     <select
                         value={courseId}
                         onChange={(e) => { setCourseId(e.target.value); setPage(1); }}
-                        className="px-4 py-2 rounded-xl border-2 border-slate-200 font-bold bg-white"
+                        className="px-4 py-2 rounded-xl border-2 border-slate-200 font-bold bg-white min-w-[200px]"
+                        disabled={loadingTextbooks}
                     >
-                        <option value="yonsei-1">Yonsei 1</option>
-                        <option value="yonsei-2">Yonsei 2</option>
-                        <option value="super-korean">Super Korean</option>
+                        {loadingTextbooks ? (
+                            <option value="">加载中...</option>
+                        ) : textbooks.length === 0 ? (
+                            <option value="">暂无教材</option>
+                        ) : (
+                            textbooks.map(tb => (
+                                <option key={tb.id} value={tb.id}>
+                                    {tb.name}
+                                    {tb.displayLevel ? ` ${tb.displayLevel}` : ''}
+                                    {tb.volume ? ` ${tb.volume}` : ''}
+                                </option>
+                            ))
+                        )}
                     </select>
 
                     <div className="relative flex-1 max-w-md">
